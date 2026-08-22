@@ -1,6 +1,6 @@
 # Commit Convention — AfyaMind
 
-> Every commit is enforced locally (pre-commit hook) and in CI (GitHub Actions).  
+> Every commit is enforced locally (pre-commit hook) and in CI (GitHub Actions).
 > Commits that don't follow this format will be **rejected** at both stages.
 
 ---
@@ -80,19 +80,22 @@ feat(mobile): added crisis helpline screen
 
 ## Local setup
 
-After cloning, install the hooks once:
+Make sure you have **Python** and **Node.js** installed on your system, then run:
 
 ```bash
 pip install pre-commit
+# Installs the pre-commit checks (whitespace, EOF, yaml syntax, etc.)
+pre-commit install
+# Installs the commit message linter
 pre-commit install --hook-type commit-msg
 ```
 
-The hook runs automatically on every `git commit`.  
+The hooks run automatically on every `git commit`.
 If your message is invalid you will see a clear error before the commit is created.
 
 ---
 
 ## CI enforcement
 
-The [`commitlint.yml`](.github/workflows/commitlint.yml) workflow checks **every commit** in a pull request.  
+The [`commitlint.yml`](.github/workflows/commitlint.yml) workflow checks **every commit** in a pull request.
 A PR with even one non-conforming commit message will not be mergeable.
