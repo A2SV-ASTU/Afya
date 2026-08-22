@@ -13,8 +13,9 @@ repos:
       - id: commitlint
         name: Lint commit message
         language: node
-        entry: npx --no -- commitlint --edit
+        entry: npx --no -- commitlint --config commitlint.config.cjs --edit
         stages: [commit-msg]
+        pass_filenames: false
         additional_dependencies:
           - '@commitlint/cli'
           - '@commitlint/config-conventional'
