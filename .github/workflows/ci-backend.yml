@@ -32,5 +32,5 @@ jobs:
       - name: Run tests
         run: go test -race -coverprofile=coverage.out ./...
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          DB_DSN: ${{ secrets.DB_DSN }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
