@@ -4,11 +4,10 @@ import { usePathname } from "next/navigation";
 import { Menu, Bell, ChevronDown, Activity, Dumbbell, History, Settings, PhoneCall, MessageSquareQuote } from "lucide-react";
 
 interface NavbarProps {
-    isCollapsed: boolean;
     onToggleSidebar: () => void;
 }
 
-export default function Navbar({ isCollapsed, onToggleSidebar }: NavbarProps) {
+export default function Navbar({ onToggleSidebar }: NavbarProps) {
     const pathname = usePathname();
 
     const getPageTitle = () => {
