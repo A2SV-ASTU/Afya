@@ -16,7 +16,8 @@ type Repository interface {
 	FindByID(ctx context.Context, id int64) (*User, error)
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	Create(ctx context.Context, user *User) error
-	UpdateProfile(ctx context.Context, id int64, name *string, email *string, passwordHash *string) (*User, error)
+	UpdateProfile(ctx context.Context, id int64, name *string, email *string) (*User, error)
+	UpdatePassword(ctx context.Context, id int64, passwordHash string) error
 	AcceptDisclaimer(ctx context.Context, id int64) (*User, error)
 }
 
@@ -116,8 +117,7 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 	return nil
 }
 
-func (r *repository) UpdateProfile(ctx context.Context, id int64, name *string, email *string, passwordHash *string) (*User, error) {
-	// First fetch current user
+func (r *repository) UpdateProfile(ctx context.Context, id int64, name *string, email *string) (*User, error) {
 	currentUser, err := r.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -133,19 +133,14 @@ func (r *repository) UpdateProfile(ctx context.Context, id int64, name *string, 
 		updatedEmail = *email
 	}
 
-	updatedPasswordHash := currentUser.PasswordHash
-	if passwordHash != nil && *passwordHash != "" {
-		updatedPasswordHash = *passwordHash
-	}
-
 	query := `
 		UPDATE users
-		SET name = $1, email = $2, password_hash = $3, updated_at = NOW()
-		WHERE id = $4
+		SET name = $1, email = $2, updated_at = NOW()
+		WHERE id = $3
 		RETURNING id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
 	`
 	user := &User{}
-	err = r.db.QueryRowContext(ctx, query, updatedName, updatedEmail, updatedPasswordHash, id).Scan(
+	err = r.db.QueryRowContext(ctx, query, updatedName, updatedEmail, id).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Name,
@@ -165,6 +160,26 @@ func (r *repository) UpdateProfile(ctx context.Context, id int64, name *string, 
 	}
 
 	return user, nil
+}
+
+func (r *repository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
+	query := `
+		UPDATE users
+		SET password_hash = $1, updated_at = NOW()
+		WHERE id = $2
+	`
+	res, err := r.db.ExecContext(ctx, query, passwordHash, id)
+	if err != nil {
+		return fmt.Errorf("failed to update user password: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrUserNotFound
+	}
+	return nil
 }
 
 func (r *repository) AcceptDisclaimer(ctx context.Context, id int64) (*User, error) {

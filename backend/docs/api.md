@@ -209,14 +209,13 @@ Cookie: access_token=<jwt_access_token>
 
 - **Endpoint:** `PATCH /users/me`
 - **Access:** Authenticated (`access_token` cookie required)
-- **Description:** Updates profile details (`name`, `email`, and/or `password`) of the authenticated user.
+- **Description:** Updates profile details (`name` and/or `email`) of the authenticated user.
 
 #### Request Body
 ```json
 {
   "name": "Jane Smith",
-  "email": "jane.smith@example.com",
-  "password": "newSecurePassword123"
+  "email": "jane.smith@example.com"
 }
 ```
 *(All fields are optional; at least one must be provided)*
@@ -245,15 +244,6 @@ Cookie: access_token=<jwt_access_token>
   }
 }
 ```
-- `400 Bad Request` (`invalid_password`):
-```json
-{
-  "error": {
-    "code": "invalid_password",
-    "message": "Password must be at least 8 characters long"
-  }
-}
-```
 - `400 Bad Request` (`validation_error`):
 ```json
 {
@@ -275,7 +265,59 @@ Cookie: access_token=<jwt_access_token>
 
 ---
 
-### 7. Accept Disclaimer & Age Attestation
+### 7. Change User Password
+
+- **Endpoint:** `PUT /users/me/password`
+- **Access:** Authenticated (`access_token` cookie required)
+- **Description:** Verifies the current (`old_password`) password and updates the account password to (`new_password`).
+
+#### Request Body
+```json
+{
+  "old_password": "currentSecurePassword123",
+  "new_password": "brandNewSecurePassword456"
+}
+```
+
+#### Response (200 OK)
+```json
+{
+  "message": "Password updated successfully"
+}
+```
+
+#### Errors
+- `401 Unauthorized` (`invalid_credentials`):
+```json
+{
+  "error": {
+    "code": "invalid_credentials",
+    "message": "Invalid email or password"
+  }
+}
+```
+- `400 Bad Request` (`invalid_password`):
+```json
+{
+  "error": {
+    "code": "invalid_password",
+    "message": "New password must be at least 8 characters long"
+  }
+}
+```
+- `400 Bad Request` (`validation_error`):
+```json
+{
+  "error": {
+    "code": "validation_error",
+    "message": "Both old_password and new_password are required"
+  }
+}
+```
+
+---
+
+### 8. Accept Disclaimer & Age Attestation
 
 - **Endpoint:** `POST /users/me/disclaimer`
 - **Access:** Authenticated (`access_token` cookie required)
