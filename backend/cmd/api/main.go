@@ -18,6 +18,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("Configuration validation error: %v", err)
+	}
 
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
