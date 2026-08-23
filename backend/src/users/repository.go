@@ -16,7 +16,7 @@ type Repository interface {
 	FindByID(ctx context.Context, id int64) (*User, error)
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	Create(ctx context.Context, user *User) error
-	UpdateProfile(ctx context.Context, id int64, name string) (*User, error)
+	UpdateProfile(ctx context.Context, id int64, name *string, email *string, passwordHash *string) (*User, error)
 	AcceptDisclaimer(ctx context.Context, id int64) (*User, error)
 }
 
@@ -30,7 +30,7 @@ func NewRepository(db database.DBTX) Repository {
 
 func (r *repository) FindByID(ctx context.Context, id int64) (*User, error) {
 	query := `
-		SELECT id, email, name, password_hash, role, status, age_attested_18, disclaimer_accepted_at, created_at, updated_at
+		SELECT id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
@@ -41,7 +41,6 @@ func (r *repository) FindByID(ctx context.Context, id int64) (*User, error) {
 		&user.Name,
 		&user.PasswordHash,
 		&user.Role,
-		&user.Status,
 		&user.AgeAttested18,
 		&user.DisclaimerAcceptedAt,
 		&user.CreatedAt,
@@ -60,7 +59,7 @@ func (r *repository) FindByID(ctx context.Context, id int64) (*User, error) {
 
 func (r *repository) FindByEmail(ctx context.Context, email string) (*User, error) {
 	query := `
-		SELECT id, email, name, password_hash, role, status, age_attested_18, disclaimer_accepted_at, created_at, updated_at
+		SELECT id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
 		FROM users
 		WHERE email = $1
 	`
@@ -71,7 +70,6 @@ func (r *repository) FindByEmail(ctx context.Context, email string) (*User, erro
 		&user.Name,
 		&user.PasswordHash,
 		&user.Role,
-		&user.Status,
 		&user.AgeAttested18,
 		&user.DisclaimerAcceptedAt,
 		&user.CreatedAt,
@@ -90,17 +88,13 @@ func (r *repository) FindByEmail(ctx context.Context, email string) (*User, erro
 
 func (r *repository) Create(ctx context.Context, user *User) error {
 	query := `
-		INSERT INTO users (email, name, password_hash, role, status, age_attested_18, disclaimer_accepted_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+		INSERT INTO users (email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
 		RETURNING id, created_at, updated_at
 	`
 	role := user.Role
 	if role == "" {
 		role = RolePerson
-	}
-	status := user.Status
-	if status == "" {
-		status = StatusActive
 	}
 
 	err := r.db.QueryRowContext(
@@ -110,7 +104,6 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 		user.Name,
 		user.PasswordHash,
 		role,
-		status,
 		user.AgeAttested18,
 		user.DisclaimerAcceptedAt,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
@@ -120,25 +113,44 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 	}
 
 	user.Role = role
-	user.Status = status
 	return nil
 }
 
-func (r *repository) UpdateProfile(ctx context.Context, id int64, name string) (*User, error) {
+func (r *repository) UpdateProfile(ctx context.Context, id int64, name *string, email *string, passwordHash *string) (*User, error) {
+	// First fetch current user
+	currentUser, err := r.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	updatedName := currentUser.Name
+	if name != nil && *name != "" {
+		updatedName = *name
+	}
+
+	updatedEmail := currentUser.Email
+	if email != nil && *email != "" {
+		updatedEmail = *email
+	}
+
+	updatedPasswordHash := currentUser.PasswordHash
+	if passwordHash != nil && *passwordHash != "" {
+		updatedPasswordHash = *passwordHash
+	}
+
 	query := `
 		UPDATE users
-		SET name = $1, updated_at = NOW()
-		WHERE id = $2
-		RETURNING id, email, name, password_hash, role, status, age_attested_18, disclaimer_accepted_at, created_at, updated_at
+		SET name = $1, email = $2, password_hash = $3, updated_at = NOW()
+		WHERE id = $4
+		RETURNING id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
 	`
 	user := &User{}
-	err := r.db.QueryRowContext(ctx, query, name, id).Scan(
+	err = r.db.QueryRowContext(ctx, query, updatedName, updatedEmail, updatedPasswordHash, id).Scan(
 		&user.ID,
 		&user.Email,
 		&user.Name,
 		&user.PasswordHash,
 		&user.Role,
-		&user.Status,
 		&user.AgeAttested18,
 		&user.DisclaimerAcceptedAt,
 		&user.CreatedAt,
@@ -161,7 +173,7 @@ func (r *repository) AcceptDisclaimer(ctx context.Context, id int64) (*User, err
 		UPDATE users
 		SET age_attested_18 = true, disclaimer_accepted_at = $1, updated_at = $1
 		WHERE id = $2
-		RETURNING id, email, name, password_hash, role, status, age_attested_18, disclaimer_accepted_at, created_at, updated_at
+		RETURNING id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
 	`
 	user := &User{}
 	err := r.db.QueryRowContext(ctx, query, now, id).Scan(
@@ -170,7 +182,6 @@ func (r *repository) AcceptDisclaimer(ctx context.Context, id int64) (*User, err
 		&user.Name,
 		&user.PasswordHash,
 		&user.Role,
-		&user.Status,
 		&user.AgeAttested18,
 		&user.DisclaimerAcceptedAt,
 		&user.CreatedAt,

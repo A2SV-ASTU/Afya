@@ -9,7 +9,6 @@ type UserResponse struct {
 	Email                string     `json:"email"`
 	Name                 string     `json:"name"`
 	Role                 Role       `json:"role"`
-	Status               Status     `json:"status"`
 	AgeAttested18        bool       `json:"age_attested_18"`
 	DisclaimerAcceptedAt *time.Time `json:"disclaimer_accepted_at"`
 	CreatedAt            time.Time  `json:"created_at"`
@@ -17,7 +16,9 @@ type UserResponse struct {
 }
 
 type UpdateProfileRequest struct {
-	Name *string `json:"name" binding:"required"`
+	Name     *string `json:"name,omitempty"`
+	Email    *string `json:"email,omitempty"`
+	Password *string `json:"password,omitempty"`
 }
 
 type DisclaimerRequest struct {
@@ -33,7 +34,6 @@ func ToUserResponse(u *User) *UserResponse {
 		Email:                u.Email,
 		Name:                 u.Name,
 		Role:                 u.Role,
-		Status:               u.Status,
 		AgeAttested18:        u.AgeAttested18,
 		DisclaimerAcceptedAt: u.DisclaimerAcceptedAt,
 		CreatedAt:            u.CreatedAt,

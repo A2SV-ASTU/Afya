@@ -49,12 +49,20 @@ func (m *mockRepository) Create(ctx context.Context, user *User) error {
 	return nil
 }
 
-func (m *mockRepository) UpdateProfile(ctx context.Context, id int64, name string) (*User, error) {
+func (m *mockRepository) UpdateProfile(ctx context.Context, id int64, name *string, email *string, passwordHash *string) (*User, error) {
 	u, exists := m.users[id]
 	if !exists {
 		return nil, ErrUserNotFound
 	}
-	u.Name = name
+	if name != nil {
+		u.Name = *name
+	}
+	if email != nil {
+		u.Email = *email
+	}
+	if passwordHash != nil {
+		u.PasswordHash = *passwordHash
+	}
 	u.UpdatedAt = time.Now()
 	return u, nil
 }
@@ -75,7 +83,7 @@ func TestUserService_GetProfile(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)
 
-	testUser := &User{Email: "test@example.com", Name: "Test User", Role: RolePerson, Status: StatusActive}
+	testUser := &User{Email: "test@example.com", Name: "Test User", Role: RolePerson}
 	_ = repo.Create(context.Background(), testUser)
 
 	profile, appErr := svc.GetProfile(context.Background(), testUser.ID)
@@ -97,23 +105,38 @@ func TestUserService_UpdateProfile(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)
 
-	testUser := &User{Email: "test@example.com", Name: "Old Name", Role: RolePerson, Status: StatusActive}
+	testUser := &User{Email: "test@example.com", Name: "Old Name", Role: RolePerson}
 	_ = repo.Create(context.Background(), testUser)
 
+	// 1. Update Name, Email, Password
 	newName := "New Name"
-	updated, appErr := svc.UpdateProfile(context.Background(), testUser.ID, UpdateProfileRequest{Name: &newName})
+	newEmail := "newemail@example.com"
+	newPassword := "newSecretPassword123"
+
+	updated, appErr := svc.UpdateProfile(context.Background(), testUser.ID, UpdateProfileRequest{
+		Name:     &newName,
+		Email:    &newEmail,
+		Password: &newPassword,
+	})
 	if appErr != nil {
 		t.Fatalf("unexpected error updating profile: %v", appErr)
 	}
-	if updated.Name != "New Name" {
-		t.Errorf("expected updated name 'New Name', got '%s'", updated.Name)
+	if updated.Name != "New Name" || updated.Email != "newemail@example.com" {
+		t.Errorf("expected updated name and email, got: %+v", updated)
 	}
 
-	// Validate empty name rejection
+	// 2. Validate empty name rejection
 	emptyName := ""
 	_, appErr = svc.UpdateProfile(context.Background(), testUser.ID, UpdateProfileRequest{Name: &emptyName})
 	if appErr == nil || appErr.Code != "validation_error" {
 		t.Errorf("expected validation_error for empty name, got: %v", appErr)
+	}
+
+	// 3. Validate short password rejection
+	shortPass := "123"
+	_, appErr = svc.UpdateProfile(context.Background(), testUser.ID, UpdateProfileRequest{Password: &shortPass})
+	if appErr == nil || appErr.Code != "invalid_password" {
+		t.Errorf("expected invalid_password for short password, got: %v", appErr)
 	}
 }
 
@@ -121,7 +144,7 @@ func TestUserService_AcceptDisclaimer(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)
 
-	testUser := &User{Email: "test@example.com", Name: "User", Role: RolePerson, Status: StatusActive}
+	testUser := &User{Email: "test@example.com", Name: "User", Role: RolePerson}
 	_ = repo.Create(context.Background(), testUser)
 
 	// False attestation rejection
@@ -147,7 +170,7 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 	svc := NewService(repo)
 	handler := NewHandler(svc)
 
-	testUser := &User{Email: "john@example.com", Name: "John Doe", Role: RolePerson, Status: StatusActive}
+	testUser := &User{Email: "john@example.com", Name: "John Doe", Role: RolePerson}
 	_ = repo.Create(context.Background(), testUser)
 
 	accessToken, _ := token.GenerateToken(testUser.ID, string(testUser.Role), token.TokenTypeAccess, time.Minute, secret)
@@ -180,7 +203,8 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 	// 2. PATCH /v1/users/me
 	t.Run("PATCH /v1/users/me", func(t *testing.T) {
 		newName := "John Updated"
-		patchBody, _ := json.Marshal(UpdateProfileRequest{Name: &newName})
+		newEmail := "john.updated@example.com"
+		patchBody, _ := json.Marshal(UpdateProfileRequest{Name: &newName, Email: &newEmail})
 		req := httptest.NewRequest(http.MethodPatch, "/v1/users/me", bytes.NewBuffer(patchBody))
 		req.Header.Set("Content-Type", "application/json")
 		req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
@@ -194,8 +218,8 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 
 		var userResp UserResponse
 		_ = json.Unmarshal(w.Body.Bytes(), &userResp)
-		if userResp.Name != "John Updated" {
-			t.Errorf("expected updated name 'John Updated', got '%s'", userResp.Name)
+		if userResp.Name != "John Updated" || userResp.Email != "john.updated@example.com" {
+			t.Errorf("expected updated name and email, got '%s', '%s'", userResp.Name, userResp.Email)
 		}
 	})
 
