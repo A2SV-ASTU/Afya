@@ -58,6 +58,28 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	response.JSON(c, http.StatusOK, userResp)
 }
 
+// ChangePassword handles PUT /users/me/password
+func (h *Handler) ChangePassword(c *gin.Context) {
+	userID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.RespondAppError(c, appErrors.ErrUnauthorized())
+		return
+	}
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request payload, old_password and new_password required"))
+		return
+	}
+
+	if appErr := h.service.ChangePassword(c.Request.Context(), userID, req); appErr != nil {
+		response.RespondAppError(c, appErr)
+		return
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{"message": "Password updated successfully"})
+}
+
 // AcceptDisclaimer handles POST /users/me/disclaimer
 func (h *Handler) AcceptDisclaimer(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)

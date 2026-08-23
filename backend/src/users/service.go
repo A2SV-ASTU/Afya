@@ -14,6 +14,7 @@ import (
 type Service interface {
 	GetProfile(ctx context.Context, userID int64) (*UserResponse, *appErrors.AppError)
 	UpdateProfile(ctx context.Context, userID int64, req UpdateProfileRequest) (*UserResponse, *appErrors.AppError)
+	ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) *appErrors.AppError
 	AcceptDisclaimer(ctx context.Context, userID int64, req DisclaimerRequest) (*UserResponse, *appErrors.AppError)
 	IsDisclaimerAccepted(ctx context.Context, userID int64) (bool, error)
 }
@@ -40,7 +41,6 @@ func (s *service) GetProfile(ctx context.Context, userID int64) (*UserResponse, 
 func (s *service) UpdateProfile(ctx context.Context, userID int64, req UpdateProfileRequest) (*UserResponse, *appErrors.AppError) {
 	var cleanNamePtr *string
 	var cleanEmailPtr *string
-	var passwordHashPtr *string
 
 	// 1. Name update validation
 	if req.Name != nil {
@@ -65,27 +65,12 @@ func (s *service) UpdateProfile(ctx context.Context, userID int64, req UpdatePro
 		cleanEmailPtr = &cleanEmail
 	}
 
-	// 3. Password update validation
-	if req.Password != nil {
-		password := *req.Password
-		if len(password) < 8 {
-			return nil, appErrors.ErrInvalidPassword("Password must be at least 8 characters long")
-		}
-
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		if err != nil {
-			return nil, appErrors.ErrInternal("Failed to hash new password")
-		}
-		hashStr := string(hashedPassword)
-		passwordHashPtr = &hashStr
-	}
-
 	// At least one field should be provided
-	if cleanNamePtr == nil && cleanEmailPtr == nil && passwordHashPtr == nil {
-		return nil, appErrors.ErrValidationError("At least one field (name, email, or password) must be provided for update")
+	if cleanNamePtr == nil && cleanEmailPtr == nil {
+		return nil, appErrors.ErrValidationError("At least one field (name or email) must be provided for profile update")
 	}
 
-	user, err := s.repo.UpdateProfile(ctx, userID, cleanNamePtr, cleanEmailPtr, passwordHashPtr)
+	user, err := s.repo.UpdateProfile(ctx, userID, cleanNamePtr, cleanEmailPtr)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			return nil, appErrors.ErrNotFound("User")
@@ -94,6 +79,44 @@ func (s *service) UpdateProfile(ctx context.Context, userID int64, req UpdatePro
 	}
 
 	return ToUserResponse(user), nil
+}
+
+func (s *service) ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) *appErrors.AppError {
+	oldPassword := req.OldPassword
+	newPassword := req.NewPassword
+
+	if oldPassword == "" || newPassword == "" {
+		return appErrors.ErrValidationError("Both old_password and new_password are required")
+	}
+
+	if len(newPassword) < 8 {
+		return appErrors.ErrInvalidPassword("New password must be at least 8 characters long")
+	}
+
+	user, err := s.repo.FindByID(ctx, userID)
+	if err != nil {
+		if errors.Is(err, ErrUserNotFound) {
+			return appErrors.ErrNotFound("User")
+		}
+		return appErrors.ErrInternal("Failed to lookup user")
+	}
+
+	// Verify old password
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)); err != nil {
+		return appErrors.ErrInvalidCredentials()
+	}
+
+	// Hash new password
+	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return appErrors.ErrInternal("Failed to hash new password")
+	}
+
+	if err := s.repo.UpdatePassword(ctx, userID, string(newHash)); err != nil {
+		return appErrors.ErrInternal("Failed to update password")
+	}
+
+	return nil
 }
 
 func (s *service) AcceptDisclaimer(ctx context.Context, userID int64, req DisclaimerRequest) (*UserResponse, *appErrors.AppError) {
