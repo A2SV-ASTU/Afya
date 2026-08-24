@@ -33,7 +33,7 @@ abstract class ChatRemoteDataSource {
 class ChatRemoteDataSourceImpl implements ChatRemoteDataSource {
   final ApiClient _client;
 
-  ChatRemoteDataSourceImpl({required ApiClient client}) : _client = client;
+  ChatRemoteDataSourceImpl(this._client);
 
   @override
   Future<ChatThreadModel> createChat() async {

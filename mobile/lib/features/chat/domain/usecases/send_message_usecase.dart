@@ -24,8 +24,7 @@ class SendMessageUseCase
     extends UseCase<ChatMessageEntity, SendMessageParams> {
   final ChatRepository _repository;
 
-  SendMessageUseCase({required ChatRepository repository})
-      : _repository = repository;
+  SendMessageUseCase(this._repository);
 
   @override
   Future<Either<Failure, ChatMessageEntity>> call(

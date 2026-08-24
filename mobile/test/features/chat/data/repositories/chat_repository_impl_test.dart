@@ -20,7 +20,7 @@ void main() {
   setUp(() {
     mockRemoteDataSource = MockChatRemoteDataSource();
     repository =
-        ChatRepositoryImpl(remoteDataSource: mockRemoteDataSource);
+        ChatRepositoryImpl(mockRemoteDataSource);
   });
 
   // ── Fixture data ──────────────────────────────────────────────────────

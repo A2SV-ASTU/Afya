@@ -12,8 +12,7 @@ class GetOrCreateActiveChatUseCase
     extends UseCase<ChatThreadEntity, NoParams> {
   final ChatRepository _repository;
 
-  GetOrCreateActiveChatUseCase({required ChatRepository repository})
-      : _repository = repository;
+  GetOrCreateActiveChatUseCase(this._repository);
 
   @override
   Future<Either<Failure, ChatThreadEntity>> call(NoParams params) async {

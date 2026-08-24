@@ -16,7 +16,7 @@ void main() {
   setUp(() {
     mockRepository = MockChatRepository();
     useCase =
-        GetOrCreateActiveChatUseCase(repository: mockRepository);
+        GetOrCreateActiveChatUseCase(mockRepository);
   });
 
   final DateTime now = DateTime.utc(2026, 8, 24, 12, 0, 0);

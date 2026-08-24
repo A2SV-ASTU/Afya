@@ -13,8 +13,7 @@ import 'package:mobile/features/chat/domain/repositories/chat_repository.dart';
 class ChatRepositoryImpl implements ChatRepository {
   final ChatRemoteDataSource _remoteDataSource;
 
-  ChatRepositoryImpl({required ChatRemoteDataSource remoteDataSource})
-      : _remoteDataSource = remoteDataSource;
+  ChatRepositoryImpl(this._remoteDataSource);
 
   @override
   Future<Either<Failure, ChatThreadEntity>> createChat() async {

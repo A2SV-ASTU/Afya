@@ -9,8 +9,7 @@ class GetChatMessagesUseCase
     extends UseCase<List<ChatMessageEntity>, String> {
   final ChatRepository _repository;
 
-  GetChatMessagesUseCase({required ChatRepository repository})
-      : _repository = repository;
+  GetChatMessagesUseCase(this._repository);
 
   /// [params] is the chat thread ID.
   @override

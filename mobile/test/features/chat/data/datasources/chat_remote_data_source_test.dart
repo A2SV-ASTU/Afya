@@ -18,7 +18,7 @@ void main() {
 
   setUp(() {
     mockClient = MockApiClient();
-    dataSource = ChatRemoteDataSourceImpl(client: mockClient);
+    dataSource = ChatRemoteDataSourceImpl(mockClient);
   });
 
   // ── Fixture data ──────────────────────────────────────────────────────
@@ -151,7 +151,7 @@ void main() {
 
   group('getChatMessages', () {
     const String chatId = 'thread-1';
-    final String path = '${ApiEndpoints.chats}/$chatId/messages';
+    const String path = '${ApiEndpoints.chats}/$chatId/messages';
 
     test('should GET /chats/:id/messages and return messages', () async {
       when(() => mockClient.get<Map<String, dynamic>>(path)).thenAnswer(
@@ -190,7 +190,7 @@ void main() {
   group('sendMessage', () {
     const String chatId = 'thread-1';
     const String userMessage = 'I feel anxious today';
-    final String path = '${ApiEndpoints.chats}/$chatId/messages';
+    const String path = '${ApiEndpoints.chats}/$chatId/messages';
 
     test(
         'should POST message and return the app response with suggestedExerciseId',
