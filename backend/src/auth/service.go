@@ -65,12 +65,21 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, s
 		return nil, "", "", appErrors.ErrInternal("Failed to hash password")
 	}
 
-	// 6. Construct user entity (Public signup always creates a PERSON)
+	// 6. Age attestation validation
+	if !req.AgeAttested18 {
+		return nil, "", "", appErrors.ErrValidationError("Age attestation (18+) is required to sign up")
+	}
+
+	now := time.Now()
+
+	// 7. Construct user entity (Public signup always creates a PERSON)
 	newUser := &users.User{
-		Email:        email,
-		Name:         name,
-		PasswordHash: string(hashedPassword),
-		Role:         users.RolePerson,
+		Email:                email,
+		Name:                 name,
+		PasswordHash:         string(hashedPassword),
+		Role:                 users.RolePerson,
+		AgeAttested18:        true,
+		DisclaimerAcceptedAt: &now,
 	}
 
 	// 7. Save user to DB
