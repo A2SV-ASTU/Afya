@@ -180,12 +180,18 @@
 //         </div>
 //     );
 // }
-import React from 'react'
+import { getCrisisNumbers } from '@/features/crisis-helplines/services/actions'
+import { CrisisView } from '@/features/crisis-helplines/components/crisis-view'
 
-const page = () => {
-    return (
-        <div>page</div>
-    )
+export default async function Page() {
+  const crisisNumbers = await getCrisisNumbers()
+
+  return (
+    <main className="min-h-screen bg-[#f5f7f9] px-4 py-8 font-sans text-slate-900 sm:px-8 lg:px-12">
+      <section className="mx-auto max-w-290">
+        <CrisisView initialItems={crisisNumbers} />
+      </section>
+    </main>
+  )
 }
 
-export default page
