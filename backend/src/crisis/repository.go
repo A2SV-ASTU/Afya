@@ -233,7 +233,6 @@ func (r *Repository) ListEvents(ctx context.Context, source, userID string) ([]C
 	if userID != "" {
 		query += fmt.Sprintf(" AND user_id = $%d", argIdx)
 		args = append(args, userID)
-		argIdx++
 	}
 
 	query += " ORDER BY created_at DESC"

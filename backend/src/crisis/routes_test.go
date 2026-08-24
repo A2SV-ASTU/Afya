@@ -20,7 +20,7 @@ func TestRegisterRoutes_AllEndpointsRegistered(t *testing.T) {
 	RegisterRoutes(router, publicHandler, adminHandler, noopMiddleware, noopMiddleware)
 
 	routes := map[string]bool{}
-	chi.Walk(router, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+	_ = chi.Walk(router, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		routes[method+" "+route] = true
 		return nil
 	})
@@ -56,7 +56,7 @@ func TestRegisterRoutes_TotalEndpointCount(t *testing.T) {
 	RegisterRoutes(router, publicHandler, adminHandler, noopMiddleware, noopMiddleware)
 
 	count := 0
-	chi.Walk(router, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+	_ = chi.Walk(router, func(method, route string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
 		count++
 		return nil
 	})
