@@ -35,7 +35,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("WARNING: Failed to close database connection: %v", err)
+		}
+	}()
 
 	log.Printf("Successfully connected to Postgres database")
 
