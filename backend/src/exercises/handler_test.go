@@ -95,7 +95,7 @@ func TestUpdateProgress_RejectsInvalidJSON(t *testing.T) {
 	// Need to re-route through chi to set URL params
 	router.ServeHTTP(w, r)
 
-	// The handler first checks auth, so with auth set but routed through chi, 
+	// The handler first checks auth, so with auth set but routed through chi,
 	// the context from r.WithContext is overridden by chi. Let's test directly.
 	w2 := httptest.NewRecorder()
 	r2 := httptest.NewRequest(http.MethodPatch, "/exercises/exr_box/progress", bytes.NewBufferString("bad"))
@@ -497,9 +497,9 @@ func TestErrorResponse_Format(t *testing.T) {
 func TestEnumValues_AreUppercase(t *testing.T) {
 	// Contract: Enum fields are always UPPERCASE strings
 	enums := map[string][]string{
-		"exercise status":    {"DRAFT", "PUBLISHED"},
-		"completion status":  {"IN_PROGRESS", "COMPLETED"},
-		"step type":          {"TASK", "BREAK"},
+		"exercise status":   {"DRAFT", "PUBLISHED"},
+		"completion status": {"IN_PROGRESS", "COMPLETED"},
+		"step type":         {"TASK", "BREAK"},
 	}
 
 	for name, values := range enums {
