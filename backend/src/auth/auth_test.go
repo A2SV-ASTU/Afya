@@ -67,7 +67,7 @@ func TestAuthService_Signup(t *testing.T) {
 	svc := NewService(repo, cfg)
 
 	// 1. Success signup
-	req := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice"}
+	req := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice", AgeAttested18: true}
 	user, accToken, refToken, appErr := svc.Signup(context.Background(), req)
 	if appErr != nil {
 		t.Fatalf("unexpected signup error: %v", appErr)
@@ -80,14 +80,14 @@ func TestAuthService_Signup(t *testing.T) {
 	}
 
 	// 2. Invalid email format
-	badEmailReq := SignupRequest{Email: "invalid-email", Password: "password123", Name: "Alice"}
+	badEmailReq := SignupRequest{Email: "invalid-email", Password: "password123", Name: "Alice", AgeAttested18: true}
 	_, _, _, appErr = svc.Signup(context.Background(), badEmailReq)
 	if appErr == nil || appErr.Code != "invalid_email" {
 		t.Errorf("expected invalid_email error, got %v", appErr)
 	}
 
 	// 3. Short password
-	shortPassReq := SignupRequest{Email: "bob@example.com", Password: "short", Name: "Bob"}
+	shortPassReq := SignupRequest{Email: "bob@example.com", Password: "short", Name: "Bob", AgeAttested18: true}
 	_, _, _, appErr = svc.Signup(context.Background(), shortPassReq)
 	if appErr == nil || appErr.Code != "invalid_password" {
 		t.Errorf("expected invalid_password error, got %v", appErr)
@@ -105,7 +105,7 @@ func TestAuthService_Login(t *testing.T) {
 	repo := newMockAuthRepo()
 	svc := NewService(repo, cfg)
 
-	signupReq := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice"}
+	signupReq := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice", AgeAttested18: true}
 	_, _, _, _ = svc.Signup(context.Background(), signupReq)
 
 	// 1. Valid login
@@ -138,7 +138,7 @@ func TestAuthService_Refresh(t *testing.T) {
 	repo := newMockAuthRepo()
 	svc := NewService(repo, cfg)
 
-	signupReq := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice"}
+	signupReq := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice", AgeAttested18: true}
 	user, _, refToken, _ := svc.Signup(context.Background(), signupReq)
 
 	// 1. Valid refresh
@@ -174,7 +174,7 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 
 	// 1. POST /v1/auth/signup
 	t.Run("POST /v1/auth/signup", func(t *testing.T) {
-		body, _ := json.Marshal(SignupRequest{Email: "charlie@example.com", Password: "password123", Name: "Charlie"})
+		body, _ := json.Marshal(SignupRequest{Email: "charlie@example.com", Password: "password123", Name: "Charlie", AgeAttested18: true})
 		req := httptest.NewRequest(http.MethodPost, "/v1/auth/signup", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
