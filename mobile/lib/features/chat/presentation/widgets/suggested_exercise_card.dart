@@ -1,9 +1,17 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile/core/theme/app_colors.dart';
+import 'package:mobile/features/chat/presentation/pages/exercise_player_screen.dart';
 import 'package:mobile/features/chat/presentation/widgets/exercise_confirm_modal.dart';
 
-class SuggestedExerciseCard extends StatelessWidget {
+/// A card displayed below a chat bubble suggesting an exercise the user
+/// can try.
+///
+/// Tapping "Yes, let's try" opens an [ExerciseConfirmModal] dialog. When
+/// the user confirms, they are routed to [ExercisePlayerScreen].
+///
+/// Tapping "No, thanks" dismisses the card from view.
+class SuggestedExerciseCard extends StatefulWidget {
   final String exerciseId;
 
   const SuggestedExerciseCard({
@@ -12,9 +20,36 @@ class SuggestedExerciseCard extends StatelessWidget {
   });
 
   @override
+  State<SuggestedExerciseCard> createState() => _SuggestedExerciseCardState();
+}
+
+class _SuggestedExerciseCardState extends State<SuggestedExerciseCard> {
+  bool _dismissed = false;
+
+  void _onConfirmExercise() {
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ExercisePlayerScreen(
+          exerciseId: widget.exerciseId,
+        ),
+      ),
+    );
+  }
+
+  void _onDismiss() {
+    setState(() {
+      _dismissed = true;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_dismissed) return const SizedBox.shrink();
+
     // In a real app, this would be looked up from an exercise provider/repository.
-    final String exerciseName = exerciseId.toLowerCase().contains('sleep') ? 'Sleep' : 'Sleep';
+    final String exerciseName =
+        widget.exerciseId.toLowerCase().contains('sleep') ? 'Sleep' : 'Exercise';
 
     return Container(
       margin: const EdgeInsets.only(top: 8.0),
@@ -76,11 +111,9 @@ class SuggestedExerciseCard extends StatelessWidget {
                   onPressed: () {
                     showDialog<void>(
                       context: context,
-                      builder: (context) => ExerciseConfirmModal(
+                      builder: (dialogContext) => ExerciseConfirmModal(
                         exerciseName: exerciseName,
-                        onConfirm: () {
-                          // Action when exercise is confirmed
-                        },
+                        onConfirm: _onConfirmExercise,
                       ),
                     );
                   },
@@ -104,9 +137,7 @@ class SuggestedExerciseCard extends StatelessWidget {
               const SizedBox(width: 8.0),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {
-                    // Handle "No, thanks"
-                  },
+                  onPressed: _onDismiss,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12.0),
                     side: const BorderSide(color: AppColors.border),
