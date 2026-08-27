@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
 var (
@@ -13,7 +14,7 @@ var (
 	ErrExpiredToken = errors.New("token has expired")
 )
 
-func GenerateToken(userID int64, role string, tokenType TokenType, duration time.Duration, secret string) (string, error) {
+func GenerateToken(userID uuid.UUID, role string, tokenType TokenType, duration time.Duration, secret string) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		UserID:    userID,

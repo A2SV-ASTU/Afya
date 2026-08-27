@@ -3,12 +3,14 @@ package token
 import (
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 func TestTokenGenerateAndParse(t *testing.T) {
 	secret := "test_secret_key"
-	userID := int64(42)
-	role := "PERSON"
+	userID := uuid.New()
+	role := "patient"
 
 	tokenStr, err := GenerateToken(userID, role, TokenTypeAccess, 5*time.Minute, secret)
 	if err != nil {
@@ -21,7 +23,7 @@ func TestTokenGenerateAndParse(t *testing.T) {
 	}
 
 	if claims.UserID != userID {
-		t.Errorf("expected userID %d, got %d", userID, claims.UserID)
+		t.Errorf("expected userID %s, got %s", userID, claims.UserID)
 	}
 	if claims.Role != role {
 		t.Errorf("expected role %s, got %s", role, claims.Role)
@@ -34,8 +36,9 @@ func TestTokenGenerateAndParse(t *testing.T) {
 func TestTokenInvalidSecret(t *testing.T) {
 	secret := "test_secret_key"
 	wrongSecret := "wrong_secret_key"
+	userID := uuid.New()
 
-	tokenStr, err := GenerateToken(1, "PERSON", TokenTypeAccess, 5*time.Minute, secret)
+	tokenStr, err := GenerateToken(userID, "patient", TokenTypeAccess, 5*time.Minute, secret)
 	if err != nil {
 		t.Fatalf("unexpected error generating token: %v", err)
 	}
