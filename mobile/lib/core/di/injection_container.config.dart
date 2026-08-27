@@ -14,8 +14,14 @@ import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 
 import '../../app/router/app_router.dart' as _i180;
+import '../../app/router/route_guards.dart' as _i469;
 import '../network/api_client.dart' as _i557;
+import '../network/network_info.dart' as _i932;
+import '../notifications/local_alarm_scheduler.dart' as _i949;
+import '../notifications/notification_service.dart' as _i229;
 import '../storage/cookie_storage_service.dart' as _i916;
+import '../storage/local_database_service.dart' as _i605;
+import '../storage/secure_storage_service.dart' as _i666;
 import 'register_module.dart' as _i291;
 
 extension GetItInjectableX on _i174.GetIt {
@@ -33,10 +39,21 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i180.AppRouter>(() => _i180.AppRouter());
     gh.lazySingleton<_i558.FlutterSecureStorage>(
         () => registerModule.secureStorage);
+    gh.lazySingleton<_i229.NotificationService>(
+        () => _i229.NotificationService());
+    gh.lazySingleton<_i605.LocalDatabaseService>(
+        () => _i605.LocalDatabaseService());
     gh.lazySingleton<_i916.CookieStorageService>(
         () => _i916.CookieStorageService(gh<_i558.FlutterSecureStorage>()));
+    gh.lazySingleton<_i932.NetworkInfo>(() => _i932.NetworkInfoImpl());
+    gh.lazySingleton<_i949.LocalAlarmScheduler>(
+        () => _i949.LocalAlarmScheduler(gh<_i229.NotificationService>()));
     gh.lazySingletonAsync<_i557.ApiClient>(
         () => _i557.ApiClient.create(gh<_i916.CookieStorageService>()));
+    gh.lazySingleton<_i666.SecureStorageService>(
+        () => _i666.SecureStorageService(gh<_i558.FlutterSecureStorage>()));
+    gh.lazySingleton<_i469.RouteGuards>(
+        () => _i469.RouteGuards(gh<_i666.SecureStorageService>()));
     return this;
   }
 }
