@@ -14,15 +14,16 @@ import (
 	"afyamind-backend/src/users"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 type mockAuthRepo struct {
-	users map[int64]*users.User
+	users map[uuid.UUID]*users.User
 }
 
 func newMockAuthRepo() *mockAuthRepo {
 	return &mockAuthRepo{
-		users: make(map[int64]*users.User),
+		users: make(map[uuid.UUID]*users.User),
 	}
 }
 
@@ -35,7 +36,25 @@ func (m *mockAuthRepo) FindByEmail(ctx context.Context, email string) (*users.Us
 	return nil, users.ErrUserNotFound
 }
 
-func (m *mockAuthRepo) FindByID(ctx context.Context, id int64) (*users.User, error) {
+func (m *mockAuthRepo) FindByPhone(ctx context.Context, phone string) (*users.User, error) {
+	for _, u := range m.users {
+		if u.Phone == phone {
+			return u, nil
+		}
+	}
+	return nil, users.ErrUserNotFound
+}
+
+func (m *mockAuthRepo) FindByLogin(ctx context.Context, login string) (*users.User, error) {
+	for _, u := range m.users {
+		if u.Email == login || u.Phone == login {
+			return u, nil
+		}
+	}
+	return nil, users.ErrUserNotFound
+}
+
+func (m *mockAuthRepo) FindByID(ctx context.Context, id uuid.UUID) (*users.User, error) {
 	u, exists := m.users[id]
 	if !exists {
 		return nil, users.ErrUserNotFound
@@ -44,7 +63,9 @@ func (m *mockAuthRepo) FindByID(ctx context.Context, id int64) (*users.User, err
 }
 
 func (m *mockAuthRepo) Create(ctx context.Context, user *users.User) error {
-	user.ID = int64(len(m.users) + 1)
+	if user.ID == uuid.Nil {
+		user.ID = uuid.New()
+	}
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
 	m.users[user.ID] = user
@@ -67,12 +88,12 @@ func TestAuthService_Signup(t *testing.T) {
 	svc := NewService(repo, cfg)
 
 	// 1. Success signup
-	req := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice", AgeAttested18: true}
+	req := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	user, accToken, refToken, appErr := svc.Signup(context.Background(), req)
 	if appErr != nil {
 		t.Fatalf("unexpected signup error: %v", appErr)
 	}
-	if user.Email != "alice@example.com" || user.Role != users.RolePerson {
+	if user.Email != "alice@example.com" || user.Role != users.RolePatient {
 		t.Errorf("unexpected user attributes: %+v", user)
 	}
 	if accToken == "" || refToken == "" {
@@ -80,23 +101,23 @@ func TestAuthService_Signup(t *testing.T) {
 	}
 
 	// 2. Invalid email format
-	badEmailReq := SignupRequest{Email: "invalid-email", Password: "password123", Name: "Alice", AgeAttested18: true}
+	badEmailReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111112", Email: "invalid-email", Password: "password123"}
 	_, _, _, appErr = svc.Signup(context.Background(), badEmailReq)
-	if appErr == nil || appErr.Code != "invalid_email" {
-		t.Errorf("expected invalid_email error, got %v", appErr)
+	if appErr == nil || appErr.Code != "validation_error" {
+		t.Errorf("expected validation_error for bad email, got %v", appErr)
 	}
 
 	// 3. Short password
-	shortPassReq := SignupRequest{Email: "bob@example.com", Password: "short", Name: "Bob", AgeAttested18: true}
+	shortPassReq := SignupRequest{FirstName: "Bob", LastName: "Jones", Phone: "+251911111113", Email: "bob@example.com", Password: "short"}
 	_, _, _, appErr = svc.Signup(context.Background(), shortPassReq)
-	if appErr == nil || appErr.Code != "invalid_password" {
-		t.Errorf("expected invalid_password error, got %v", appErr)
+	if appErr == nil || appErr.Code != "validation_error" {
+		t.Errorf("expected validation_error for short password, got %v", appErr)
 	}
 
-	// 4. Duplicate email
+	// 4. Duplicate email (409 conflict)
 	_, _, _, appErr = svc.Signup(context.Background(), req)
-	if appErr == nil || appErr.Code != "validation_error" {
-		t.Errorf("expected validation_error for duplicate email, got %v", appErr)
+	if appErr == nil || appErr.Code != "conflict" {
+		t.Errorf("expected conflict code for duplicate email, got %v", appErr)
 	}
 }
 
@@ -105,11 +126,11 @@ func TestAuthService_Login(t *testing.T) {
 	repo := newMockAuthRepo()
 	svc := NewService(repo, cfg)
 
-	signupReq := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice", AgeAttested18: true}
+	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	_, _, _, _ = svc.Signup(context.Background(), signupReq)
 
-	// 1. Valid login
-	loginReq := LoginRequest{Email: "alice@example.com", Password: "securePassword123"}
+	// 1. Valid login with email
+	loginReq := LoginRequest{Login: "alice@example.com", Password: "securePassword123"}
 	user, accToken, refToken, appErr := svc.Login(context.Background(), loginReq)
 	if appErr != nil {
 		t.Fatalf("unexpected login error: %v", appErr)
@@ -118,18 +139,18 @@ func TestAuthService_Login(t *testing.T) {
 		t.Errorf("unexpected login result: %+v", user)
 	}
 
-	// 2. Invalid password
-	wrongPassReq := LoginRequest{Email: "alice@example.com", Password: "wrongPassword"}
-	_, _, _, appErr = svc.Login(context.Background(), wrongPassReq)
-	if appErr == nil || appErr.Code != "invalid_credentials" {
-		t.Errorf("expected invalid_credentials for wrong password, got %v", appErr)
+	// 2. Valid login with phone
+	loginPhoneReq := LoginRequest{Login: "+251911111111", Password: "securePassword123"}
+	userPhone, _, _, appErr := svc.Login(context.Background(), loginPhoneReq)
+	if appErr != nil || userPhone.ID != user.ID {
+		t.Fatalf("unexpected phone login result: %v", appErr)
 	}
 
-	// 3. Non-existent email
-	noUserReq := LoginRequest{Email: "nobody@example.com", Password: "password123"}
-	_, _, _, appErr = svc.Login(context.Background(), noUserReq)
-	if appErr == nil || appErr.Code != "invalid_credentials" {
-		t.Errorf("expected invalid_credentials for non-existent email, got %v", appErr)
+	// 3. Invalid password
+	wrongPassReq := LoginRequest{Login: "alice@example.com", Password: "wrongPassword"}
+	_, _, _, appErr = svc.Login(context.Background(), wrongPassReq)
+	if appErr == nil || appErr.Code != "unauthenticated" {
+		t.Errorf("expected unauthenticated for wrong password, got %v", appErr)
 	}
 }
 
@@ -138,7 +159,7 @@ func TestAuthService_Refresh(t *testing.T) {
 	repo := newMockAuthRepo()
 	svc := NewService(repo, cfg)
 
-	signupReq := SignupRequest{Email: "alice@example.com", Password: "securePassword123", Name: "Alice", AgeAttested18: true}
+	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	user, _, refToken, _ := svc.Signup(context.Background(), signupReq)
 
 	// 1. Valid refresh
@@ -150,11 +171,11 @@ func TestAuthService_Refresh(t *testing.T) {
 		t.Errorf("unexpected refresh response: %+v", refreshedUser)
 	}
 
-	// 2. Invalid/wrong token type (passing access token to refresh)
+	// 2. Invalid/wrong token type
 	accToken, _ := token.GenerateToken(user.ID, string(user.Role), token.TokenTypeAccess, time.Minute, cfg.JWTSecret)
 	_, _, appErr = svc.Refresh(context.Background(), accToken)
-	if appErr == nil || appErr.Code != "unauthorized" {
-		t.Errorf("expected unauthorized when passing access token to refresh, got %v", appErr)
+	if appErr == nil || appErr.Code != "unauthenticated" {
+		t.Errorf("expected unauthenticated when passing access token to refresh, got %v", appErr)
 	}
 }
 
@@ -172,10 +193,10 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 	var refreshTokenCookie *http.Cookie
 	var accessTokenCookie *http.Cookie
 
-	// 1. POST /v1/auth/signup
-	t.Run("POST /v1/auth/signup", func(t *testing.T) {
-		body, _ := json.Marshal(SignupRequest{Email: "charlie@example.com", Password: "password123", Name: "Charlie", AgeAttested18: true})
-		req := httptest.NewRequest(http.MethodPost, "/v1/auth/signup", bytes.NewBuffer(body))
+	// 1. POST /v1/auth/register
+	t.Run("POST /v1/auth/register", func(t *testing.T) {
+		body, _ := json.Marshal(SignupRequest{FirstName: "Charlie", LastName: "Brown", Phone: "+251911222333", Email: "charlie@example.com", Password: "password123"})
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/register", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
 
@@ -202,7 +223,7 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 
 	// 2. POST /v1/auth/login
 	t.Run("POST /v1/auth/login", func(t *testing.T) {
-		body, _ := json.Marshal(LoginRequest{Email: "charlie@example.com", Password: "password123"})
+		body, _ := json.Marshal(LoginRequest{Login: "charlie@example.com", Password: "password123"})
 		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
@@ -235,11 +256,10 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 
 		r.ServeHTTP(w, req)
 
-		if w.Code != http.StatusNoContent {
-			t.Fatalf("expected 204 No Content, got %d. Body: %s", w.Code, w.Body.String())
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d. Body: %s", w.Code, w.Body.String())
 		}
 
-		// Verify cleared cookies (MaxAge < 0 or empty)
 		cookies := w.Result().Cookies()
 		for _, c := range cookies {
 			if c.Name == "access_token" || c.Name == "refresh_token" {

@@ -34,29 +34,39 @@ func NewService(repo Repository, cfg *config.Config) Service {
 }
 
 func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, string, string, *appErrors.AppError) {
+	firstName := strings.TrimSpace(req.FirstName)
+	lastName := strings.TrimSpace(req.LastName)
 	email := strings.ToLower(strings.TrimSpace(req.Email))
-	name := strings.TrimSpace(req.Name)
+	phone := strings.TrimSpace(req.Phone)
 	password := req.Password
 
-	// 1. Email format validation
+	// 1. Required field validations
+	if firstName == "" || lastName == "" {
+		return nil, "", "", appErrors.ErrValidationError("First name and last name are required")
+	}
+	if phone == "" {
+		return nil, "", "", appErrors.ErrValidationError("Phone number is required")
+	}
+
+	// 2. Email format validation
 	if _, err := mail.ParseAddress(email); err != nil || !strings.Contains(email, ".") {
-		return nil, "", "", appErrors.ErrInvalidEmail("Invalid email format")
+		return nil, "", "", appErrors.ErrValidationError("Invalid email format")
 	}
 
-	// 2. Password complexity validation
+	// 3. Password complexity validation
 	if len(password) < 8 {
-		return nil, "", "", appErrors.ErrInvalidPassword("Password must be at least 8 characters long")
+		return nil, "", "", appErrors.ErrValidationError("Password must be at least 8 characters long")
 	}
 
-	// 3. Name validation
-	if name == "" {
-		return nil, "", "", appErrors.ErrValidationError("Name field is required")
+	// 4. Duplicate checks
+	existingEmailUser, err := s.repo.FindByEmail(ctx, email)
+	if err == nil && existingEmailUser != nil {
+		return nil, "", "", appErrors.ErrConflict("Email is already registered")
 	}
 
-	// 4. Existing user check
-	existingUser, err := s.repo.FindByEmail(ctx, email)
-	if err == nil && existingUser != nil {
-		return nil, "", "", appErrors.ErrValidationError("Email is already registered")
+	existingPhoneUser, err := s.repo.FindByPhone(ctx, phone)
+	if err == nil && existingPhoneUser != nil {
+		return nil, "", "", appErrors.ErrConflict("Phone number is already registered")
 	}
 
 	// 5. Hash password
@@ -65,29 +75,40 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, s
 		return nil, "", "", appErrors.ErrInternal("Failed to hash password")
 	}
 
-	// 6. Age attestation validation
-	if !req.AgeAttested18 {
-		return nil, "", "", appErrors.ErrValidationError("Age attestation (18+) is required to sign up")
+	// 6. Optional DOB parsing
+	var dobPtr *time.Time
+	if req.DateOfBirth != nil && *req.DateOfBirth != "" {
+		parsedDOB, err := time.Parse("2006-01-02", *req.DateOfBirth)
+		if err != nil {
+			return nil, "", "", appErrors.ErrValidationError("Invalid date_of_birth format (expected YYYY-MM-DD)")
+		}
+		dobPtr = &parsedDOB
 	}
 
-	now := time.Now()
+	var sexPtr *string
+	if req.Sex != nil && *req.Sex != "" {
+		sexLower := strings.ToLower(strings.TrimSpace(*req.Sex))
+		sexPtr = &sexLower
+	}
 
-	// 7. Construct user entity (Public signup always creates a PERSON)
+	// 7. Construct user entity (Public signup ALWAYS forces role = patient)
 	newUser := &users.User{
-		Email:                email,
-		Name:                 name,
-		PasswordHash:         string(hashedPassword),
-		Role:                 users.RolePerson,
-		AgeAttested18:        true,
-		DisclaimerAcceptedAt: &now,
+		FirstName:    firstName,
+		LastName:     lastName,
+		Email:        email,
+		Phone:        phone,
+		PasswordHash: string(hashedPassword),
+		Role:         users.RolePatient,
+		DateOfBirth:  dobPtr,
+		Sex:          sexPtr,
 	}
 
-	// 7. Save user to DB
+	// 8. Save user to DB
 	if err := s.repo.Create(ctx, newUser); err != nil {
 		return nil, "", "", appErrors.ErrInternal("Failed to create user account")
 	}
 
-	// 8. Mint access and refresh tokens
+	// 9. Mint access and refresh tokens
 	accessTokenDuration := time.Duration(s.cfg.AccessTokenExpiryMinutes) * time.Minute
 	refreshTokenDuration := time.Duration(s.cfg.RefreshTokenExpiryDays) * 24 * time.Hour
 
@@ -105,14 +126,22 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, s
 }
 
 func (s *service) Login(ctx context.Context, req LoginRequest) (*users.User, string, string, *appErrors.AppError) {
-	email := strings.ToLower(strings.TrimSpace(req.Email))
+	loginStr := strings.TrimSpace(req.Login)
+	if loginStr == "" {
+		if req.Email != "" {
+			loginStr = strings.TrimSpace(req.Email)
+		} else if req.Phone != "" {
+			loginStr = strings.TrimSpace(req.Phone)
+		}
+	}
+	loginStr = strings.ToLower(loginStr)
 	password := req.Password
 
-	if email == "" || password == "" {
+	if loginStr == "" || password == "" {
 		return nil, "", "", appErrors.ErrInvalidCredentials()
 	}
 
-	user, err := s.repo.FindByEmail(ctx, email)
+	user, err := s.repo.FindByLogin(ctx, loginStr)
 	if err != nil {
 		if errors.Is(err, users.ErrUserNotFound) {
 			return nil, "", "", appErrors.ErrInvalidCredentials()
@@ -142,18 +171,18 @@ func (s *service) Login(ctx context.Context, req LoginRequest) (*users.User, str
 
 func (s *service) Refresh(ctx context.Context, refreshTokenStr string) (*users.User, string, *appErrors.AppError) {
 	if refreshTokenStr == "" {
-		return nil, "", appErrors.ErrUnauthorized()
+		return nil, "", appErrors.ErrUnauthenticated()
 	}
 
 	claims, err := token.ParseToken(refreshTokenStr, s.cfg.JWTSecret)
 	if err != nil || claims.TokenType != token.TokenTypeRefresh {
-		return nil, "", appErrors.ErrUnauthorized()
+		return nil, "", appErrors.ErrUnauthenticated()
 	}
 
 	user, err := s.repo.FindByID(ctx, claims.UserID)
 	if err != nil {
 		if errors.Is(err, users.ErrUserNotFound) {
-			return nil, "", appErrors.ErrUnauthorized()
+			return nil, "", appErrors.ErrUnauthenticated()
 		}
 		return nil, "", appErrors.ErrInternal("Failed to lookup user")
 	}

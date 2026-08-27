@@ -27,7 +27,6 @@ func setCookies(c *gin.Context, accessToken, refreshToken string, cfg *config.Co
 	accessMaxAge := cfg.AccessTokenExpiryMinutes * 60
 	refreshMaxAge := cfg.RefreshTokenExpiryDays * 24 * 60 * 60
 
-	// Set SameSite=Strict and HttpOnly cookies
 	c.SetSameSite(http.SameSiteStrictMode)
 
 	c.SetCookie(
@@ -57,7 +56,7 @@ func clearCookies(c *gin.Context, cfg *config.Config) {
 	c.SetCookie("refresh_token", "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
 }
 
-// Signup handles POST /auth/signup
+// Signup handles POST /auth/signup or /auth/register
 func (h *Handler) Signup(c *gin.Context) {
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -72,7 +71,9 @@ func (h *Handler) Signup(c *gin.Context) {
 	}
 
 	setCookies(c, accessToken, refreshToken, h.cfg)
-	response.JSON(c, http.StatusCreated, users.ToUserResponse(user))
+	response.JSON(c, http.StatusCreated, gin.H{
+		"data": users.ToUserResponse(user),
+	})
 }
 
 // Login handles POST /auth/login
@@ -90,18 +91,34 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	setCookies(c, accessToken, refreshToken, h.cfg)
-	response.JSON(c, http.StatusOK, users.ToUserResponse(user))
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"user": users.ToUserResponse(user),
+		},
+	})
 }
 
 // Refresh handles POST /auth/refresh
 func (h *Handler) Refresh(c *gin.Context) {
-	refreshToken, err := c.Cookie("refresh_token")
-	if err != nil || refreshToken == "" {
-		response.RespondAppError(c, appErrors.ErrUnauthorized())
+	var refreshToken string
+	var req RefreshRequest
+	if err := c.ShouldBindJSON(&req); err == nil && req.RefreshToken != "" {
+		refreshToken = req.RefreshToken
+	}
+
+	if refreshToken == "" {
+		cookieToken, err := c.Cookie("refresh_token")
+		if err == nil {
+			refreshToken = cookieToken
+		}
+	}
+
+	if refreshToken == "" {
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
 		return
 	}
 
-	user, newAccessToken, appErr := h.service.Refresh(c.Request.Context(), refreshToken)
+	_, newAccessToken, appErr := h.service.Refresh(c.Request.Context(), refreshToken)
 	if appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
@@ -119,11 +136,19 @@ func (h *Handler) Refresh(c *gin.Context) {
 		true,
 	)
 
-	response.JSON(c, http.StatusOK, users.ToUserResponse(user))
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "Token refreshed successfully",
+		},
+	})
 }
 
 // Logout handles POST /auth/logout
 func (h *Handler) Logout(c *gin.Context) {
 	clearCookies(c, h.cfg)
-	response.NoContent(c)
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "Logged out successfully",
+		},
+	})
 }

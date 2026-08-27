@@ -9,6 +9,7 @@ import (
 func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 	authGroup := rg.Group("/auth")
 	{
+		authGroup.POST("/register", handler.Signup)
 		authGroup.POST("/signup", handler.Signup)
 		authGroup.POST("/login", handler.Login)
 		authGroup.POST("/refresh", handler.Refresh)
