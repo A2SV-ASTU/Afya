@@ -8,10 +8,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func TestRequireAdmin_ForbiddenForPerson(t *testing.T) {
+func TestRequireAdmin_ForbiddenForPatient(t *testing.T) {
 	r := gin.New()
 	r.Use(func(c *gin.Context) {
-		c.Set(ContextKeyUserRole, "PERSON")
+		c.Set(ContextKeyUserRole, "patient")
 		c.Next()
 	})
 	r.Use(RequireAdmin())
@@ -25,12 +25,12 @@ func TestRequireAdmin_ForbiddenForPerson(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusForbidden {
-		t.Errorf("expected status 403 for PERSON role, got %d", w.Code)
+		t.Errorf("expected status 403 for patient role, got %d", w.Code)
 	}
 }
 
-func TestRequireAdmin_AllowsAdminAndSuperAdmin(t *testing.T) {
-	roles := []string{"ADMIN", "SUPER_ADMIN"}
+func TestRequireAdmin_AllowsClinicAdminAndSuperAdmin(t *testing.T) {
+	roles := []string{"clinic_admin", "super_admin"}
 
 	for _, rName := range roles {
 		r := gin.New()

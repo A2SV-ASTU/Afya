@@ -9,6 +9,7 @@ import (
 	"afyamind-backend/src/token"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func init() {
@@ -34,14 +35,15 @@ func TestRequireAuth_MissingCookie(t *testing.T) {
 
 func TestRequireAuth_ValidToken(t *testing.T) {
 	secret := "test_secret"
-	tokenStr, err := token.GenerateToken(10, "PERSON", token.TokenTypeAccess, time.Minute, secret)
+	testUUID := uuid.New()
+	tokenStr, err := token.GenerateToken(testUUID, "patient", token.TokenTypeAccess, time.Minute, secret)
 	if err != nil {
 		t.Fatalf("failed to generate token: %v", err)
 	}
 
 	r := gin.New()
 	r.Use(RequireAuth(secret))
-	var capturedID int64
+	var capturedID uuid.UUID
 	var capturedRole string
 
 	r.GET("/protected", func(c *gin.Context) {
@@ -61,18 +63,19 @@ func TestRequireAuth_ValidToken(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("expected status 200, got %d", w.Code)
 	}
-	if capturedID != 10 {
-		t.Errorf("expected userID 10, got %d", capturedID)
+	if capturedID != testUUID {
+		t.Errorf("expected userID %s, got %s", testUUID, capturedID)
 	}
-	if capturedRole != "PERSON" {
-		t.Errorf("expected role PERSON, got %s", capturedRole)
+	if capturedRole != "patient" {
+		t.Errorf("expected role patient, got %s", capturedRole)
 	}
 }
 
 func TestRequireAuth_RefreshTokenFailsAccessRoute(t *testing.T) {
 	secret := "test_secret"
+	testUUID := uuid.New()
 	// Generate a REFRESH token instead of ACCESS token
-	tokenStr, err := token.GenerateToken(10, "PERSON", token.TokenTypeRefresh, time.Minute, secret)
+	tokenStr, err := token.GenerateToken(testUUID, "patient", token.TokenTypeRefresh, time.Minute, secret)
 	if err != nil {
 		t.Fatalf("failed to generate refresh token: %v", err)
 	}

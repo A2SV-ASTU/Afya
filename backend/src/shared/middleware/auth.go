@@ -6,12 +6,12 @@ import (
 	"afyamind-backend/src/token"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 const (
-	ContextKeyUserID     = "user_id"
-	ContextKeyUserRole   = "user_role"
-	ContextKeyDisclaimer = "disclaimer_accepted"
+	ContextKeyUserID   = "user_id"
+	ContextKeyUserRole = "user_role"
 )
 
 // RequireAuth middleware extracts access_token cookie and validates the JWT claims
@@ -19,14 +19,14 @@ func RequireAuth(jwtSecret string) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		cookie, err := c.Cookie("access_token")
 		if err != nil || cookie == "" {
-			response.RespondAppError(c, appErrors.ErrUnauthorized())
+			response.RespondAppError(c, appErrors.ErrUnauthenticated())
 			c.Abort()
 			return
 		}
 
 		claims, err := token.ParseToken(cookie, jwtSecret)
 		if err != nil || claims.TokenType != token.TokenTypeAccess {
-			response.RespondAppError(c, appErrors.ErrUnauthorized())
+			response.RespondAppError(c, appErrors.ErrUnauthenticated())
 			c.Abort()
 			return
 		}
@@ -37,13 +37,13 @@ func RequireAuth(jwtSecret string) gin.HandlerFunc {
 	}
 }
 
-// GetUserID retrieves the authenticated user's ID from gin Context
-func GetUserID(c *gin.Context) (int64, bool) {
+// GetUserID retrieves the authenticated user's UUID from gin Context
+func GetUserID(c *gin.Context) (uuid.UUID, bool) {
 	val, exists := c.Get(ContextKeyUserID)
 	if !exists {
-		return 0, false
+		return uuid.Nil, false
 	}
-	id, ok := val.(int64)
+	id, ok := val.(uuid.UUID)
 	return id, ok
 }
 

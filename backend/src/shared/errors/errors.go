@@ -24,41 +24,46 @@ func NewAppError(statusCode int, code string, message string) *AppError {
 }
 
 // Sentinel AppErrors according to AfyaMind API Contract
+
+func ErrValidationError(msg string) *AppError {
+	if msg == "" {
+		msg = "Validation failed"
+	}
+	return NewAppError(http.StatusBadRequest, "validation_error", msg)
+}
+
 func ErrInvalidEmail(msg string) *AppError {
 	if msg == "" {
 		msg = "Invalid email format"
 	}
-	return NewAppError(http.StatusBadRequest, "invalid_email", msg)
+	return NewAppError(http.StatusBadRequest, "validation_error", msg)
 }
 
 func ErrInvalidPassword(msg string) *AppError {
 	if msg == "" {
 		msg = "Password does not meet requirements"
 	}
-	return NewAppError(http.StatusBadRequest, "invalid_password", msg)
+	return NewAppError(http.StatusBadRequest, "validation_error", msg)
 }
 
 func ErrInvalidCredentials() *AppError {
-	return NewAppError(http.StatusUnauthorized, "invalid_credentials", "Invalid email or password")
+	return NewAppError(http.StatusUnauthorized, "unauthenticated", "Invalid login credentials")
 }
 
 func ErrUnauthorized() *AppError {
-	return NewAppError(http.StatusUnauthorized, "unauthorized", "Authentication required")
+	return NewAppError(http.StatusUnauthorized, "unauthenticated", "Authentication required")
+}
+
+func ErrUnauthenticated() *AppError {
+	return NewAppError(http.StatusUnauthorized, "unauthenticated", "Authentication required")
 }
 
 func ErrForbiddenRole() *AppError {
 	return NewAppError(http.StatusForbidden, "forbidden_role", "Access forbidden for this account role")
 }
 
-func ErrInvalidToken(msg string) *AppError {
-	if msg == "" {
-		msg = "Invalid or expired token"
-	}
-	return NewAppError(http.StatusBadRequest, "invalid_token", msg)
-}
-
-func ErrAttestationRequired() *AppError {
-	return NewAppError(http.StatusForbidden, "attestation_required", "Age attestation and disclaimer acceptance required")
+func ErrForbiddenGrant() *AppError {
+	return NewAppError(http.StatusForbidden, "forbidden_grant", "Clinic has no active access grant for this patient")
 }
 
 func ErrNotFound(resource string) *AppError {
@@ -69,11 +74,18 @@ func ErrNotFound(resource string) *AppError {
 	return NewAppError(http.StatusNotFound, "not_found", msg)
 }
 
-func ErrValidationError(msg string) *AppError {
+func ErrConflict(msg string) *AppError {
 	if msg == "" {
-		msg = "Validation failed"
+		msg = "Resource conflict occurred"
 	}
-	return NewAppError(http.StatusBadRequest, "validation_error", msg)
+	return NewAppError(http.StatusConflict, "conflict", msg)
+}
+
+func ErrExpired(msg string) *AppError {
+	if msg == "" {
+		msg = "Resource or invitation has expired"
+	}
+	return NewAppError(http.StatusGone, "expired", msg)
 }
 
 func ErrInternal(msg string) *AppError {
