@@ -28,6 +28,7 @@ jobs:
         with:
           version: latest
           working-directory: backend
+          install-mode: goinstall
           skip-cache: false
 
       - name: Verify dependencies
