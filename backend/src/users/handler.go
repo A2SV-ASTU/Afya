@@ -22,7 +22,7 @@ func NewHandler(service Service) *Handler {
 func (h *Handler) GetMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthorized())
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
 		return
 	}
 
@@ -32,14 +32,16 @@ func (h *Handler) GetMe(c *gin.Context) {
 		return
 	}
 
-	response.JSON(c, http.StatusOK, userResp)
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": userResp,
+	})
 }
 
 // UpdateMe handles PATCH /users/me
 func (h *Handler) UpdateMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthorized())
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
 		return
 	}
 
@@ -55,20 +57,22 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 		return
 	}
 
-	response.JSON(c, http.StatusOK, userResp)
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": userResp,
+	})
 }
 
 // ChangePassword handles PUT /users/me/password
 func (h *Handler) ChangePassword(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthorized())
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
 		return
 	}
 
 	var req ChangePasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request payload, old_password and new_password required"))
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request payload, current_password and new_password required"))
 		return
 	}
 
@@ -77,28 +81,29 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 		return
 	}
 
-	response.JSON(c, http.StatusOK, gin.H{"message": "Password updated successfully"})
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "Password updated successfully",
+		},
+	})
 }
 
-// AcceptDisclaimer handles POST /users/me/disclaimer
-func (h *Handler) AcceptDisclaimer(c *gin.Context) {
+// DeleteMe handles DELETE /users/me
+func (h *Handler) DeleteMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthorized())
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
 		return
 	}
 
-	var req DisclaimerRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request payload, age_attested_18 required"))
-		return
-	}
-
-	userResp, appErr := h.service.AcceptDisclaimer(c.Request.Context(), userID, req)
-	if appErr != nil {
+	if appErr := h.service.DeleteAccount(c.Request.Context(), userID); appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
 
-	response.JSON(c, http.StatusOK, userResp)
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "Account deleted successfully",
+		},
+	})
 }

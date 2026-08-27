@@ -10,17 +10,18 @@ import (
 )
 
 const (
-	defaultAdminEmail    = "admin@gmail.com"
-	defaultAdminPassword = "password"
-	defaultAdminName     = "Super Admin"
-	defaultAdminRole     = "SUPER_ADMIN"
+	defaultAdminEmail     = "admin@afyamind.org"
+	defaultAdminPassword  = "password"
+	defaultAdminFirstName = "Super"
+	defaultAdminLastName  = "Admin"
+	defaultAdminPhone     = "+251900000000"
+	defaultAdminRole      = "super_admin"
 )
 
 // SeedSuperAdmin checks if the users table is empty. If it is, it creates
-// a default SUPER_ADMIN account. If any user already exists, it skips.
+// a default super_admin account. If any user already exists, it skips.
 // This should only be called once at application startup.
 func SeedSuperAdmin(ctx context.Context, db *sql.DB) error {
-	// 1. Check if any user exists in the database
 	var count int
 	err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users").Scan(&count)
 	if err != nil {
@@ -32,23 +33,21 @@ func SeedSuperAdmin(ctx context.Context, db *sql.DB) error {
 		return nil
 	}
 
-	// 2. Hash the default password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(defaultAdminPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("failed to hash default admin password: %w", err)
 	}
 
-	// 3. Insert the default SUPER_ADMIN
 	query := `
-		INSERT INTO users (email, name, password_hash, role, status, age_attested_18, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, 'ACTIVE', false, NOW(), NOW())
+		INSERT INTO users (first_name, last_name, email, phone, password_hash, role, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
 	`
-	_, err = db.ExecContext(ctx, query, defaultAdminEmail, defaultAdminName, string(hashedPassword), defaultAdminRole)
+	_, err = db.ExecContext(ctx, query, defaultAdminFirstName, defaultAdminLastName, defaultAdminEmail, defaultAdminPhone, string(hashedPassword), defaultAdminRole)
 	if err != nil {
 		return fmt.Errorf("failed to create default super admin: %w", err)
 	}
 
-	log.Printf("Super Admin bootstrap: created default SUPER_ADMIN account (%s)", defaultAdminEmail)
+	log.Printf("Super Admin bootstrap: created default super_admin account (%s)", defaultAdminEmail)
 	log.Println("⚠️  IMPORTANT: Change the default password immediately after first login!")
 	return nil
 }

@@ -8,17 +8,21 @@ import (
 	"time"
 
 	"afyamind-backend/src/database"
+
+	"github.com/google/uuid"
 )
 
 var ErrUserNotFound = errors.New("user not found")
 
 type Repository interface {
-	FindByID(ctx context.Context, id int64) (*User, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
 	FindByEmail(ctx context.Context, email string) (*User, error)
+	FindByPhone(ctx context.Context, phone string) (*User, error)
+	FindByLogin(ctx context.Context, login string) (*User, error)
 	Create(ctx context.Context, user *User) error
-	UpdateProfile(ctx context.Context, id int64, name *string, email *string) (*User, error)
-	UpdatePassword(ctx context.Context, id int64, passwordHash string) error
-	AcceptDisclaimer(ctx context.Context, id int64) (*User, error)
+	UpdateProfile(ctx context.Context, id uuid.UUID, req UpdateProfileRequest) (*User, error)
+	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
+	DeleteAccount(ctx context.Context, id uuid.UUID) error
 }
 
 type repository struct {
@@ -29,84 +33,99 @@ func NewRepository(db database.DBTX) Repository {
 	return &repository{db: db}
 }
 
-func (r *repository) FindByID(ctx context.Context, id int64) (*User, error) {
-	query := `
-		SELECT id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
-		FROM users
-		WHERE id = $1
-	`
-	user := &User{}
-	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Name,
-		&user.PasswordHash,
-		&user.Role,
-		&user.AgeAttested18,
-		&user.DisclaimerAcceptedAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+const userColumns = `id, first_name, last_name, role, phone, email, password_hash, date_of_birth, sex, blood_type, emergency_contact_name, emergency_contact_phone, clinic_id, specialization, license_number, doctor_status, invited_by, created_at, updated_at`
 
+type scanner interface {
+	Scan(dest ...interface{}) error
+}
+
+func scanUser(s scanner) (*User, error) {
+	u := &User{}
+	err := s.Scan(
+		&u.ID,
+		&u.FirstName,
+		&u.LastName,
+		&u.Role,
+		&u.Phone,
+		&u.Email,
+		&u.PasswordHash,
+		&u.DateOfBirth,
+		&u.Sex,
+		&u.BloodType,
+		&u.EmergencyContactName,
+		&u.EmergencyContactPhone,
+		&u.ClinicID,
+		&u.Specialization,
+		&u.LicenseNumber,
+		&u.DoctorStatus,
+		&u.InvitedBy,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrUserNotFound
 		}
-		return nil, fmt.Errorf("failed to find user by id: %w", err)
+		return nil, err
 	}
+	return u, nil
+}
 
-	return user, nil
+func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*User, error) {
+	query := fmt.Sprintf(`SELECT %s FROM users WHERE id = $1`, userColumns)
+	return scanUser(r.db.QueryRowContext(ctx, query, id))
 }
 
 func (r *repository) FindByEmail(ctx context.Context, email string) (*User, error) {
-	query := `
-		SELECT id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
-		FROM users
-		WHERE email = $1
-	`
-	user := &User{}
-	err := r.db.QueryRowContext(ctx, query, email).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Name,
-		&user.PasswordHash,
-		&user.Role,
-		&user.AgeAttested18,
-		&user.DisclaimerAcceptedAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
+	query := fmt.Sprintf(`SELECT %s FROM users WHERE email = $1`, userColumns)
+	return scanUser(r.db.QueryRowContext(ctx, query, email))
+}
 
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
-		}
-		return nil, fmt.Errorf("failed to find user by email: %w", err)
-	}
+func (r *repository) FindByPhone(ctx context.Context, phone string) (*User, error) {
+	query := fmt.Sprintf(`SELECT %s FROM users WHERE phone = $1`, userColumns)
+	return scanUser(r.db.QueryRowContext(ctx, query, phone))
+}
 
-	return user, nil
+func (r *repository) FindByLogin(ctx context.Context, login string) (*User, error) {
+	query := fmt.Sprintf(`SELECT %s FROM users WHERE email = $1 OR phone = $1`, userColumns)
+	return scanUser(r.db.QueryRowContext(ctx, query, login))
 }
 
 func (r *repository) Create(ctx context.Context, user *User) error {
 	query := `
-		INSERT INTO users (email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		INSERT INTO users (
+			first_name, last_name, role, phone, email, password_hash,
+			date_of_birth, sex, blood_type, emergency_contact_name, emergency_contact_phone,
+			clinic_id, specialization, license_number, doctor_status, invited_by,
+			created_at, updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
 		RETURNING id, created_at, updated_at
 	`
 	role := user.Role
 	if role == "" {
-		role = RolePerson
+		role = RolePatient
 	}
 
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
-		user.Email,
-		user.Name,
-		user.PasswordHash,
+		user.FirstName,
+		user.LastName,
 		role,
-		user.AgeAttested18,
-		user.DisclaimerAcceptedAt,
+		user.Phone,
+		user.Email,
+		user.PasswordHash,
+		user.DateOfBirth,
+		user.Sex,
+		user.BloodType,
+		user.EmergencyContactName,
+		user.EmergencyContactPhone,
+		user.ClinicID,
+		user.Specialization,
+		user.LicenseNumber,
+		user.DoctorStatus,
+		user.InvitedBy,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
@@ -117,52 +136,60 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 	return nil
 }
 
-func (r *repository) UpdateProfile(ctx context.Context, id int64, name *string, email *string) (*User, error) {
+func (r *repository) UpdateProfile(ctx context.Context, id uuid.UUID, req UpdateProfileRequest) (*User, error) {
 	currentUser, err := r.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	updatedName := currentUser.Name
-	if name != nil && *name != "" {
-		updatedName = *name
+	if req.FirstName != nil && *req.FirstName != "" {
+		currentUser.FirstName = *req.FirstName
 	}
-
-	updatedEmail := currentUser.Email
-	if email != nil && *email != "" {
-		updatedEmail = *email
+	if req.LastName != nil && *req.LastName != "" {
+		currentUser.LastName = *req.LastName
 	}
-
-	query := `
-		UPDATE users
-		SET name = $1, email = $2, updated_at = NOW()
-		WHERE id = $3
-		RETURNING id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
-	`
-	user := &User{}
-	err = r.db.QueryRowContext(ctx, query, updatedName, updatedEmail, id).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Name,
-		&user.PasswordHash,
-		&user.Role,
-		&user.AgeAttested18,
-		&user.DisclaimerAcceptedAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
+	if req.DateOfBirth != nil && *req.DateOfBirth != "" {
+		if parsedDOB, err := time.Parse("2006-01-02", *req.DateOfBirth); err == nil {
+			currentUser.DateOfBirth = &parsedDOB
 		}
-		return nil, fmt.Errorf("failed to update user profile: %w", err)
+	}
+	if req.Sex != nil {
+		currentUser.Sex = req.Sex
+	}
+	if req.BloodType != nil {
+		currentUser.BloodType = req.BloodType
+	}
+	if req.EmergencyContactName != nil {
+		currentUser.EmergencyContactName = req.EmergencyContactName
+	}
+	if req.EmergencyContactPhone != nil {
+		currentUser.EmergencyContactPhone = req.EmergencyContactPhone
 	}
 
-	return user, nil
+	query := fmt.Sprintf(`
+		UPDATE users
+		SET first_name = $1, last_name = $2, date_of_birth = $3, sex = $4,
+		    blood_type = $5, emergency_contact_name = $6, emergency_contact_phone = $7,
+		    updated_at = NOW()
+		WHERE id = $8
+		RETURNING %s
+	`, userColumns)
+
+	return scanUser(r.db.QueryRowContext(
+		ctx,
+		query,
+		currentUser.FirstName,
+		currentUser.LastName,
+		currentUser.DateOfBirth,
+		currentUser.Sex,
+		currentUser.BloodType,
+		currentUser.EmergencyContactName,
+		currentUser.EmergencyContactPhone,
+		id,
+	))
 }
 
-func (r *repository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
+func (r *repository) UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
 	query := `
 		UPDATE users
 		SET password_hash = $1, updated_at = NOW()
@@ -182,33 +209,18 @@ func (r *repository) UpdatePassword(ctx context.Context, id int64, passwordHash 
 	return nil
 }
 
-func (r *repository) AcceptDisclaimer(ctx context.Context, id int64) (*User, error) {
-	now := time.Now()
-	query := `
-		UPDATE users
-		SET age_attested_18 = true, disclaimer_accepted_at = $1, updated_at = $1
-		WHERE id = $2
-		RETURNING id, email, name, password_hash, role, age_attested_18, disclaimer_accepted_at, created_at, updated_at
-	`
-	user := &User{}
-	err := r.db.QueryRowContext(ctx, query, now, id).Scan(
-		&user.ID,
-		&user.Email,
-		&user.Name,
-		&user.PasswordHash,
-		&user.Role,
-		&user.AgeAttested18,
-		&user.DisclaimerAcceptedAt,
-		&user.CreatedAt,
-		&user.UpdatedAt,
-	)
-
+func (r *repository) DeleteAccount(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM users WHERE id = $1`
+	res, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrUserNotFound
-		}
-		return nil, fmt.Errorf("failed to record disclaimer acceptance: %w", err)
+		return fmt.Errorf("failed to delete user account: %w", err)
 	}
-
-	return user, nil
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrUserNotFound
+	}
+	return nil
 }

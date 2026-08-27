@@ -3,20 +3,18 @@ package users
 import (
 	"context"
 	"errors"
-	"net/mail"
-	"strings"
 
 	appErrors "afyamind-backend/src/shared/errors"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service interface {
-	GetProfile(ctx context.Context, userID int64) (*UserResponse, *appErrors.AppError)
-	UpdateProfile(ctx context.Context, userID int64, req UpdateProfileRequest) (*UserResponse, *appErrors.AppError)
-	ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) *appErrors.AppError
-	AcceptDisclaimer(ctx context.Context, userID int64, req DisclaimerRequest) (*UserResponse, *appErrors.AppError)
-	IsDisclaimerAccepted(ctx context.Context, userID int64) (bool, error)
+	GetProfile(ctx context.Context, userID uuid.UUID) (*UserResponse, *appErrors.AppError)
+	UpdateProfile(ctx context.Context, userID uuid.UUID, req UpdateProfileRequest) (*UserResponse, *appErrors.AppError)
+	ChangePassword(ctx context.Context, userID uuid.UUID, req ChangePasswordRequest) *appErrors.AppError
+	DeleteAccount(ctx context.Context, userID uuid.UUID) *appErrors.AppError
 }
 
 type service struct {
@@ -27,7 +25,7 @@ func NewService(repo Repository) Service {
 	return &service{repo: repo}
 }
 
-func (s *service) GetProfile(ctx context.Context, userID int64) (*UserResponse, *appErrors.AppError) {
+func (s *service) GetProfile(ctx context.Context, userID uuid.UUID) (*UserResponse, *appErrors.AppError) {
 	user, err := s.repo.FindByID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
@@ -38,39 +36,8 @@ func (s *service) GetProfile(ctx context.Context, userID int64) (*UserResponse, 
 	return ToUserResponse(user), nil
 }
 
-func (s *service) UpdateProfile(ctx context.Context, userID int64, req UpdateProfileRequest) (*UserResponse, *appErrors.AppError) {
-	var cleanNamePtr *string
-	var cleanEmailPtr *string
-
-	// 1. Name update validation
-	if req.Name != nil {
-		cleanName := strings.TrimSpace(*req.Name)
-		if cleanName == "" {
-			return nil, appErrors.ErrValidationError("Name cannot be empty")
-		}
-		cleanNamePtr = &cleanName
-	}
-
-	// 2. Email update validation
-	if req.Email != nil {
-		cleanEmail := strings.ToLower(strings.TrimSpace(*req.Email))
-		if _, err := mail.ParseAddress(cleanEmail); err != nil || !strings.Contains(cleanEmail, ".") {
-			return nil, appErrors.ErrInvalidEmail("Invalid email format")
-		}
-
-		existingUser, err := s.repo.FindByEmail(ctx, cleanEmail)
-		if err == nil && existingUser != nil && existingUser.ID != userID {
-			return nil, appErrors.ErrValidationError("Email is already registered by another account")
-		}
-		cleanEmailPtr = &cleanEmail
-	}
-
-	// At least one field should be provided
-	if cleanNamePtr == nil && cleanEmailPtr == nil {
-		return nil, appErrors.ErrValidationError("At least one field (name or email) must be provided for profile update")
-	}
-
-	user, err := s.repo.UpdateProfile(ctx, userID, cleanNamePtr, cleanEmailPtr)
+func (s *service) UpdateProfile(ctx context.Context, userID uuid.UUID, req UpdateProfileRequest) (*UserResponse, *appErrors.AppError) {
+	user, err := s.repo.UpdateProfile(ctx, userID, req)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			return nil, appErrors.ErrNotFound("User")
@@ -81,16 +48,16 @@ func (s *service) UpdateProfile(ctx context.Context, userID int64, req UpdatePro
 	return ToUserResponse(user), nil
 }
 
-func (s *service) ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) *appErrors.AppError {
-	oldPassword := req.OldPassword
+func (s *service) ChangePassword(ctx context.Context, userID uuid.UUID, req ChangePasswordRequest) *appErrors.AppError {
+	currentPassword := req.CurrentPassword
 	newPassword := req.NewPassword
 
-	if oldPassword == "" || newPassword == "" {
-		return appErrors.ErrValidationError("Both old_password and new_password are required")
+	if currentPassword == "" || newPassword == "" {
+		return appErrors.ErrValidationError("Both current_password and new_password are required")
 	}
 
 	if len(newPassword) < 8 {
-		return appErrors.ErrInvalidPassword("New password must be at least 8 characters long")
+		return appErrors.ErrValidationError("New password must be at least 8 characters long")
 	}
 
 	user, err := s.repo.FindByID(ctx, userID)
@@ -101,12 +68,10 @@ func (s *service) ChangePassword(ctx context.Context, userID int64, req ChangePa
 		return appErrors.ErrInternal("Failed to lookup user")
 	}
 
-	// Verify old password
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(oldPassword)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(currentPassword)); err != nil {
 		return appErrors.ErrInvalidCredentials()
 	}
 
-	// Hash new password
 	newHash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return appErrors.ErrInternal("Failed to hash new password")
@@ -119,26 +84,12 @@ func (s *service) ChangePassword(ctx context.Context, userID int64, req ChangePa
 	return nil
 }
 
-func (s *service) AcceptDisclaimer(ctx context.Context, userID int64, req DisclaimerRequest) (*UserResponse, *appErrors.AppError) {
-	if !req.AgeAttested18 {
-		return nil, appErrors.ErrValidationError("Age attestation (18+) is required to accept disclaimer")
-	}
-
-	user, err := s.repo.AcceptDisclaimer(ctx, userID)
-	if err != nil {
+func (s *service) DeleteAccount(ctx context.Context, userID uuid.UUID) *appErrors.AppError {
+	if err := s.repo.DeleteAccount(ctx, userID); err != nil {
 		if errors.Is(err, ErrUserNotFound) {
-			return nil, appErrors.ErrNotFound("User")
+			return appErrors.ErrNotFound("User")
 		}
-		return nil, appErrors.ErrInternal("Failed to accept disclaimer")
+		return appErrors.ErrInternal("Failed to delete user account")
 	}
-
-	return ToUserResponse(user), nil
-}
-
-func (s *service) IsDisclaimerAccepted(ctx context.Context, userID int64) (bool, error) {
-	user, err := s.repo.FindByID(ctx, userID)
-	if err != nil {
-		return false, err
-	}
-	return user.DisclaimerAcceptedAt != nil && user.AgeAttested18, nil
+	return nil
 }

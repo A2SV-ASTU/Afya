@@ -12,20 +12,21 @@ import (
 	"afyamind-backend/src/token"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type mockRepository struct {
-	users map[int64]*User
+	users map[uuid.UUID]*User
 }
 
 func newMockRepository() *mockRepository {
 	return &mockRepository{
-		users: make(map[int64]*User),
+		users: make(map[uuid.UUID]*User),
 	}
 }
 
-func (m *mockRepository) FindByID(ctx context.Context, id int64) (*User, error) {
+func (m *mockRepository) FindByID(ctx context.Context, id uuid.UUID) (*User, error) {
 	u, exists := m.users[id]
 	if !exists {
 		return nil, ErrUserNotFound
@@ -42,30 +43,50 @@ func (m *mockRepository) FindByEmail(ctx context.Context, email string) (*User, 
 	return nil, ErrUserNotFound
 }
 
+func (m *mockRepository) FindByPhone(ctx context.Context, phone string) (*User, error) {
+	for _, u := range m.users {
+		if u.Phone == phone {
+			return u, nil
+		}
+	}
+	return nil, ErrUserNotFound
+}
+
+func (m *mockRepository) FindByLogin(ctx context.Context, login string) (*User, error) {
+	for _, u := range m.users {
+		if u.Email == login || u.Phone == login {
+			return u, nil
+		}
+	}
+	return nil, ErrUserNotFound
+}
+
 func (m *mockRepository) Create(ctx context.Context, user *User) error {
-	user.ID = int64(len(m.users) + 1)
+	if user.ID == uuid.Nil {
+		user.ID = uuid.New()
+	}
 	user.CreatedAt = time.Now()
 	user.UpdatedAt = time.Now()
 	m.users[user.ID] = user
 	return nil
 }
 
-func (m *mockRepository) UpdateProfile(ctx context.Context, id int64, name *string, email *string) (*User, error) {
+func (m *mockRepository) UpdateProfile(ctx context.Context, id uuid.UUID, req UpdateProfileRequest) (*User, error) {
 	u, exists := m.users[id]
 	if !exists {
 		return nil, ErrUserNotFound
 	}
-	if name != nil {
-		u.Name = *name
+	if req.FirstName != nil {
+		u.FirstName = *req.FirstName
 	}
-	if email != nil {
-		u.Email = *email
+	if req.LastName != nil {
+		u.LastName = *req.LastName
 	}
 	u.UpdatedAt = time.Now()
 	return u, nil
 }
 
-func (m *mockRepository) UpdatePassword(ctx context.Context, id int64, passwordHash string) error {
+func (m *mockRepository) UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {
 	u, exists := m.users[id]
 	if !exists {
 		return ErrUserNotFound
@@ -75,23 +96,20 @@ func (m *mockRepository) UpdatePassword(ctx context.Context, id int64, passwordH
 	return nil
 }
 
-func (m *mockRepository) AcceptDisclaimer(ctx context.Context, id int64) (*User, error) {
-	u, exists := m.users[id]
+func (m *mockRepository) DeleteAccount(ctx context.Context, id uuid.UUID) error {
+	_, exists := m.users[id]
 	if !exists {
-		return nil, ErrUserNotFound
+		return ErrUserNotFound
 	}
-	now := time.Now()
-	u.AgeAttested18 = true
-	u.DisclaimerAcceptedAt = &now
-	u.UpdatedAt = now
-	return u, nil
+	delete(m.users, id)
+	return nil
 }
 
 func TestUserService_GetProfile(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)
 
-	testUser := &User{Email: "test@example.com", Name: "Test User", Role: RolePerson}
+	testUser := &User{Email: "test@example.com", FirstName: "Test", LastName: "User", Role: RolePatient}
 	_ = repo.Create(context.Background(), testUser)
 
 	profile, appErr := svc.GetProfile(context.Background(), testUser.ID)
@@ -99,11 +117,11 @@ func TestUserService_GetProfile(t *testing.T) {
 		t.Fatalf("unexpected error getting profile: %v", appErr)
 	}
 
-	if profile.Email != "test@example.com" || profile.Name != "Test User" {
+	if profile.Email != "test@example.com" || profile.FirstName != "Test" {
 		t.Errorf("unexpected profile data: %+v", profile)
 	}
 
-	_, appErr = svc.GetProfile(context.Background(), 999)
+	_, appErr = svc.GetProfile(context.Background(), uuid.New())
 	if appErr == nil || appErr.Code != "not_found" {
 		t.Errorf("expected not_found error for non-existent user, got: %v", appErr)
 	}
@@ -113,29 +131,22 @@ func TestUserService_UpdateProfile(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)
 
-	testUser := &User{Email: "test@example.com", Name: "Old Name", Role: RolePerson}
+	testUser := &User{Email: "test@example.com", FirstName: "Old", LastName: "Name", Role: RolePatient}
 	_ = repo.Create(context.Background(), testUser)
 
-	// 1. Update Name & Email
-	newName := "New Name"
-	newEmail := "newemail@example.com"
+	// 1. Update First & Last Name
+	newFirst := "NewFirst"
+	newLast := "NewLast"
 
 	updated, appErr := svc.UpdateProfile(context.Background(), testUser.ID, UpdateProfileRequest{
-		Name:  &newName,
-		Email: &newEmail,
+		FirstName: &newFirst,
+		LastName:  &newLast,
 	})
 	if appErr != nil {
 		t.Fatalf("unexpected error updating profile: %v", appErr)
 	}
-	if updated.Name != "New Name" || updated.Email != "newemail@example.com" {
-		t.Errorf("expected updated name and email, got: %+v", updated)
-	}
-
-	// 2. Validate empty name rejection
-	emptyName := ""
-	_, appErr = svc.UpdateProfile(context.Background(), testUser.ID, UpdateProfileRequest{Name: &emptyName})
-	if appErr == nil || appErr.Code != "validation_error" {
-		t.Errorf("expected validation_error for empty name, got: %v", appErr)
+	if updated.FirstName != "NewFirst" || updated.LastName != "NewLast" {
+		t.Errorf("expected updated names, got: %+v", updated)
 	}
 }
 
@@ -144,31 +155,31 @@ func TestUserService_ChangePassword(t *testing.T) {
 	svc := NewService(repo)
 
 	hashedPass, _ := bcrypt.GenerateFromPassword([]byte("oldPassword123"), bcrypt.DefaultCost)
-	testUser := &User{Email: "test@example.com", Name: "User", Role: RolePerson, PasswordHash: string(hashedPass)}
+	testUser := &User{Email: "test@example.com", FirstName: "User", LastName: "Test", Role: RolePatient, PasswordHash: string(hashedPass)}
 	_ = repo.Create(context.Background(), testUser)
 
 	// 1. Wrong old password rejection
 	appErr := svc.ChangePassword(context.Background(), testUser.ID, ChangePasswordRequest{
-		OldPassword: "wrongOldPassword",
-		NewPassword: "newPassword123",
+		CurrentPassword: "wrongOldPassword",
+		NewPassword:     "newPassword123",
 	})
-	if appErr == nil || appErr.Code != "invalid_credentials" {
-		t.Errorf("expected invalid_credentials for wrong old password, got: %v", appErr)
+	if appErr == nil || appErr.Code != "unauthenticated" {
+		t.Errorf("expected unauthenticated for wrong old password, got: %v", appErr)
 	}
 
 	// 2. Short new password rejection
 	appErr = svc.ChangePassword(context.Background(), testUser.ID, ChangePasswordRequest{
-		OldPassword: "oldPassword123",
-		NewPassword: "short",
+		CurrentPassword: "oldPassword123",
+		NewPassword:     "short",
 	})
-	if appErr == nil || appErr.Code != "invalid_password" {
-		t.Errorf("expected invalid_password for short new password, got: %v", appErr)
+	if appErr == nil || appErr.Code != "validation_error" {
+		t.Errorf("expected validation_error for short new password, got: %v", appErr)
 	}
 
 	// 3. Successful password change
 	appErr = svc.ChangePassword(context.Background(), testUser.ID, ChangePasswordRequest{
-		OldPassword: "oldPassword123",
-		NewPassword: "brandNewPassword123",
+		CurrentPassword: "oldPassword123",
+		NewPassword:     "brandNewPassword123",
 	})
 	if appErr != nil {
 		t.Fatalf("unexpected error changing password: %v", appErr)
@@ -181,29 +192,6 @@ func TestUserService_ChangePassword(t *testing.T) {
 	}
 }
 
-func TestUserService_AcceptDisclaimer(t *testing.T) {
-	repo := newMockRepository()
-	svc := NewService(repo)
-
-	testUser := &User{Email: "test@example.com", Name: "User", Role: RolePerson}
-	_ = repo.Create(context.Background(), testUser)
-
-	// False attestation rejection
-	_, appErr := svc.AcceptDisclaimer(context.Background(), testUser.ID, DisclaimerRequest{AgeAttested18: false})
-	if appErr == nil || appErr.Code != "validation_error" {
-		t.Errorf("expected validation_error when age_attested_18 is false, got: %v", appErr)
-	}
-
-	// True attestation success
-	resp, appErr := svc.AcceptDisclaimer(context.Background(), testUser.ID, DisclaimerRequest{AgeAttested18: true})
-	if appErr != nil {
-		t.Fatalf("unexpected error accepting disclaimer: %v", appErr)
-	}
-	if !resp.AgeAttested18 || resp.DisclaimerAcceptedAt == nil {
-		t.Errorf("expected disclaimer to be accepted, got: %+v", resp)
-	}
-}
-
 func TestUserHandlers_HTTPIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	secret := "jwt_test_secret"
@@ -212,7 +200,7 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 	handler := NewHandler(svc)
 
 	hashedPass, _ := bcrypt.GenerateFromPassword([]byte("oldSecret123"), bcrypt.DefaultCost)
-	testUser := &User{Email: "john@example.com", Name: "John Doe", Role: RolePerson, PasswordHash: string(hashedPass)}
+	testUser := &User{Email: "john@example.com", FirstName: "John", LastName: "Doe", Role: RolePatient, PasswordHash: string(hashedPass)}
 	_ = repo.Create(context.Background(), testUser)
 
 	accessToken, _ := token.GenerateToken(testUser.ID, string(testUser.Role), token.TokenTypeAccess, time.Minute, secret)
@@ -236,9 +224,9 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 
 	// 2. PATCH /v1/users/me
 	t.Run("PATCH /v1/users/me", func(t *testing.T) {
-		newName := "John Updated"
-		newEmail := "john.updated@example.com"
-		patchBody, _ := json.Marshal(UpdateProfileRequest{Name: &newName, Email: &newEmail})
+		newFirst := "John"
+		newLast := "Updated"
+		patchBody, _ := json.Marshal(UpdateProfileRequest{FirstName: &newFirst, LastName: &newLast})
 		req := httptest.NewRequest(http.MethodPatch, "/v1/users/me", bytes.NewBuffer(patchBody))
 		req.Header.Set("Content-Type", "application/json")
 		req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
@@ -254,8 +242,8 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 	// 3. PUT /v1/users/me/password
 	t.Run("PUT /v1/users/me/password", func(t *testing.T) {
 		passBody, _ := json.Marshal(ChangePasswordRequest{
-			OldPassword: "oldSecret123",
-			NewPassword: "newSecurePassword456",
+			CurrentPassword: "oldSecret123",
+			NewPassword:     "newSecurePassword456",
 		})
 		req := httptest.NewRequest(http.MethodPut, "/v1/users/me/password", bytes.NewBuffer(passBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -269,11 +257,9 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 		}
 	})
 
-	// 4. POST /v1/users/me/disclaimer
-	t.Run("POST /v1/users/me/disclaimer", func(t *testing.T) {
-		discBody, _ := json.Marshal(DisclaimerRequest{AgeAttested18: true})
-		req := httptest.NewRequest(http.MethodPost, "/v1/users/me/disclaimer", bytes.NewBuffer(discBody))
-		req.Header.Set("Content-Type", "application/json")
+	// 4. DELETE /v1/users/me
+	t.Run("DELETE /v1/users/me", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodDelete, "/v1/users/me", nil)
 		req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
 		w := httptest.NewRecorder()
 
