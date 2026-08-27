@@ -15,6 +15,14 @@ import 'package:injectable/injectable.dart' as _i526;
 
 import '../../app/router/app_router.dart' as _i180;
 import '../../app/router/route_guards.dart' as _i469;
+import '../../features/medication_and_adherence/data/datasources/adherence_local_data_source.dart'
+    as _i386;
+import '../../features/medication_and_adherence/data/datasources/prescription_remote_data_source.dart'
+    as _i335;
+import '../../features/medication_and_adherence/data/repositories/medication_adherence_repository_impl.dart'
+    as _i375;
+import '../../features/medication_and_adherence/domain/repositories/medication_adherence_repository.dart'
+    as _i163;
 import '../network/api_client.dart' as _i557;
 import '../network/network_info.dart' as _i932;
 import '../notifications/local_alarm_scheduler.dart' as _i949;
@@ -43,6 +51,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i229.NotificationService());
     gh.lazySingleton<_i605.LocalDatabaseService>(
         () => _i605.LocalDatabaseService());
+    gh.lazySingleton<_i386.AdherenceLocalDataSource>(() =>
+        _i386.AdherenceLocalDataSourceImpl(gh<_i605.LocalDatabaseService>()));
     gh.lazySingleton<_i916.CookieStorageService>(
         () => _i916.CookieStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i932.NetworkInfo>(() => _i932.NetworkInfoImpl());
@@ -54,6 +64,15 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i666.SecureStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i469.RouteGuards>(
         () => _i469.RouteGuards(gh<_i666.SecureStorageService>()));
+    gh.lazySingletonAsync<_i335.PrescriptionRemoteDataSource>(() async =>
+        _i335.PrescriptionRemoteDataSourceImpl(
+            await getAsync<_i557.ApiClient>()));
+    gh.lazySingletonAsync<_i163.MedicationAdherenceRepository>(
+        () async => _i375.MedicationAdherenceRepositoryImpl(
+              await getAsync<_i335.PrescriptionRemoteDataSource>(),
+              gh<_i386.AdherenceLocalDataSource>(),
+              gh<_i932.NetworkInfo>(),
+            ));
     return this;
   }
 }
