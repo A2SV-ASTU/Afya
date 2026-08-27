@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS users CASCADE;
+
+DROP TYPE IF EXISTS doctor_status;
+DROP TYPE IF EXISTS user_role;
