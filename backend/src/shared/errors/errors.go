@@ -47,7 +47,7 @@ func ErrInvalidPassword(msg string) *AppError {
 }
 
 func ErrInvalidCredentials() *AppError {
-	return NewAppError(http.StatusUnauthorized, "unauthenticated", "Invalid login credentials")
+	return NewAppError(http.StatusUnauthorized, "unauthenticated", "Invalid credentials")
 }
 
 func ErrUnauthorized() *AppError {

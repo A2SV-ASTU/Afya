@@ -21,7 +21,7 @@ type Config struct {
 
 func Load() (*Config, error) {
 	// Attempt to load .env file, but don't fail if it doesn't exist (env vars might be set in OS/container)
-	_ = godotenv.Load("../../.env")
+	_ = godotenv.Load(".env", "backend/.env", "../.env", "../../.env")
 
 	dbDSN := os.Getenv("DB_DSN")
 	jwtSecret := os.Getenv("JWT_SECRET")

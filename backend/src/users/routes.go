@@ -13,6 +13,7 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 		usersGroup.GET("/me", handler.GetMe)
 		usersGroup.PATCH("/me", handler.UpdateMe)
 		usersGroup.PUT("/me/password", handler.ChangePassword)
+		usersGroup.PATCH("/me/password", handler.ChangePassword)
 		usersGroup.DELETE("/me", handler.DeleteMe)
 	}
 }

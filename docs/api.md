@@ -7,7 +7,9 @@ This document contains the detailed specification and documentation for the Afya
 ## Standard Response Format
 
 ### Success Response Envelope
+
 All successful responses return a JSON object wrapping the payload in a `data` field:
+
 ```json
 {
   "data": { ... }
@@ -15,7 +17,9 @@ All successful responses return a JSON object wrapping the payload in a `data` f
 ```
 
 ### Error Response Envelope
+
 All error responses return a standardized error contract:
+
 ```json
 {
   "error": {
@@ -27,25 +31,28 @@ All error responses return a standardized error contract:
 ```
 
 #### Common Error Codes
-* `validation_error` (HTTP 400): Invalid body payload or missing required fields.
-* `unauthenticated` (HTTP 401): Missing, invalid, or expired JWT authentication cookie/token.
-* `forbidden_role` (HTTP 403): User role lacks permission for the endpoint.
-* `forbidden_grant` (HTTP 403): Operation prohibited by current system authorization policy.
-* `not_found` (HTTP 404): The requested resource was not found.
-* `conflict` (HTTP 409): Resource constraint violation (e.g. duplicate email or phone number).
-* `expired` (HTTP 410): Token or resource has expired.
-* `internal_error` (HTTP 500): Server error occurred.
+
+- `validation_error` (HTTP 400): Invalid body payload or missing required fields.
+- `unauthenticated` (HTTP 401): Missing, invalid, or expired JWT authentication cookie/token.
+- `forbidden_role` (HTTP 403): User role lacks permission for the endpoint.
+- `forbidden_grant` (HTTP 403): Operation prohibited by current system authorization policy.
+- `not_found` (HTTP 404): The requested resource was not found.
+- `conflict` (HTTP 409): Resource constraint violation (e.g. duplicate email or phone number).
+- `expired` (HTTP 410): Token or resource has expired.
+- `internal_error` (HTTP 500): Server error occurred.
 
 ---
 
 ## Authentication Endpoints (`/api/v1/auth`)
 
 ### 1. Register Account
-* **Endpoint**: `POST /api/v1/auth/register` (alias: `POST /api/v1/auth/signup`)
-* **Auth Required**: No (Public)
-* **Description**: Registers a new patient user account. Server explicitly forces `role = "patient"`.
+
+- **Endpoint**: `POST /api/v1/auth/register` (alias: `POST /api/v1/auth/signup`)
+- **Auth Required**: No (Public)
+- **Description**: Registers a new patient user account. Server explicitly forces `role = "patient"`.
 
 #### Request Body
+
 ```json
 {
   "first_name": "John",
@@ -59,7 +66,9 @@ All error responses return a standardized error contract:
 ```
 
 #### Responses
-* **201 Created**: Returns user profile and sets HTTP-Only `access_token` and `refresh_token` cookies.
+
+- **201 Created**: Returns user profile and sets HTTP-Only `access_token` and `refresh_token` cookies.
+
 ```json
 {
   "data": {
@@ -83,17 +92,20 @@ All error responses return a standardized error contract:
   }
 }
 ```
-* **400 Bad Request** (`validation_error`): Invalid email, short password (<8 chars), or missing required fields.
-* **409 Conflict** (`conflict`): Email or phone number is already registered.
+
+- **400 Bad Request** (`validation_error`): Invalid email, short password (<8 chars), or missing required fields.
+- **409 Conflict** (`conflict`): Email or phone number is already registered.
 
 ---
 
 ### 2. User Login
-* **Endpoint**: `POST /api/v1/auth/login`
-* **Auth Required**: No (Public)
-* **Description**: Authenticates any user (`patient`, `doctor`, `clinic_admin`, `super_admin`) via email or phone number.
+
+- **Endpoint**: `POST /api/v1/auth/login`
+- **Auth Required**: No (Public)
+- **Description**: Authenticates any user (`patient`, `doctor`, `clinic_admin`, `super_admin`) via email or phone number.
 
 #### Request Body (Email Login)
+
 ```json
 {
   "email": "john.doe@example.com",
@@ -102,6 +114,7 @@ All error responses return a standardized error contract:
 ```
 
 #### Request Body (Phone Login)
+
 ```json
 {
   "phone": "+251911223344",
@@ -110,7 +123,9 @@ All error responses return a standardized error contract:
 ```
 
 #### Responses
-* **200 OK**: Sets HTTP-Only `access_token` and `refresh_token` cookies and returns user data.
+
+- **200 OK**: Sets HTTP-Only `access_token` and `refresh_token` cookies and returns user data.
+
 ```json
 {
   "data": {
@@ -129,25 +144,31 @@ All error responses return a standardized error contract:
   }
 }
 ```
-* **401 Unauthorized** (`unauthenticated`): Invalid login credentials or password mismatch.
+
+- **401 Unauthorized** (`unauthenticated`): Invalid credentials or password mismatch.
 
 ---
 
 ### 3. Refresh Access Token
-* **Endpoint**: `POST /api/v1/auth/refresh`
-* **Auth Required**: No (Uses refresh token cookie or JSON payload)
-* **Description**: Issues a new access token using a valid refresh token.
+
+- **Endpoint**: `POST /api/v1/auth/refresh`
+- **Auth Required**: No (Uses refresh token cookie or JSON payload)
+- **Description**: Issues a new access token using a valid refresh token.
 
 #### Request Body (Optional)
+
 ```json
 {
   "refresh_token": "<refresh_jwt_token_string>"
 }
 ```
-*(If omitted, the server reads the `refresh_token` HTTP-Only cookie).*
+
+_(If omitted, the server reads the `refresh_token` HTTP-Only cookie)._
 
 #### Responses
-* **200 OK**: Updates HTTP-Only `access_token` cookie.
+
+- **200 OK**: Updates HTTP-Only `access_token` cookie.
+
 ```json
 {
   "data": {
@@ -155,17 +176,21 @@ All error responses return a standardized error contract:
   }
 }
 ```
-* **401 Unauthorized** (`unauthenticated`): Invalid, missing, or expired refresh token.
+
+- **401 Unauthorized** (`unauthenticated`): Invalid, missing, or expired refresh token.
 
 ---
 
 ### 4. Logout User
-* **Endpoint**: `POST /api/v1/auth/logout`
-* **Auth Required**: Yes (`access_token` cookie required)
-* **Description**: Invalidates and clears `access_token` and `refresh_token` HTTP-Only session cookies.
+
+- **Endpoint**: `POST /api/v1/auth/logout`
+- **Auth Required**: Yes (`access_token` cookie required)
+- **Description**: Invalidates and clears `access_token` and `refresh_token` HTTP-Only session cookies.
 
 #### Responses
-* **200 OK**:
+
+- **200 OK**:
+
 ```json
 {
   "data": {
@@ -173,19 +198,23 @@ All error responses return a standardized error contract:
   }
 }
 ```
-* **401 Unauthorized** (`unauthenticated`): Missing or invalid access token session.
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid access token session.
 
 ---
 
 ## User Management Endpoints (`/api/v1/users`)
 
 ### 5. Get Current User Profile
-* **Endpoint**: `GET /api/v1/users/me`
-* **Auth Required**: Yes (`access_token` cookie required)
-* **Description**: Fetches profile data of the authenticated user.
+
+- **Endpoint**: `GET /api/v1/users/me`
+- **Auth Required**: Yes (`access_token` cookie required)
+- **Description**: Fetches profile data of the authenticated user.
 
 #### Responses
-* **200 OK**:
+
+- **200 OK**:
+
 ```json
 {
   "data": {
@@ -205,17 +234,20 @@ All error responses return a standardized error contract:
   }
 }
 ```
-* **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
-* **404 Not Found** (`not_found`): User record not found.
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
+- **404 Not Found** (`not_found`): User record not found.
 
 ---
 
 ### 6. Update Current User Profile
-* **Endpoint**: `PATCH /api/v1/users/me`
-* **Auth Required**: Yes (`access_token` cookie required)
-* **Description**: Updates profile attributes for the authenticated user (`first_name`, `last_name`, `email`, `phone`, `date_of_birth`, `sex`, `blood_type`, `emergency_contact_name`, `emergency_contact_phone`). Only `role` is immutable and cannot be changed via profile update.
+
+- **Endpoint**: `PATCH /api/v1/users/me`
+- **Auth Required**: Yes (`access_token` cookie required)
+- **Description**: Updates profile attributes for the authenticated user (`first_name`, `last_name`, `email`, `phone`, `date_of_birth`, `sex`, `blood_type`, `emergency_contact_name`, `emergency_contact_phone`). Only `role` is immutable and cannot be changed via profile update.
 
 #### Request Body
+
 ```json
 {
   "first_name": "Johnny",
@@ -231,7 +263,9 @@ All error responses return a standardized error contract:
 ```
 
 #### Responses
-* **200 OK**:
+
+- **200 OK**:
+
 ```json
 {
   "data": {
@@ -251,18 +285,21 @@ All error responses return a standardized error contract:
   }
 }
 ```
-* **400 Bad Request** (`validation_error`): Invalid date/email format or request payload.
-* **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
-* **409 Conflict** (`conflict`): Updated email or phone number is already registered by another user account.
+
+- **400 Bad Request** (`validation_error`): Invalid date/email format or request payload.
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
+- **409 Conflict** (`conflict`): Updated email or phone number is already registered by another user account.
 
 ---
 
 ### 7. Change Password
-* **Endpoint**: `PUT /api/v1/users/me/password`
-* **Auth Required**: Yes (`access_token` cookie required)
-* **Description**: Changes the password for the current authenticated user.
+
+- **Endpoint**: `PUT /api/v1/users/me/password` (alias: `PATCH /api/v1/users/me/password`)
+- **Auth Required**: Yes (`access_token` cookie required)
+- **Description**: Changes the password for the current authenticated user.
 
 #### Request Body
+
 ```json
 {
   "current_password": "OldPassword123!",
@@ -271,7 +308,9 @@ All error responses return a standardized error contract:
 ```
 
 #### Responses
-* **200 OK**:
+
+- **200 OK**:
+
 ```json
 {
   "data": {
@@ -279,18 +318,22 @@ All error responses return a standardized error contract:
   }
 }
 ```
-* **400 Bad Request** (`validation_error`): New password is less than 8 characters or missing required fields.
-* **401 Unauthorized** (`unauthenticated`): Incorrect `current_password` or missing access token.
+
+- **400 Bad Request** (`validation_error`): New password is less than 8 characters or missing required fields.
+- **401 Unauthorized** (`unauthenticated`): Incorrect `current_password` or missing access token.
 
 ---
 
 ### 8. Delete Account
-* **Endpoint**: `DELETE /api/v1/users/me`
-* **Auth Required**: Yes (`access_token` cookie required)
-* **Description**: Deletes the user account permanently.
+
+- **Endpoint**: `DELETE /api/v1/users/me`
+- **Auth Required**: Yes (`access_token` cookie required)
+- **Description**: Deletes the user account permanently.
 
 #### Responses
-* **200 OK**:
+
+- **200 OK**:
+
 ```json
 {
   "data": {
@@ -298,4 +341,5 @@ All error responses return a standardized error contract:
   }
 }
 ```
-* **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.

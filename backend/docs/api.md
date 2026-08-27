@@ -15,6 +15,7 @@
 - **Description:** Registers a new user account with role `PERSON`. Automatically sets HttpOnly `access_token` and `refresh_token` session cookies.
 
 #### Request Body
+
 ```json
 {
   "email": "jane@example.com",
@@ -24,10 +25,12 @@
 ```
 
 #### Response (201 Created)
+
 - **Cookies Set:**
   - `access_token` (HttpOnly, Secure, SameSite=Strict, MaxAge=15m)
   - `refresh_token` (HttpOnly, Secure, SameSite=Strict, MaxAge=7d)
 - **Body:**
+
 ```json
 {
   "id": 1,
@@ -42,7 +45,9 @@
 ```
 
 #### Errors
+
 - `400 Bad Request` (`invalid_email`):
+
 ```json
 {
   "error": {
@@ -51,7 +56,9 @@
   }
 }
 ```
+
 - `400 Bad Request` (`invalid_password`):
+
 ```json
 {
   "error": {
@@ -60,7 +67,9 @@
   }
 }
 ```
+
 - `400 Bad Request` (`validation_error`):
+
 ```json
 {
   "error": {
@@ -79,6 +88,7 @@
 - **Description:** Authenticates existing user credentials. Sets HttpOnly `access_token` and `refresh_token` session cookies on success.
 
 #### Request Body
+
 ```json
 {
   "email": "jane@example.com",
@@ -87,10 +97,12 @@
 ```
 
 #### Response (200 OK)
+
 - **Cookies Set:**
   - `access_token` (HttpOnly, Secure, SameSite=Strict, MaxAge=15m)
   - `refresh_token` (HttpOnly, Secure, SameSite=Strict, MaxAge=7d)
 - **Body:**
+
 ```json
 {
   "id": 1,
@@ -105,7 +117,9 @@
 ```
 
 #### Errors
+
 - `401 Unauthorized` (`invalid_credentials`):
+
 ```json
 {
   "error": {
@@ -124,14 +138,17 @@
 - **Description:** Uses existing `refresh_token` cookie to issue a fresh `access_token` cookie.
 
 #### Request Headers & Cookies
+
 ```http
 Cookie: refresh_token=<jwt_refresh_token>
 ```
 
 #### Response (200 OK)
+
 - **Cookies Set:**
   - `access_token` (HttpOnly, Secure, SameSite=Strict, MaxAge=15m)
 - **Body:**
+
 ```json
 {
   "id": 1,
@@ -146,7 +163,9 @@ Cookie: refresh_token=<jwt_refresh_token>
 ```
 
 #### Errors
+
 - `401 Unauthorized` (`unauthorized`):
+
 ```json
 {
   "error": {
@@ -165,11 +184,13 @@ Cookie: refresh_token=<jwt_refresh_token>
 - **Description:** Clears session cookies on the client browser.
 
 #### Request Headers & Cookies
+
 ```http
 Cookie: access_token=<jwt_access_token>
 ```
 
 #### Response (204 No Content)
+
 - **Cookies Cleared:**
   - `access_token` (MaxAge=-1)
   - `refresh_token` (MaxAge=-1)
@@ -185,11 +206,13 @@ Cookie: access_token=<jwt_access_token>
 - **Description:** Retrieves the current authenticated user's full profile, including disclaimer attestation status.
 
 #### Request Headers & Cookies
+
 ```http
 Cookie: access_token=<jwt_access_token>
 ```
 
 #### Response (200 OK)
+
 ```json
 {
   "id": 1,
@@ -212,15 +235,18 @@ Cookie: access_token=<jwt_access_token>
 - **Description:** Updates profile details (`name` and/or `email`) of the authenticated user.
 
 #### Request Body
+
 ```json
 {
   "name": "Jane Smith",
   "email": "jane.smith@example.com"
 }
 ```
-*(All fields are optional; at least one must be provided)*
+
+_(All fields are optional; at least one must be provided)_
 
 #### Response (200 OK)
+
 ```json
 {
   "id": 1,
@@ -235,7 +261,9 @@ Cookie: access_token=<jwt_access_token>
 ```
 
 #### Errors
+
 - `400 Bad Request` (`invalid_email`):
+
 ```json
 {
   "error": {
@@ -244,7 +272,9 @@ Cookie: access_token=<jwt_access_token>
   }
 }
 ```
+
 - `400 Bad Request` (`validation_error`):
+
 ```json
 {
   "error": {
@@ -253,7 +283,9 @@ Cookie: access_token=<jwt_access_token>
   }
 }
 ```
+
 - `401 Unauthorized`:
+
 ```json
 {
   "error": {
@@ -272,6 +304,7 @@ Cookie: access_token=<jwt_access_token>
 - **Description:** Verifies the current (`old_password`) password and updates the account password to (`new_password`).
 
 #### Request Body
+
 ```json
 {
   "old_password": "currentSecurePassword123",
@@ -280,6 +313,7 @@ Cookie: access_token=<jwt_access_token>
 ```
 
 #### Response (200 OK)
+
 ```json
 {
   "message": "Password updated successfully"
@@ -287,7 +321,9 @@ Cookie: access_token=<jwt_access_token>
 ```
 
 #### Errors
+
 - `401 Unauthorized` (`invalid_credentials`):
+
 ```json
 {
   "error": {
@@ -296,7 +332,9 @@ Cookie: access_token=<jwt_access_token>
   }
 }
 ```
+
 - `400 Bad Request` (`invalid_password`):
+
 ```json
 {
   "error": {
@@ -305,7 +343,9 @@ Cookie: access_token=<jwt_access_token>
   }
 }
 ```
+
 - `400 Bad Request` (`validation_error`):
+
 ```json
 {
   "error": {
@@ -324,6 +364,7 @@ Cookie: access_token=<jwt_access_token>
 - **Description:** Records the user's age attestation (18+) and disclaimer acceptance timestamp. Unlocks mood logging, exercises, and chat.
 
 #### Request Body
+
 ```json
 {
   "age_attested_18": true
@@ -331,6 +372,7 @@ Cookie: access_token=<jwt_access_token>
 ```
 
 #### Response (200 OK)
+
 ```json
 {
   "id": 1,

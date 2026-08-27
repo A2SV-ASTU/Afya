@@ -83,7 +83,14 @@ func main() {
 		c.JSON(200, gin.H{"status": "ok", "env": cfg.Env})
 	})
 
-	// 8. Register API v1 Group
+	// 8. Register API v1 Group (Base path /api/v1 as per API_Contract.md)
+	apiV1 := router.Group("/api/v1")
+	{
+		auth.RegisterRoutes(apiV1, authHandler, cfg.JWTSecret)
+		users.RegisterRoutes(apiV1, userHandler, cfg.JWTSecret)
+		invitations.RegisterRoutes(apiV1, invHandler, cfg.JWTSecret)
+	}
+
 	v1 := router.Group("/v1")
 	{
 		auth.RegisterRoutes(v1, authHandler, cfg.JWTSecret)
