@@ -1,0 +1,14 @@
+class AppKeys {
+  AppKeys._();
+
+  // Secure Storage Keys
+  static const String refreshTokenKey = 'afya_refresh_token';
+  static const String userSessionKey = 'afya_user_session';
+  static const String userIdKey = 'afya_user_id';
+
+  // Hive Box Keys
+  static const String vitalsOutboxBox = 'vitals_outbox_box';
+  static const String doctorVitalsCacheBox = 'doctor_vitals_cache_box';
+  static const String medicationScheduleBox = 'medication_schedule_box';
+  static const String adherenceHistoryBox = 'adherence_history_box';
+}
