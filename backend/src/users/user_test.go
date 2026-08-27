@@ -82,6 +82,12 @@ func (m *mockRepository) UpdateProfile(ctx context.Context, id uuid.UUID, req Up
 	if req.LastName != nil {
 		u.LastName = *req.LastName
 	}
+	if req.Email != nil {
+		u.Email = *req.Email
+	}
+	if req.Phone != nil {
+		u.Phone = *req.Phone
+	}
 	u.UpdatedAt = time.Now()
 	return u, nil
 }

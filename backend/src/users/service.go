@@ -3,6 +3,7 @@ package users
 import (
 	"context"
 	"errors"
+	"strings"
 
 	appErrors "afyamind-backend/src/shared/errors"
 
@@ -37,6 +38,24 @@ func (s *service) GetProfile(ctx context.Context, userID uuid.UUID) (*UserRespon
 }
 
 func (s *service) UpdateProfile(ctx context.Context, userID uuid.UUID, req UpdateProfileRequest) (*UserResponse, *appErrors.AppError) {
+	if req.Email != nil && *req.Email != "" {
+		cleanEmail := strings.ToLower(strings.TrimSpace(*req.Email))
+		existingUser, err := s.repo.FindByEmail(ctx, cleanEmail)
+		if err == nil && existingUser != nil && existingUser.ID != userID {
+			return nil, appErrors.ErrConflict("Email is already registered by another account")
+		}
+		req.Email = &cleanEmail
+	}
+
+	if req.Phone != nil && *req.Phone != "" {
+		cleanPhone := strings.TrimSpace(*req.Phone)
+		existingUser, err := s.repo.FindByPhone(ctx, cleanPhone)
+		if err == nil && existingUser != nil && existingUser.ID != userID {
+			return nil, appErrors.ErrConflict("Phone number is already registered by another account")
+		}
+		req.Phone = &cleanPhone
+	}
+
 	user, err := s.repo.UpdateProfile(ctx, userID, req)
 	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {

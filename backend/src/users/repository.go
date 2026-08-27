@@ -148,6 +148,12 @@ func (r *repository) UpdateProfile(ctx context.Context, id uuid.UUID, req Update
 	if req.LastName != nil && *req.LastName != "" {
 		currentUser.LastName = *req.LastName
 	}
+	if req.Email != nil && *req.Email != "" {
+		currentUser.Email = *req.Email
+	}
+	if req.Phone != nil && *req.Phone != "" {
+		currentUser.Phone = *req.Phone
+	}
 	if req.DateOfBirth != nil && *req.DateOfBirth != "" {
 		if parsedDOB, err := time.Parse("2006-01-02", *req.DateOfBirth); err == nil {
 			currentUser.DateOfBirth = &parsedDOB
@@ -168,10 +174,10 @@ func (r *repository) UpdateProfile(ctx context.Context, id uuid.UUID, req Update
 
 	query := fmt.Sprintf(`
 		UPDATE users
-		SET first_name = $1, last_name = $2, date_of_birth = $3, sex = $4,
-		    blood_type = $5, emergency_contact_name = $6, emergency_contact_phone = $7,
+		SET first_name = $1, last_name = $2, email = $3, phone = $4, date_of_birth = $5, sex = $6,
+		    blood_type = $7, emergency_contact_name = $8, emergency_contact_phone = $9,
 		    updated_at = NOW()
-		WHERE id = $8
+		WHERE id = $10
 		RETURNING %s
 	`, userColumns)
 
@@ -180,6 +186,8 @@ func (r *repository) UpdateProfile(ctx context.Context, id uuid.UUID, req Update
 		query,
 		currentUser.FirstName,
 		currentUser.LastName,
+		currentUser.Email,
+		currentUser.Phone,
 		currentUser.DateOfBirth,
 		currentUser.Sex,
 		currentUser.BloodType,

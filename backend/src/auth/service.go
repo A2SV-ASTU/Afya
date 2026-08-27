@@ -126,13 +126,9 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, s
 }
 
 func (s *service) Login(ctx context.Context, req LoginRequest) (*users.User, string, string, *appErrors.AppError) {
-	loginStr := strings.TrimSpace(req.Login)
+	loginStr := strings.TrimSpace(req.Email)
 	if loginStr == "" {
-		if req.Email != "" {
-			loginStr = strings.TrimSpace(req.Email)
-		} else if req.Phone != "" {
-			loginStr = strings.TrimSpace(req.Phone)
-		}
+		loginStr = strings.TrimSpace(req.Phone)
 	}
 	loginStr = strings.ToLower(loginStr)
 	password := req.Password

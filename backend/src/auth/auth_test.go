@@ -130,7 +130,7 @@ func TestAuthService_Login(t *testing.T) {
 	_, _, _, _ = svc.Signup(context.Background(), signupReq)
 
 	// 1. Valid login with email
-	loginReq := LoginRequest{Login: "alice@example.com", Password: "securePassword123"}
+	loginReq := LoginRequest{Email: "alice@example.com", Password: "securePassword123"}
 	user, accToken, refToken, appErr := svc.Login(context.Background(), loginReq)
 	if appErr != nil {
 		t.Fatalf("unexpected login error: %v", appErr)
@@ -140,14 +140,14 @@ func TestAuthService_Login(t *testing.T) {
 	}
 
 	// 2. Valid login with phone
-	loginPhoneReq := LoginRequest{Login: "+251911111111", Password: "securePassword123"}
+	loginPhoneReq := LoginRequest{Phone: "+251911111111", Password: "securePassword123"}
 	userPhone, _, _, appErr := svc.Login(context.Background(), loginPhoneReq)
 	if appErr != nil || userPhone.ID != user.ID {
 		t.Fatalf("unexpected phone login result: %v", appErr)
 	}
 
 	// 3. Invalid password
-	wrongPassReq := LoginRequest{Login: "alice@example.com", Password: "wrongPassword"}
+	wrongPassReq := LoginRequest{Email: "alice@example.com", Password: "wrongPassword"}
 	_, _, _, appErr = svc.Login(context.Background(), wrongPassReq)
 	if appErr == nil || appErr.Code != "unauthenticated" {
 		t.Errorf("expected unauthenticated for wrong password, got %v", appErr)
@@ -223,7 +223,7 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 
 	// 2. POST /v1/auth/login
 	t.Run("POST /v1/auth/login", func(t *testing.T) {
-		body, _ := json.Marshal(LoginRequest{Login: "charlie@example.com", Password: "password123"})
+		body, _ := json.Marshal(LoginRequest{Email: "charlie@example.com", Password: "password123"})
 		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBuffer(body))
 		req.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()

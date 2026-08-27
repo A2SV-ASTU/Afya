@@ -11,9 +11,8 @@ type SignupRequest struct {
 }
 
 type LoginRequest struct {
-	Login    string `json:"login"`
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
+	Email    string `json:"email,omitempty"`
+	Phone    string `json:"phone,omitempty"`
 	Password string `json:"password" binding:"required"`
 }
 

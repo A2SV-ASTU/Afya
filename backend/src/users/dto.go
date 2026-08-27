@@ -34,6 +34,8 @@ type UserResponse struct {
 type UpdateProfileRequest struct {
 	FirstName             *string `json:"first_name,omitempty"`
 	LastName              *string `json:"last_name,omitempty"`
+	Email                 *string `json:"email,omitempty"`
+	Phone                 *string `json:"phone,omitempty"`
 	DateOfBirth           *string `json:"date_of_birth,omitempty"`
 	Sex                   *string `json:"sex,omitempty"`
 	BloodType             *string `json:"blood_type,omitempty"`
