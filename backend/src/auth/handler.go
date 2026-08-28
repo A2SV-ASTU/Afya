@@ -161,10 +161,8 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		return
 	}
 
-	appErr := h.service.ForgotPassword(c.Request.Context(), req.Email)
-	if appErr != nil {
-		// Do not leak whether the email exists. Always return success.
-	}
+	_ = h.service.ForgotPassword(c.Request.Context(), req.Email)
+	// Do not leak whether the email exists or if there was an internal error. Always return success.
 
 	response.JSON(c, http.StatusOK, gin.H{
 		"data": gin.H{
