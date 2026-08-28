@@ -85,7 +85,7 @@ func setupTestConfig() *config.Config {
 func TestAuthService_Signup(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 
 	// 1. Success signup
 	req := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
@@ -124,7 +124,7 @@ func TestAuthService_Signup(t *testing.T) {
 func TestAuthService_Login(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 
 	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	_, _, _, _ = svc.Signup(context.Background(), signupReq)
@@ -157,7 +157,7 @@ func TestAuthService_Login(t *testing.T) {
 func TestAuthService_Refresh(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 
 	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	user, _, refToken, _ := svc.Signup(context.Background(), signupReq)
@@ -183,7 +183,7 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 	handler := NewHandler(svc, cfg)
 
 	r := gin.New()
