@@ -15,6 +15,14 @@ import 'package:injectable/injectable.dart' as _i526;
 
 import '../../app/router/app_router.dart' as _i180;
 import '../../app/router/route_guards.dart' as _i469;
+import '../../features/clinical_history/data/datasources/clinical_history_local_data_source.dart'
+    as _i196;
+import '../../features/clinical_history/data/datasources/clinical_history_remote_data_source.dart'
+    as _i113;
+import '../../features/clinical_history/data/repositories/clinical_history_repository_impl.dart'
+    as _i144;
+import '../../features/clinical_history/domain/repositories/clinical_history_repository.dart'
+    as _i829;
 import '../network/api_client.dart' as _i557;
 import '../network/network_info.dart' as _i932;
 import '../notifications/local_alarm_scheduler.dart' as _i949;
@@ -43,6 +51,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i229.NotificationService());
     gh.lazySingleton<_i605.LocalDatabaseService>(
         () => _i605.LocalDatabaseService());
+    gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
+        () => _i196.ClinicalHistoryLocalDataSourceImpl());
     gh.lazySingleton<_i916.CookieStorageService>(
         () => _i916.CookieStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i932.NetworkInfo>(() => _i932.NetworkInfoImpl());
@@ -54,6 +64,15 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i666.SecureStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i469.RouteGuards>(
         () => _i469.RouteGuards(gh<_i666.SecureStorageService>()));
+    gh.lazySingletonAsync<_i113.ClinicalHistoryRemoteDataSource>(() async =>
+        _i113.ClinicalHistoryRemoteDataSourceImpl(
+            await getAsync<_i557.ApiClient>()));
+    gh.lazySingletonAsync<_i829.ClinicalHistoryRepository>(
+        () async => _i144.ClinicalHistoryRepositoryImpl(
+              remoteDataSource:
+                  await getAsync<_i113.ClinicalHistoryRemoteDataSource>(),
+              localDataSource: gh<_i196.ClinicalHistoryLocalDataSource>(),
+            ));
     return this;
   }
 }
