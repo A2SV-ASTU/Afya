@@ -15,6 +15,14 @@ import 'package:injectable/injectable.dart' as _i526;
 
 import '../../app/router/app_router.dart' as _i180;
 import '../../app/router/route_guards.dart' as _i469;
+import '../../features/clinical_history/data/datasources/clinical_history_local_data_source.dart'
+    as _i196;
+import '../../features/clinical_history/data/datasources/clinical_history_remote_data_source.dart'
+    as _i113;
+import '../../features/clinical_history/data/repositories/clinical_history_repository_impl.dart'
+    as _i144;
+import '../../features/clinical_history/domain/repositories/clinical_history_repository.dart'
+    as _i829;
 import '../../features/medication_and_adherence/data/datasources/adherence_local_data_source.dart'
     as _i386;
 import '../../features/medication_and_adherence/data/datasources/prescription_remote_data_source.dart'
@@ -51,6 +59,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i229.NotificationService());
     gh.lazySingleton<_i605.LocalDatabaseService>(
         () => _i605.LocalDatabaseService());
+    gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
+        () => _i196.ClinicalHistoryLocalDataSourceImpl());
     gh.lazySingleton<_i386.AdherenceLocalDataSource>(() =>
         _i386.AdherenceLocalDataSourceImpl(gh<_i605.LocalDatabaseService>()));
     gh.lazySingleton<_i916.CookieStorageService>(
@@ -67,11 +77,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingletonAsync<_i335.PrescriptionRemoteDataSource>(() async =>
         _i335.PrescriptionRemoteDataSourceImpl(
             await getAsync<_i557.ApiClient>()));
+    gh.lazySingletonAsync<_i113.ClinicalHistoryRemoteDataSource>(() async =>
+        _i113.ClinicalHistoryRemoteDataSourceImpl(
+            await getAsync<_i557.ApiClient>()));
     gh.lazySingletonAsync<_i163.MedicationAdherenceRepository>(
         () async => _i375.MedicationAdherenceRepositoryImpl(
               await getAsync<_i335.PrescriptionRemoteDataSource>(),
               gh<_i386.AdherenceLocalDataSource>(),
               gh<_i932.NetworkInfo>(),
+            ));
+    gh.lazySingletonAsync<_i829.ClinicalHistoryRepository>(
+        () async => _i144.ClinicalHistoryRepositoryImpl(
+              remoteDataSource:
+                  await getAsync<_i113.ClinicalHistoryRemoteDataSource>(),
+              localDataSource: gh<_i196.ClinicalHistoryLocalDataSource>(),
             ));
     return this;
   }

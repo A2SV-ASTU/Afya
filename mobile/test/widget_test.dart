@@ -5,7 +5,12 @@ import 'package:afyamind_mobile/core/di/injection_container.dart';
 void main() {
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
+    await sl.reset();
     await configureDependencies();
+  });
+
+  tearDownAll(() async {
+    await sl.reset();
   });
 
   testWidgets('AfyaMind App initial render smoke test', (WidgetTester tester) async {

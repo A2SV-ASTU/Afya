@@ -11,4 +11,6 @@ class AppKeys {
   static const String doctorVitalsCacheBox = 'doctor_vitals_cache_box';
   static const String medicationScheduleBox = 'medication_schedule_box';
   static const String adherenceHistoryBox = 'adherence_history_box';
+  static const String clinicalHistoryCacheBox =
+    'clinical_history_cache_box';
 }
