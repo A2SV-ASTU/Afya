@@ -23,6 +23,22 @@ import '../../features/clinical_history/data/repositories/clinical_history_repos
     as _i144;
 import '../../features/clinical_history/domain/repositories/clinical_history_repository.dart'
     as _i829;
+import '../../features/medication_and_adherence/data/datasources/medication_local_data_source.dart'
+    as _i894;
+import '../../features/medication_and_adherence/data/datasources/medication_remote_data_source.dart'
+    as _i1022;
+import '../../features/medication_and_adherence/data/repositories/medication_repository_impl.dart'
+    as _i106;
+import '../../features/medication_and_adherence/domain/repositories/medication_repository.dart'
+    as _i735;
+import '../../features/medication_and_adherence/domain/usecases/complete_prescription_usecase.dart'
+    as _i724;
+import '../../features/medication_and_adherence/domain/usecases/get_local_dose_records_usecase.dart'
+    as _i240;
+import '../../features/medication_and_adherence/domain/usecases/get_prescriptions_usecase.dart'
+    as _i453;
+import '../../features/medication_and_adherence/domain/usecases/record_dose_adherence_usecase.dart'
+    as _i851;
 import '../network/api_client.dart' as _i557;
 import '../network/network_info.dart' as _i932;
 import '../notifications/local_alarm_scheduler.dart' as _i949;
@@ -53,6 +69,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i605.LocalDatabaseService());
     gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
         () => _i196.ClinicalHistoryLocalDataSourceImpl());
+    gh.lazySingleton<_i894.MedicationLocalDataSource>(
+        () => _i894.MedicationLocalDataSourceImpl());
     gh.lazySingleton<_i916.CookieStorageService>(
         () => _i916.CookieStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i932.NetworkInfo>(() => _i932.NetworkInfoImpl());
@@ -67,12 +85,32 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingletonAsync<_i113.ClinicalHistoryRemoteDataSource>(() async =>
         _i113.ClinicalHistoryRemoteDataSourceImpl(
             await getAsync<_i557.ApiClient>()));
+    gh.lazySingletonAsync<_i1022.MedicationRemoteDataSource>(() async =>
+        _i1022.MedicationRemoteDataSourceImpl(
+            await getAsync<_i557.ApiClient>()));
+    gh.lazySingletonAsync<_i735.MedicationRepository>(() async =>
+        _i106.MedicationRepositoryImpl(
+          remoteDataSource: await getAsync<_i1022.MedicationRemoteDataSource>(),
+          localDataSource: gh<_i894.MedicationLocalDataSource>(),
+        ));
     gh.lazySingletonAsync<_i829.ClinicalHistoryRepository>(
         () async => _i144.ClinicalHistoryRepositoryImpl(
               remoteDataSource:
                   await getAsync<_i113.ClinicalHistoryRemoteDataSource>(),
               localDataSource: gh<_i196.ClinicalHistoryLocalDataSource>(),
             ));
+    gh.lazySingletonAsync<_i724.CompletePrescriptionUseCase>(() async =>
+        _i724.CompletePrescriptionUseCase(
+            await getAsync<_i735.MedicationRepository>()));
+    gh.lazySingletonAsync<_i240.GetLocalDoseRecordsUseCase>(() async =>
+        _i240.GetLocalDoseRecordsUseCase(
+            await getAsync<_i735.MedicationRepository>()));
+    gh.lazySingletonAsync<_i453.GetPrescriptionsUseCase>(() async =>
+        _i453.GetPrescriptionsUseCase(
+            await getAsync<_i735.MedicationRepository>()));
+    gh.lazySingletonAsync<_i851.RecordDoseAdherenceUseCase>(() async =>
+        _i851.RecordDoseAdherenceUseCase(
+            await getAsync<_i735.MedicationRepository>()));
     return this;
   }
 }
