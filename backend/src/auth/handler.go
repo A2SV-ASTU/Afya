@@ -152,3 +152,44 @@ func (h *Handler) Logout(c *gin.Context) {
 		},
 	})
 }
+
+// ForgotPassword handles POST /auth/forgot-password
+func (h *Handler) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid email format"))
+		return
+	}
+
+	appErr := h.service.ForgotPassword(c.Request.Context(), req.Email)
+	if appErr != nil {
+		// Do not leak whether the email exists. Always return success.
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "If an account exists with that email, a password reset link has been sent.",
+		},
+	})
+}
+
+// ResetPassword handles POST /auth/reset-password
+func (h *Handler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request payload"))
+		return
+	}
+
+	appErr := h.service.ResetPassword(c.Request.Context(), req.Token, req.Password)
+	if appErr != nil {
+		response.RespondAppError(c, appErr)
+		return
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "Password has been successfully reset. You can now log in.",
+		},
+	})
+}

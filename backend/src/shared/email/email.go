@@ -90,6 +90,7 @@ func (s *Sender) Send(to string, subject string, body string) error {
 	auth := smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)
 
 	if err := smtp.SendMail(addr, auth, s.cfg.From, []string{to}, []byte(msg)); err != nil {
+		log.Printf("ERROR sending email to %s: %v", to, err)
 		return fmt.Errorf("failed to send email to %s: %w", to, err)
 	}
 

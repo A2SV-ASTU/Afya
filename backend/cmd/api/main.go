@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"log"
+	"time"
 
+	"afyamind-backend/src/access-requests"
 	"afyamind-backend/src/auth"
 	"afyamind-backend/src/bootstrap"
+	"afyamind-backend/src/clinics"
 	"afyamind-backend/src/config"
 	"afyamind-backend/src/database"
 	"afyamind-backend/src/invitations"
@@ -50,8 +53,10 @@ func main() {
 
 	// 4. Initialize Repositories
 	userRepo := users.NewRepository(db)
-	authRepo := auth.NewRepositoryWithUserRepo(userRepo)
+	authRepo := auth.NewRepository(db)
 	invRepo := invitations.NewRepository(db)
+	clinicRepo := clinics.NewRepository(db)
+	arRepo := accessrequests.NewRepository(db)
 
 	// 4. Initialize Email Sender (optional — logs warning if SMTP not configured)
 	var emailSender *email.Sender
@@ -64,13 +69,22 @@ func main() {
 
 	// 5. Initialize Services
 	userService := users.NewService(userRepo)
-	authService := auth.NewService(authRepo, cfg)
-	invService := invitations.NewService(invRepo, emailSender)
+	authService := auth.NewService(authRepo, cfg, emailSender)
+	invService := invitations.NewService(db, invRepo, emailSender)
+	clinicService := clinics.NewService(db, clinicRepo, emailSender)
+	arService := accessrequests.NewService(db, arRepo, userRepo, emailSender)
 
 	// 6. Initialize Handlers
 	userHandler := users.NewHandler(userService)
 	authHandler := auth.NewHandler(authService, cfg)
 	invHandler := invitations.NewHandler(invService)
+	clinicHandler := clinics.NewHandler(clinicService)
+	arHandler := accessrequests.NewHandler(arService)
+
+	// 6b. Start background expiration jobs
+	appCtx := context.Background()
+	invitations.StartExpirationJob(appCtx, invService, 5*time.Minute)
+	accessrequests.StartExpirationJob(appCtx, arRepo, 30*time.Second)
 
 	// 7. Setup Gin Router & Middlewares
 	router := gin.New()
@@ -89,6 +103,8 @@ func main() {
 		auth.RegisterRoutes(apiV1, authHandler, cfg.JWTSecret)
 		users.RegisterRoutes(apiV1, userHandler, cfg.JWTSecret)
 		invitations.RegisterRoutes(apiV1, invHandler, cfg.JWTSecret)
+		clinics.RegisterRoutes(apiV1, clinicHandler, cfg.JWTSecret)
+		accessrequests.RegisterRoutes(apiV1, arHandler, cfg.JWTSecret)
 	}
 
 	v1 := router.Group("/v1")
@@ -96,6 +112,8 @@ func main() {
 		auth.RegisterRoutes(v1, authHandler, cfg.JWTSecret)
 		users.RegisterRoutes(v1, userHandler, cfg.JWTSecret)
 		invitations.RegisterRoutes(v1, invHandler, cfg.JWTSecret)
+		clinics.RegisterRoutes(v1, clinicHandler, cfg.JWTSecret)
+		accessrequests.RegisterRoutes(v1, arHandler, cfg.JWTSecret)
 	}
 
 	// 8. Start HTTP Server
