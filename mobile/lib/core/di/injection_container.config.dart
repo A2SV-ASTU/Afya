@@ -23,6 +23,18 @@ import '../../features/clinical_history/data/repositories/clinical_history_repos
     as _i144;
 import '../../features/clinical_history/domain/repositories/clinical_history_repository.dart'
     as _i829;
+import '../../features/clinical_history/domain/usecases/get_appointments_usecase.dart'
+    as _i702;
+import '../../features/clinical_history/domain/usecases/get_encounter_detail_usecase.dart'
+    as _i661;
+import '../../features/clinical_history/domain/usecases/get_encounters_timeline_usecase.dart'
+    as _i401;
+import '../../features/clinical_history/presentation/bloc/history_timeline_bloc.dart'
+    as _i460;
+import '../../features/clinical_history/presentation/cubit/appointments_cubit.dart'
+    as _i584;
+import '../../features/clinical_history/presentation/cubit/encounter_detail_cubit.dart'
+    as _i76;
 import '../../features/medication_and_adherence/data/datasources/medication_local_data_source.dart'
     as _i894;
 import '../../features/medication_and_adherence/data/datasources/medication_remote_data_source.dart'
@@ -67,6 +79,11 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i229.NotificationService());
     gh.lazySingleton<_i605.LocalDatabaseService>(
         () => _i605.LocalDatabaseService());
+    gh.factory<_i460.HistoryTimelineBloc>(() => _i460.HistoryTimelineBloc(
+        getEncountersTimelineUseCase:
+            gh<_i401.GetEncountersTimelineUseCase>()));
+    gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
+        getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
     gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
         () => _i196.ClinicalHistoryLocalDataSourceImpl());
     gh.lazySingleton<_i894.MedicationLocalDataSource>(
@@ -78,6 +95,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i949.LocalAlarmScheduler(gh<_i229.NotificationService>()));
     gh.lazySingletonAsync<_i557.ApiClient>(
         () => _i557.ApiClient.create(gh<_i916.CookieStorageService>()));
+    gh.factory<_i76.EncounterDetailCubit>(() => _i76.EncounterDetailCubit(
+        getEncounterDetailUseCase: gh<_i661.GetEncounterDetailUseCase>()));
     gh.lazySingleton<_i666.SecureStorageService>(
         () => _i666.SecureStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i469.RouteGuards>(
