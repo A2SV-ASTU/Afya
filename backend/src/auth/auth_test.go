@@ -285,4 +285,26 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 			}
 		}
 	})
+
+	// 5. POST /v1/auth/reset-password via Cookie
+	t.Run("POST /v1/auth/reset-password via Cookie", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"password": "newSecurePassword123"})
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/reset-password", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(&http.Cookie{Name: "reset_token", Value: "valid_dummy_reset_token"})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		cookies := w.Result().Cookies()
+		for _, c := range cookies {
+			if c.Name == "reset_token" && c.MaxAge > 0 {
+				t.Errorf("expected reset_token cookie to be cleared, got MaxAge %d", c.MaxAge)
+			}
+		}
+	})
 }

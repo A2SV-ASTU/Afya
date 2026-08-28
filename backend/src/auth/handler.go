@@ -179,11 +179,27 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 		return
 	}
 
-	appErr := h.service.ResetPassword(c.Request.Context(), req.Token, req.Password)
+	token := req.Token
+	if token == "" {
+		if cookieToken, err := c.Cookie("reset_token"); err == nil && cookieToken != "" {
+			token = cookieToken
+		}
+	}
+
+	if token == "" {
+		response.RespondAppError(c, appErrors.ErrValidationError("Reset token is required"))
+		return
+	}
+
+	appErr := h.service.ResetPassword(c.Request.Context(), token, req.Password)
 	if appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
+
+	// Clear reset_token cookie after successful reset
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("reset_token", "", -1, "/", h.cfg.CookieDomain, h.cfg.CookieSecure, true)
 
 	response.JSON(c, http.StatusOK, gin.H{
 		"data": gin.H{

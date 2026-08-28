@@ -235,10 +235,14 @@ _(If omitted, the server reads the `refresh_token` HTTP-Only cookie)._
 ### 6. Reset Password
 
 - **Endpoint**: `POST /api/v1/auth/reset-password`
-- **Auth Required**: No (Public)
-- **Description**: Verifies the reset token and updates the user's password securely using bcrypt.
+- **Auth Required**: No (Public; token provided via `reset_token` cookie or JSON body)
+- **Description**: Verifies the reset token (read automatically from the `reset_token` cookie or optional `token` body payload) and securely updates the user's password using bcrypt. Clears the `reset_token` cookie upon success.
 
-#### Request Body
+#### Cookie / Request Body
+
+**Cookie**: `reset_token=<RESET_TOKEN_FROM_EMAIL>`
+
+**Request Body**:
 
 ```json
 {
@@ -247,9 +251,11 @@ _(If omitted, the server reads the `refresh_token` HTTP-Only cookie)._
 }
 ```
 
+_(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
+
 #### Responses
 
-- **200 OK**:
+- **200 OK**: Clears `reset_token` cookie and returns success message.
 
 ```json
 {
@@ -259,8 +265,8 @@ _(If omitted, the server reads the `refresh_token` HTTP-Only cookie)._
 }
 ```
 
-- **400 Bad Request** (`validation_error`): Missing token or password shorter than 8 characters.
-- **410 Gone** (`expired`): Token is invalid or expired.
+- **400 Bad Request** (`validation_error`): Missing reset token or password shorter than 8 characters.
+- **410 Gone** (`expired`): Reset token is invalid or expired.
 
 ---
 
