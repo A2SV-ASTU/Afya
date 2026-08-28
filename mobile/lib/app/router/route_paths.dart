@@ -13,4 +13,9 @@ class RoutePaths {
   // Deep Link Route
   static const String accessDecision = '/access-requests/:id';
   static String accessDecisionPath(String id) => '/access-requests/$id';
+
+  // Clinical History & Appointments Routes
+  static const String encounterDetail = '/history/encounter/:id';
+  static String encounterDetailPath(String id) => '/history/encounter/$id';
+  static const String appointments = '/history/appointments';
 }

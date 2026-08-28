@@ -1,14 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
+
+import '../../core/di/injection_container.dart';
+import '../../features/clinical_history/presentation/bloc/history_timeline_bloc.dart';
+import '../../features/clinical_history/presentation/cubit/appointments_cubit.dart';
+import '../../features/clinical_history/presentation/cubit/encounter_detail_cubit.dart';
+import '../../features/clinical_history/presentation/screens/appointments_screen.dart';
+import '../../features/clinical_history/presentation/screens/encounter_detail_screen.dart';
+import '../../features/clinical_history/presentation/screens/history_timeline_screen.dart';
 import '../view/app_shell.dart';
 import '../view/placeholder_screens.dart';
 import 'route_paths.dart';
 
-final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-final GlobalKey<NavigatorState> _dashboardNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'dashboard');
-final GlobalKey<NavigatorState> _historyNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'history');
-final GlobalKey<NavigatorState> _profileNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'profile');
+final GlobalKey<NavigatorState> _rootNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'root');
+final GlobalKey<NavigatorState> _dashboardNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'dashboard');
+final GlobalKey<NavigatorState> _historyNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'history');
+final GlobalKey<NavigatorState> _profileNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'profile');
 
 @lazySingleton
 class AppRouter {
@@ -40,9 +53,35 @@ class AppRouter {
         },
       ),
 
+      // Encounter Detail Route (Root Navigator for full-screen overlay)
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: RoutePaths.encounterDetail,
+        builder: (context, state) {
+          final encounterId = state.pathParameters['id'] ?? '';
+          return BlocProvider(
+            create: (context) => sl<EncounterDetailCubit>(),
+            child: EncounterDetailScreen(encounterId: encounterId),
+          );
+        },
+      ),
+
+      // Standalone Appointments Route
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: RoutePaths.appointments,
+        builder: (context, state) {
+          return BlocProvider(
+            create: (context) => sl<AppointmentsCubit>(),
+            child: const AppointmentsScreen(patientId: 'me'),
+          );
+        },
+      ),
+
       // Persistent Tab Navigation Shell
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => AppShell(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) =>
+            AppShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             navigatorKey: _dashboardNavigatorKey,
@@ -58,7 +97,10 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: RoutePaths.history,
-                builder: (context, state) => const HistoryPlaceholderScreen(),
+                builder: (context, state) => BlocProvider(
+                  create: (context) => sl<HistoryTimelineBloc>(),
+                  child: const HistoryTimelineScreen(patientId: 'me'),
+                ),
               ),
             ],
           ),
