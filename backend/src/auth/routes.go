@@ -13,6 +13,8 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 		authGroup.POST("/signup", handler.Signup)
 		authGroup.POST("/login", handler.Login)
 		authGroup.POST("/refresh", handler.Refresh)
+		authGroup.POST("/forgot-password", handler.ForgotPassword)
+		authGroup.POST("/reset-password", handler.ResetPassword)
 		authGroup.POST("/logout", middleware.RequireAuth(jwtSecret), handler.Logout)
 	}
 }

@@ -2,13 +2,18 @@ package auth
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
+	"fmt"
 	"net/mail"
 	"strings"
 	"time"
 
 	"afyamind-backend/src/config"
 	appErrors "afyamind-backend/src/shared/errors"
+	"afyamind-backend/src/shared/email"
 	"afyamind-backend/src/token"
 	"afyamind-backend/src/users"
 
@@ -19,17 +24,21 @@ type Service interface {
 	Signup(ctx context.Context, req SignupRequest) (*users.User, string, string, *appErrors.AppError)
 	Login(ctx context.Context, req LoginRequest) (*users.User, string, string, *appErrors.AppError)
 	Refresh(ctx context.Context, refreshToken string) (*users.User, string, *appErrors.AppError)
+	ForgotPassword(ctx context.Context, emailAddress string) *appErrors.AppError
+	ResetPassword(ctx context.Context, tokenRaw, newPassword string) *appErrors.AppError
 }
 
 type service struct {
-	repo Repository
-	cfg  *config.Config
+	repo   Repository
+	cfg    *config.Config
+	sender *email.Sender
 }
 
-func NewService(repo Repository, cfg *config.Config) Service {
+func NewService(repo Repository, cfg *config.Config, sender *email.Sender) Service {
 	return &service{
-		repo: repo,
-		cfg:  cfg,
+		repo:   repo,
+		cfg:    cfg,
+		sender: sender,
 	}
 }
 
@@ -190,4 +199,106 @@ func (s *service) Refresh(ctx context.Context, refreshTokenStr string) (*users.U
 	}
 
 	return user, newAccessToken, nil
+}
+
+func generateResetToken() (string, string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", "", err
+	}
+	raw := hex.EncodeToString(b)
+	hash := sha256.Sum256([]byte(raw))
+	return raw, hex.EncodeToString(hash[:]), nil
+}
+
+func (s *service) ForgotPassword(ctx context.Context, emailAddress string) *appErrors.AppError {
+	emailStr := strings.ToLower(strings.TrimSpace(emailAddress))
+	user, err := s.repo.FindByEmail(ctx, emailStr)
+	if err != nil {
+		return nil // Do not leak existence
+	}
+
+	rawToken, hashToken, err := generateResetToken()
+	if err != nil {
+		return appErrors.ErrInternal("Failed to generate reset token")
+	}
+
+	expiresAt := time.Now().Add(1 * time.Hour)
+	if err := s.repo.CreatePasswordReset(ctx, user.ID, hashToken, expiresAt); err != nil {
+		return appErrors.ErrInternal("Failed to save reset token")
+	}
+
+	if s.sender != nil {
+		subject := "Reset Your Afya Password"
+		body := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0fdf4; margin: 0; padding: 40px 0; }
+        .container { max-width: 550px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(34, 197, 94, 0.1); border: 1px solid #dcfce7; }
+        .header { padding: 40px 30px; text-align: center; background-color: #22c55e; color: #ffffff; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px; }
+        .content { padding: 40px 30px; color: #374151; line-height: 1.8; font-size: 16px; }
+        .token-box { background-color: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; padding: 25px; margin: 30px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .token-box span { font-family: monospace; font-size: 18px; letter-spacing: 1px; color: #047857; background: #e0f2fe; padding: 4px 10px; border-radius: 4px; word-break: break-all; font-weight: bold; }
+        .footer { padding: 25px; text-align: center; font-size: 13px; color: #9ca3af; background-color: #f9fafb; border-top: 1px solid #f3f4f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Password Reset Request</h1>
+        </div>
+        <div class="content">
+            <p>Hello %s,</p>
+            <p>We received a request to reset the password for your Afya account.</p>
+            <p>Please use the following secure token to reset your password:</p>
+            <div class="token-box">
+                <span>%s</span>
+            </div>
+            <p><strong>Note:</strong> This token will expire in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 Afya. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>`, user.FirstName, rawToken)
+
+		go func(e, sub, b string) {
+			_ = s.sender.Send(e, sub, b)
+		}(user.Email, subject, body)
+	}
+
+	return nil
+}
+
+func (s *service) ResetPassword(ctx context.Context, tokenRaw, newPassword string) *appErrors.AppError {
+	hash := sha256.Sum256([]byte(tokenRaw))
+	tokenHashStr := hex.EncodeToString(hash[:])
+
+	id, userID, isUsed, err := s.repo.FindPasswordResetByTokenHash(ctx, tokenHashStr)
+	if err != nil {
+		return appErrors.ErrValidationError("Invalid or expired reset token")
+	}
+	if isUsed {
+		return appErrors.ErrValidationError("This reset token has already been used")
+	}
+
+	if len(newPassword) < 8 {
+		return appErrors.ErrValidationError("Password must be at least 8 characters long")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return appErrors.ErrInternal("Failed to hash new password")
+	}
+
+	if err := s.repo.UpdateUserPassword(ctx, userID, string(hashedPassword)); err != nil {
+		return appErrors.ErrInternal("Failed to update password")
+	}
+
+	_ = s.repo.MarkPasswordResetUsed(ctx, id)
+
+	return nil
 }

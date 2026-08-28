@@ -7,27 +7,17 @@ import (
 	"fmt"
 
 	"afyamind-backend/src/database"
+
+	"github.com/google/uuid"
 )
 
-var (
-	ErrInvitationNotFound = errors.New("invitation not found")
-)
+var ErrInvitationNotFound = errors.New("invitation not found")
 
 type Repository interface {
-	// CreateInvitedUser inserts a user row with role=ADMIN, status=INVITED, and a placeholder password hash
-	CreateInvitedUser(ctx context.Context, email string, name string, passwordHash string) (int64, error)
-	// FindUserByEmail checks if a user with the given email already exists
-	FindUserByEmail(ctx context.Context, email string) (userID int64, exists bool, err error)
-	// CreateInvitation inserts a new admin_invitations row
-	CreateInvitation(ctx context.Context, inv *AdminInvitation) error
-	// FindPendingInvitationByUserID finds an unused, non-expired invitation for the given user
-	FindPendingInvitationByUserID(ctx context.Context, userID int64) (*AdminInvitation, error)
-	// FindInvitationByTokenHash looks up an invitation by its hashed token
-	FindInvitationByTokenHash(ctx context.Context, tokenHash string) (*AdminInvitation, error)
-	// MarkInvitationUsed sets used_at on the invitation
-	MarkInvitationUsed(ctx context.Context, invitationID int64) error
-	// ActivateUser sets password hash and status=ACTIVE on the user
-	ActivateUser(ctx context.Context, userID int64, passwordHash string) error
+	Create(ctx context.Context, inv *DoctorInvitation) error
+	FindByTokenHash(ctx context.Context, tokenHash string) (*DoctorInvitation, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
+	MarkExpired(ctx context.Context) (int64, error)
 }
 
 type repository struct {
@@ -38,95 +28,69 @@ func NewRepository(db database.DBTX) Repository {
 	return &repository{db: db}
 }
 
-func (r *repository) CreateInvitedUser(ctx context.Context, email string, name string, passwordHash string) (int64, error) {
-	query := `
-		INSERT INTO users (email, name, password_hash, role, status, age_attested_18, created_at, updated_at)
-		VALUES ($1, $2, $3, 'ADMIN', 'INVITED', false, NOW(), NOW())
-		RETURNING id
-	`
-	var userID int64
-	err := r.db.QueryRowContext(ctx, query, email, name, passwordHash).Scan(&userID)
-	if err != nil {
-		return 0, fmt.Errorf("failed to create invited user: %w", err)
-	}
-	return userID, nil
-}
+const invColumns = `id, clinic_id, email, token_hash, status, expires_at, accepted_at, created_at, invited_by`
 
-func (r *repository) FindUserByEmail(ctx context.Context, email string) (int64, bool, error) {
-	query := `SELECT id FROM users WHERE email = $1`
-	var userID int64
-	err := r.db.QueryRowContext(ctx, query, email).Scan(&userID)
+func scanInvitation(row *sql.Row) (*DoctorInvitation, error) {
+	var inv DoctorInvitation
+	err := row.Scan(
+		&inv.ID,
+		&inv.ClinicID,
+		&inv.Email,
+		&inv.TokenHash,
+		&inv.Status,
+		&inv.ExpiresAt,
+		&inv.AcceptedAt,
+		&inv.CreatedAt,
+		&inv.InvitedBy,
+	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return 0, false, nil
+			return nil, ErrInvitationNotFound
 		}
-		return 0, false, fmt.Errorf("failed to find user by email: %w", err)
+		return nil, err
 	}
-	return userID, true, nil
+	return &inv, nil
 }
 
-func (r *repository) CreateInvitation(ctx context.Context, inv *AdminInvitation) error {
+func (r *repository) Create(ctx context.Context, inv *DoctorInvitation) error {
 	query := `
-		INSERT INTO admin_invitations (user_id, token_hash, expires_at, created_at)
-		VALUES ($1, $2, $3, NOW())
+		INSERT INTO doctor_invitations (clinic_id, email, token_hash, status, expires_at, created_at, invited_by)
+		VALUES ($1, $2, $3, $4, $5, NOW(), $6)
 		RETURNING id, created_at
 	`
-	err := r.db.QueryRowContext(ctx, query, inv.UserID, inv.TokenHash, inv.ExpiresAt).Scan(&inv.ID, &inv.CreatedAt)
+	err := r.db.QueryRowContext(
+		ctx, query,
+		inv.ClinicID, inv.Email, inv.TokenHash, inv.Status, inv.ExpiresAt, inv.InvitedBy,
+	).Scan(&inv.ID, &inv.CreatedAt)
+
 	if err != nil {
 		return fmt.Errorf("failed to create invitation: %w", err)
 	}
 	return nil
 }
 
-func (r *repository) FindPendingInvitationByUserID(ctx context.Context, userID int64) (*AdminInvitation, error) {
-	query := `
-		SELECT id, user_id, token_hash, expires_at, used_at, created_at
-		FROM admin_invitations
-		WHERE user_id = $1 AND used_at IS NULL AND expires_at > NOW()
-		ORDER BY created_at DESC
-		LIMIT 1
-	`
-	inv := &AdminInvitation{}
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&inv.ID, &inv.UserID, &inv.TokenHash, &inv.ExpiresAt, &inv.UsedAt, &inv.CreatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrInvitationNotFound
-		}
-		return nil, fmt.Errorf("failed to find pending invitation: %w", err)
-	}
-	return inv, nil
+func (r *repository) FindByTokenHash(ctx context.Context, tokenHash string) (*DoctorInvitation, error) {
+	query := fmt.Sprintf(`SELECT %s FROM doctor_invitations WHERE token_hash = $1`, invColumns)
+	return scanInvitation(r.db.QueryRowContext(ctx, query, tokenHash))
 }
 
-func (r *repository) FindInvitationByTokenHash(ctx context.Context, tokenHash string) (*AdminInvitation, error) {
+func (r *repository) UpdateStatus(ctx context.Context, id uuid.UUID, status string) error {
 	query := `
-		SELECT id, user_id, token_hash, expires_at, used_at, created_at
-		FROM admin_invitations
-		WHERE token_hash = $1
+		UPDATE doctor_invitations
+		SET status = $1
 	`
-	inv := &AdminInvitation{}
-	err := r.db.QueryRowContext(ctx, query, tokenHash).Scan(
-		&inv.ID, &inv.UserID, &inv.TokenHash, &inv.ExpiresAt, &inv.UsedAt, &inv.CreatedAt,
-	)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrInvitationNotFound
-		}
-		return nil, fmt.Errorf("failed to find invitation by token hash: %w", err)
+	if status == StatusAccepted {
+		query += `, accepted_at = NOW()`
 	}
-	return inv, nil
-}
+	query += ` WHERE id = $2`
 
-func (r *repository) MarkInvitationUsed(ctx context.Context, invitationID int64) error {
-	query := `UPDATE admin_invitations SET used_at = NOW() WHERE id = $1`
-	res, err := r.db.ExecContext(ctx, query, invitationID)
+	res, err := r.db.ExecContext(ctx, query, status, id)
 	if err != nil {
-		return fmt.Errorf("failed to mark invitation as used: %w", err)
+		return fmt.Errorf("failed to update invitation status: %w", err)
 	}
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to check rows affected: %w", err)
+		return err
 	}
 	if rows == 0 {
 		return ErrInvitationNotFound
@@ -134,22 +98,15 @@ func (r *repository) MarkInvitationUsed(ctx context.Context, invitationID int64)
 	return nil
 }
 
-func (r *repository) ActivateUser(ctx context.Context, userID int64, passwordHash string) error {
+func (r *repository) MarkExpired(ctx context.Context) (int64, error) {
 	query := `
-		UPDATE users
-		SET password_hash = $1, status = 'ACTIVE', updated_at = NOW()
-		WHERE id = $2
+		UPDATE doctor_invitations
+		SET status = 'expired'
+		WHERE status = 'pending' AND expires_at < NOW()
 	`
-	res, err := r.db.ExecContext(ctx, query, passwordHash, userID)
+	res, err := r.db.ExecContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("failed to activate user: %w", err)
+		return 0, fmt.Errorf("failed to mark expired invitations: %w", err)
 	}
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("failed to check rows affected: %w", err)
-	}
-	if rows == 0 {
-		return fmt.Errorf("user not found for activation")
-	}
-	return nil
+	return res.RowsAffected()
 }

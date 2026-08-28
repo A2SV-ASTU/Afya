@@ -19,3 +19,12 @@ type LoginRequest struct {
 type RefreshRequest struct {
 	RefreshToken string `json:"refresh_token"`
 }
+
+type ForgotPasswordRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
+type ResetPasswordRequest struct {
+	Token    string `json:"token,omitempty"`
+	Password string `json:"password" binding:"required,min=8"`
+}

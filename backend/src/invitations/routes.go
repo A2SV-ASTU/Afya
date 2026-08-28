@@ -7,16 +7,17 @@ import (
 )
 
 func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
-	adminGroup := rg.Group("/admin")
+	// Clinic admin routes
+	clinicsGroup := rg.Group("/clinics/:clinicId/invitations")
+	clinicsGroup.Use(middleware.RequireAuth(jwtSecret))
+	clinicsGroup.Use(middleware.RequireRole("clinic_admin"))
 	{
-		// POST /admin/invitations — SUPER_ADMIN only
-		adminGroup.POST("/invitations",
-			middleware.RequireAuth(jwtSecret),
-			middleware.RequireSuperAdmin(),
-			handler.CreateInvitation,
-		)
+		clinicsGroup.POST("", handler.CreateInvitation)
+	}
 
-		// POST /admin/invitations/accept — Public (token is the auth)
-		adminGroup.POST("/invitations/accept", handler.AcceptInvitation)
+	// Public routes
+	publicGroup := rg.Group("/invitations")
+	{
+		publicGroup.POST("/:token/accept", handler.AcceptInvitation)
 	}
 }

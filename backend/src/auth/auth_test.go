@@ -72,6 +72,22 @@ func (m *mockAuthRepo) Create(ctx context.Context, user *users.User) error {
 	return nil
 }
 
+func (m *mockAuthRepo) CreatePasswordReset(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
+	return nil
+}
+
+func (m *mockAuthRepo) FindPasswordResetByTokenHash(ctx context.Context, tokenHash string) (uuid.UUID, uuid.UUID, bool, error) {
+	return uuid.Nil, uuid.Nil, false, nil
+}
+
+func (m *mockAuthRepo) MarkPasswordResetUsed(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+func (m *mockAuthRepo) UpdateUserPassword(ctx context.Context, userID uuid.UUID, newHash string) error {
+	return nil
+}
+
 func setupTestConfig() *config.Config {
 	return &config.Config{
 		JWTSecret:                "test_secret_key_12345",
@@ -85,7 +101,7 @@ func setupTestConfig() *config.Config {
 func TestAuthService_Signup(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 
 	// 1. Success signup
 	req := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
@@ -124,7 +140,7 @@ func TestAuthService_Signup(t *testing.T) {
 func TestAuthService_Login(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 
 	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	_, _, _, _ = svc.Signup(context.Background(), signupReq)
@@ -157,7 +173,7 @@ func TestAuthService_Login(t *testing.T) {
 func TestAuthService_Refresh(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 
 	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	user, _, refToken, _ := svc.Signup(context.Background(), signupReq)
@@ -183,7 +199,7 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg)
+	svc := NewService(repo, cfg, nil)
 	handler := NewHandler(svc, cfg)
 
 	r := gin.New()
@@ -266,6 +282,28 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 				if c.MaxAge > 0 {
 					t.Errorf("expected cookie %s to be cleared, got MaxAge %d", c.Name, c.MaxAge)
 				}
+			}
+		}
+	})
+
+	// 5. POST /v1/auth/reset-password via Cookie
+	t.Run("POST /v1/auth/reset-password via Cookie", func(t *testing.T) {
+		body, _ := json.Marshal(map[string]string{"password": "newSecurePassword123"})
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/reset-password", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.AddCookie(&http.Cookie{Name: "reset_token", Value: "valid_dummy_reset_token"})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		cookies := w.Result().Cookies()
+		for _, c := range cookies {
+			if c.Name == "reset_token" && c.MaxAge > 0 {
+				t.Errorf("expected reset_token cookie to be cleared, got MaxAge %d", c.MaxAge)
 			}
 		}
 	})

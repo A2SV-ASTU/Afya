@@ -4,224 +4,192 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
-	"net/mail"
-	"os"
-	"strconv"
-	"strings"
 	"time"
 
+	"afyamind-backend/src/database"
 	"afyamind-backend/src/shared/email"
-	appErrors "afyamind-backend/src/shared/errors"
+	"afyamind-backend/src/users"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Service interface {
-	CreateInvitation(ctx context.Context, req CreateInvitationRequest) *appErrors.AppError
-	AcceptInvitation(ctx context.Context, req AcceptInvitationRequest) *appErrors.AppError
+	CreateInvitation(ctx context.Context, clinicID, invitedBy uuid.UUID, req CreateInvitationRequest) error
+	AcceptInvitation(ctx context.Context, tokenRaw string, req AcceptInvitationRequest) (*users.User, error)
+	MarkExpired(ctx context.Context) (int64, error)
 }
 
 type service struct {
-	repo        Repository
-	emailSender *email.Sender
-	frontendURL string
-	expiryHours int
+	db     *sql.DB
+	repo   Repository
+	sender *email.Sender
 }
 
-func NewService(repo Repository, emailSender *email.Sender) Service {
-	frontendURL := os.Getenv("FRONTEND_URL")
-	if frontendURL == "" {
-		frontendURL = "http://localhost:3000"
-	}
-
-	expiryHours := 48
-	if val := os.Getenv("INVITATION_EXPIRY_HOURS"); val != "" {
-		if parsed, err := strconv.Atoi(val); err == nil && parsed > 0 {
-			expiryHours = parsed
-		}
-	}
-
+func NewService(db *sql.DB, repo Repository, sender *email.Sender) Service {
 	return &service{
-		repo:        repo,
-		emailSender: emailSender,
-		frontendURL: frontendURL,
-		expiryHours: expiryHours,
+		db:     db,
+		repo:   repo,
+		sender: sender,
 	}
 }
 
-func (s *service) CreateInvitation(ctx context.Context, req CreateInvitationRequest) *appErrors.AppError {
-	emailAddr := strings.ToLower(strings.TrimSpace(req.Email))
-
-	// 1. Validate email format
-	if _, err := mail.ParseAddress(emailAddr); err != nil || !strings.Contains(emailAddr, ".") {
-		return appErrors.ErrInvalidEmail("Invalid email format")
+func generateToken() (string, string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", "", err
 	}
-
-	// 2. Check if user already exists
-	userID, exists, err := s.repo.FindUserByEmail(ctx, emailAddr)
-	if err != nil {
-		return appErrors.ErrInternal("Failed to check existing user")
-	}
-
-	if exists {
-		// Check if there's a pending invitation — if so, reissue
-		_, pendingErr := s.repo.FindPendingInvitationByUserID(ctx, userID)
-		if pendingErr == nil {
-			// Pending invitation exists — reissue a new token
-			return s.issueInvitation(ctx, userID, emailAddr)
-		}
-		if !errors.Is(pendingErr, ErrInvitationNotFound) {
-			return appErrors.ErrInternal("Failed to check pending invitations")
-		}
-		// No pending invitation — user is already active or invitation was used
-		return appErrors.ErrValidationError("A user with this email already exists")
-	}
-
-	// 3. Create user with INVITED status and a random placeholder password
-	// We generate a secure random string so the password is mathematically unguessable.
-	randomPassword, err := generateSecureToken(32)
-	if err != nil {
-		return appErrors.ErrInternal("Failed to generate random password")
-	}
-
-	placeholderHash, err := bcrypt.GenerateFromPassword([]byte(randomPassword), bcrypt.DefaultCost)
-	if err != nil {
-		return appErrors.ErrInternal("Failed to generate placeholder password hash")
-	}
-
-	// Use email prefix as the name placeholder
-	name := strings.Split(emailAddr, "@")[0]
-
-	userID, err = s.repo.CreateInvitedUser(ctx, emailAddr, name, string(placeholderHash))
-	if err != nil {
-		return appErrors.ErrInternal("Failed to create invited user")
-	}
-
-	return s.issueInvitation(ctx, userID, emailAddr)
+	raw := hex.EncodeToString(b)
+	hash := sha256.Sum256([]byte(raw))
+	return raw, hex.EncodeToString(hash[:]), nil
 }
 
-func (s *service) issueInvitation(ctx context.Context, userID int64, emailAddr string) *appErrors.AppError {
-	// 1. Generate cryptographically random token
-	rawToken, err := generateSecureToken(32)
+func (s *service) CreateInvitation(ctx context.Context, clinicID, invitedBy uuid.UUID, req CreateInvitationRequest) error {
+	caller, err := users.NewRepository(s.db).FindByID(ctx, invitedBy)
 	if err != nil {
-		return appErrors.ErrInternal("Failed to generate invitation token")
+		return err
+	}
+	if caller.Role == users.RoleClinicAdmin && (caller.ClinicID == nil || *caller.ClinicID != clinicID) {
+		return errors.New("unauthorized to invite for this clinic")
 	}
 
-	// 2. Hash the token for storage
-	tokenHash := hashToken(rawToken)
-
-	// 3. Create the invitation record
-	inv := &AdminInvitation{
-		UserID:    userID,
-		TokenHash: tokenHash,
-		ExpiresAt: time.Now().Add(time.Duration(s.expiryHours) * time.Hour),
+	rawToken, hashToken, err := generateToken()
+	if err != nil {
+		return fmt.Errorf("failed to generate token: %w", err)
 	}
 
-	if err := s.repo.CreateInvitation(ctx, inv); err != nil {
-		return appErrors.ErrInternal("Failed to create invitation record")
+	inv := &DoctorInvitation{
+		ClinicID:  clinicID,
+		Email:     req.Email,
+		TokenHash: hashToken,
+		Status:    StatusPending,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+		InvitedBy: &invitedBy,
 	}
 
-	// 4. Send invite email with token only
-	emailBody := buildInviteEmailBody(rawToken)
+	if err := s.repo.Create(ctx, inv); err != nil {
+		return err
+	}
 
-	if s.emailSender != nil {
-		if err := s.emailSender.Send(emailAddr, "You've been invited to AfyaMind Admin", emailBody); err != nil {
-			// Log the error but don't fail — the invitation is already created
-			log.Printf("WARNING: Failed to send invitation email to %s: %v", emailAddr, err)
-		}
-	} else {
-		log.Printf("WARNING: SMTP not configured — invitation email not sent. Token: %s", rawToken)
+	if s.sender != nil {
+		// send email (best effort, or we could fail if it doesn't send)
+		subject := "You are invited to join Afya as a Doctor"
+		body := fmt.Sprintf(`<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0fdf4; margin: 0; padding: 40px 0; }
+        .container { max-width: 550px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(34, 197, 94, 0.1); border: 1px solid #dcfce7; }
+        .header { padding: 40px 30px; text-align: center; background-color: #22c55e; color: #ffffff; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px; }
+        .header p { margin: 10px 0 0 0; font-size: 16px; opacity: 0.9; }
+        .content { padding: 40px 30px; color: #374151; line-height: 1.8; font-size: 16px; }
+        .token-box { background-color: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; padding: 25px; margin: 30px 0; box-shadow: 0 2px 5px rgba(0,0,0,0.02); text-align: center; }
+        .token-box span { font-family: monospace; font-size: 18px; letter-spacing: 1px; color: #047857; background: #e0f2fe; padding: 4px 10px; border-radius: 4px; word-break: break-all; font-weight: bold; }
+        .alert { font-size: 14px; color: #991b1b; background-color: #fef2f2; padding: 12px; border-radius: 6px; margin-top: 20px; border-left: 4px solid #dc2626; }
+        .footer { padding: 25px; text-align: center; font-size: 13px; color: #9ca3af; background-color: #f9fafb; border-top: 1px solid #f3f4f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>You're Invited!</h1>
+            <p>Join our platform as a Doctor</p>
+        </div>
+        <div class="content">
+            <p>Hello Doctor,</p>
+            <p>You have been officially invited to join an <strong>Afya</strong> clinic. We provide a modern, seamless experience for managing your practice and patient records.</p>
+            <p>Please use the following secure token to accept your invitation and complete your profile setup:</p>
+            <div class="token-box">
+                <span>%s</span>
+            </div>
+            <div class="alert">
+                <strong>Important:</strong> This secure token will expire in exactly 24 hours.
+            </div>
+        </div>
+        <div class="footer">
+            <p>&copy; 2026 Afya. All rights reserved.</p>
+            <p>If you were not expecting this invitation, please safely ignore this email.</p>
+        </div>
+    </div>
+</body>
+</html>`, rawToken)
+		go func(email, subject, body string) {
+			_ = s.sender.Send(email, subject, body)
+		}(req.Email, subject, body)
 	}
 
 	return nil
 }
 
-func (s *service) AcceptInvitation(ctx context.Context, req AcceptInvitationRequest) *appErrors.AppError {
-	rawToken := strings.TrimSpace(req.Token)
-	password := req.Password
+func (s *service) AcceptInvitation(ctx context.Context, tokenRaw string, req AcceptInvitationRequest) (*users.User, error) {
+	hash := sha256.Sum256([]byte(tokenRaw))
+	tokenHashStr := hex.EncodeToString(hash[:])
 
-	if rawToken == "" {
-		return appErrors.NewAppError(400, "invitation_not_found", "Invitation token is required")
-	}
-
-	// 1. Validate password
-	if len(password) < 8 {
-		return appErrors.ErrInvalidPassword("Password must be at least 8 characters long")
-	}
-
-	// 2. Hash the incoming token and look up the invitation
-	tokenHash := hashToken(rawToken)
-
-	inv, err := s.repo.FindInvitationByTokenHash(ctx, tokenHash)
+	inv, err := s.repo.FindByTokenHash(ctx, tokenHashStr)
 	if err != nil {
 		if errors.Is(err, ErrInvitationNotFound) {
-			return appErrors.NewAppError(404, "invitation_not_found", "Invitation not found")
+			return nil, errors.New("invalid or expired token")
 		}
-		return appErrors.ErrInternal("Failed to look up invitation")
+		return nil, err
 	}
 
-	// 3. Check if already used
-	if inv.UsedAt != nil {
-		return appErrors.NewAppError(400, "invitation_already_used", "This invitation has already been used")
+	if inv.Status != StatusPending {
+		return nil, errors.New("invitation already used or revoked")
 	}
 
-	// 4. Check if expired
 	if time.Now().After(inv.ExpiresAt) {
-		return appErrors.NewAppError(400, "invitation_expired", "This invitation has expired")
+		return nil, errors.New("invitation expired")
 	}
 
-	// 5. Hash the new password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		return appErrors.ErrInternal("Failed to hash password")
+		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// 6. Activate the user
-	if err := s.repo.ActivateUser(ctx, inv.UserID, string(hashedPassword)); err != nil {
-		return appErrors.ErrInternal("Failed to activate user account")
+	var createdUser *users.User
+
+	err = database.WithTransaction(ctx, s.db, func(tx database.DBTX) error {
+		invRepo := NewRepository(tx)
+		userRepo := users.NewRepository(tx)
+
+		if err := invRepo.UpdateStatus(ctx, inv.ID, StatusAccepted); err != nil {
+			return err
+		}
+
+		docStatus := users.DoctorStatusActive
+		user := &users.User{
+			FirstName:      req.FirstName,
+			LastName:       req.LastName,
+			Phone:          req.Phone,
+			Role:           users.RoleDoctor,
+			Email:          inv.Email,
+			PasswordHash:   string(hashedPassword),
+			ClinicID:       &inv.ClinicID,
+			Specialization: &req.Specialization,
+			LicenseNumber:  &req.LicenseNumber,
+			DoctorStatus:   &docStatus,
+			InvitedBy:      inv.InvitedBy,
+		}
+
+		if err := userRepo.Create(ctx, user); err != nil {
+			return err
+		}
+		createdUser = user
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	// 7. Mark invitation as used
-	if err := s.repo.MarkInvitationUsed(ctx, inv.ID); err != nil {
-		return appErrors.ErrInternal("Failed to mark invitation as used")
-	}
-
-	return nil
+	return createdUser, nil
 }
 
-// generateSecureToken generates a cryptographically random hex-encoded token
-func generateSecureToken(byteLength int) (string, error) {
-	b := make([]byte, byteLength)
-	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("failed to generate random bytes: %w", err)
-	}
-	return hex.EncodeToString(b), nil
-}
-
-// hashToken returns the SHA-256 hex digest of the given token
-func hashToken(token string) string {
-	h := sha256.Sum256([]byte(token))
-	return hex.EncodeToString(h[:])
-}
-
-// buildInviteEmailBody returns a simple HTML email body with just the invitation token
-func buildInviteEmailBody(token string) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-  <h2 style="color: #2563eb;">You've been invited to AfyaMind Admin</h2>
-  <p>You have been invited to join AfyaMind as an administrator.</p>
-  <p>Use the following invitation token to activate your account:</p>
-  <p style="text-align: center; margin: 30px 0;">
-    <code style="background-color: #f3f4f6; color: #1f2937; padding: 12px 20px; border-radius: 6px; font-size: 14px; word-break: break-all; display: inline-block; border: 1px solid #d1d5db;">%s</code>
-  </p>
-  <p style="color: #6b7280; font-size: 14px;">
-    This invitation expires in 48 hours. If you did not expect this email, you can safely ignore it.
-  </p>
-</body>
-</html>`, token)
+func (s *service) MarkExpired(ctx context.Context) (int64, error) {
+	return s.repo.MarkExpired(ctx)
 }

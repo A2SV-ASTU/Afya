@@ -152,3 +152,58 @@ func (h *Handler) Logout(c *gin.Context) {
 		},
 	})
 }
+
+// ForgotPassword handles POST /auth/forgot-password
+func (h *Handler) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid email format"))
+		return
+	}
+
+	_ = h.service.ForgotPassword(c.Request.Context(), req.Email)
+	// Do not leak whether the email exists or if there was an internal error. Always return success.
+
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "If an account exists with that email, a password reset link has been sent.",
+		},
+	})
+}
+
+// ResetPassword handles POST /auth/reset-password
+func (h *Handler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request payload"))
+		return
+	}
+
+	token := req.Token
+	if token == "" {
+		if cookieToken, err := c.Cookie("reset_token"); err == nil && cookieToken != "" {
+			token = cookieToken
+		}
+	}
+
+	if token == "" {
+		response.RespondAppError(c, appErrors.ErrValidationError("Reset token is required"))
+		return
+	}
+
+	appErr := h.service.ResetPassword(c.Request.Context(), token, req.Password)
+	if appErr != nil {
+		response.RespondAppError(c, appErr)
+		return
+	}
+
+	// Clear reset_token cookie after successful reset
+	c.SetSameSite(http.SameSiteStrictMode)
+	c.SetCookie("reset_token", "", -1, "/", h.cfg.CookieDomain, h.cfg.CookieSecure, true)
+
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "Password has been successfully reset. You can now log in.",
+		},
+	})
+}
