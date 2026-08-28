@@ -72,6 +72,22 @@ func (m *mockAuthRepo) Create(ctx context.Context, user *users.User) error {
 	return nil
 }
 
+func (m *mockAuthRepo) CreatePasswordReset(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
+	return nil
+}
+
+func (m *mockAuthRepo) FindPasswordResetByTokenHash(ctx context.Context, tokenHash string) (uuid.UUID, uuid.UUID, bool, error) {
+	return uuid.Nil, uuid.Nil, false, nil
+}
+
+func (m *mockAuthRepo) MarkPasswordResetUsed(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+func (m *mockAuthRepo) UpdateUserPassword(ctx context.Context, userID uuid.UUID, newHash string) error {
+	return nil
+}
+
 func setupTestConfig() *config.Config {
 	return &config.Config{
 		JWTSecret:                "test_secret_key_12345",
