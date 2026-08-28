@@ -6,15 +6,25 @@ import 'package:afyamind_mobile/core/errors/failures.dart';
 import 'package:afyamind_mobile/features/clinical_history/domain/entities/encounter_detail_entity.dart';
 import 'package:afyamind_mobile/features/medication_and_adherence/domain/entities/local_dose_record_entity.dart';
 import 'package:afyamind_mobile/features/medication_and_adherence/domain/repositories/medication_repository.dart';
+import 'package:afyamind_mobile/features/medication_and_adherence/domain/usecases/cancel_prescription_reminders_usecase.dart';
 import 'package:afyamind_mobile/features/medication_and_adherence/domain/usecases/complete_prescription_usecase.dart';
+import 'package:afyamind_mobile/features/medication_and_adherence/domain/usecases/generate_dose_schedule_usecase.dart';
 import 'package:afyamind_mobile/features/medication_and_adherence/domain/usecases/get_local_dose_records_usecase.dart';
 import 'package:afyamind_mobile/features/medication_and_adherence/domain/usecases/get_prescriptions_usecase.dart';
 import 'package:afyamind_mobile/features/medication_and_adherence/domain/usecases/record_dose_adherence_usecase.dart';
 
 class MockMedicationRepository extends Mock implements MedicationRepository {}
 
+class MockGenerateDoseScheduleUseCase extends Mock
+    implements GenerateDoseScheduleUseCase {}
+
+class MockCancelPrescriptionRemindersUseCase extends Mock
+    implements CancelPrescriptionRemindersUseCase {}
+
 void main() {
   late MockMedicationRepository mockRepository;
+  late MockGenerateDoseScheduleUseCase mockGenerateScheduleUseCase;
+  late MockCancelPrescriptionRemindersUseCase mockCancelRemindersUseCase;
 
   setUpAll(() {
     registerFallbackValue(
@@ -26,10 +36,25 @@ void main() {
         scheduledTime: DateTime(2026),
       ),
     );
+    registerFallbackValue(
+      EncounterPrescriptionItemEntity(
+        id: 'fb-rx',
+        medicationName: 'Amox',
+        dose: '500mg',
+        route: 'oral',
+        frequency: 'OD',
+        duration: '3 days',
+        status: EncounterPrescriptionStatus.active,
+        instructions: '',
+        startedAt: DateTime(2026),
+      ),
+    );
   });
 
   setUp(() {
     mockRepository = MockMedicationRepository();
+    mockGenerateScheduleUseCase = MockGenerateDoseScheduleUseCase();
+    mockCancelRemindersUseCase = MockCancelPrescriptionRemindersUseCase();
   });
 
   final samplePrescriptionEntity = EncounterPrescriptionItemEntity(
@@ -55,13 +80,23 @@ void main() {
   );
 
   group('GetPrescriptionsUseCase', () {
-    test('forwards parameters to repository and returns Right list', () async {
-      final useCase = GetPrescriptionsUseCase(mockRepository);
+    test(
+        'forwards parameters to repository, generates dose schedules for active items, and returns Right list',
+        () async {
+      final useCase = GetPrescriptionsUseCase(
+        mockRepository,
+        mockGenerateScheduleUseCase,
+      );
 
       when(() => mockRepository.getPrescriptions(
             encounterId: 'enc-1',
             forceRefresh: true,
           )).thenAnswer((_) async => Right([samplePrescriptionEntity]));
+
+      when(() => mockGenerateScheduleUseCase(
+            prescription: any(named: 'prescription'),
+            now: any(named: 'now'),
+          )).thenAnswer((_) async => const Right([]));
 
       final result = await useCase(encounterId: 'enc-1', forceRefresh: true);
 
@@ -74,10 +109,16 @@ void main() {
             encounterId: 'enc-1',
             forceRefresh: true,
           )).called(1);
+      verify(() => mockGenerateScheduleUseCase(
+            prescription: samplePrescriptionEntity,
+          )).called(1);
     });
 
     test('getCached calls repository.getCachedPrescriptions', () async {
-      final useCase = GetPrescriptionsUseCase(mockRepository);
+      final useCase = GetPrescriptionsUseCase(
+        mockRepository,
+        mockGenerateScheduleUseCase,
+      );
 
       when(() => mockRepository.getCachedPrescriptions())
           .thenAnswer((_) async => Right([samplePrescriptionEntity]));
@@ -90,9 +131,13 @@ void main() {
   });
 
   group('CompletePrescriptionUseCase', () {
-    test('forwards prescriptionItemId to repository and returns updated entity',
+    test(
+        'forwards prescriptionItemId to repository, cancels pending reminders, and returns updated entity',
         () async {
-      final useCase = CompletePrescriptionUseCase(mockRepository);
+      final useCase = CompletePrescriptionUseCase(
+        mockRepository,
+        mockCancelRemindersUseCase,
+      );
 
       final completedEntity = EncounterPrescriptionItemEntity(
         id: 'rx-1',
@@ -110,6 +155,10 @@ void main() {
             prescriptionItemId: 'rx-1',
           )).thenAnswer((_) async => Right(completedEntity));
 
+      when(() => mockCancelRemindersUseCase(
+            prescriptionItemId: 'rx-1',
+          )).thenAnswer((_) async => const Right(2));
+
       final result = await useCase(prescriptionItemId: 'rx-1');
 
       expect(result.isRight(), true);
@@ -120,10 +169,18 @@ void main() {
       verify(() => mockRepository.completePrescriptionItem(
             prescriptionItemId: 'rx-1',
           )).called(1);
+      verify(() => mockCancelRemindersUseCase(
+            prescriptionItemId: 'rx-1',
+          )).called(1);
     });
 
-    test('returns ServerFailure when completion fails', () async {
-      final useCase = CompletePrescriptionUseCase(mockRepository);
+    test(
+        'returns ServerFailure when completion fails and does not cancel reminders',
+        () async {
+      final useCase = CompletePrescriptionUseCase(
+        mockRepository,
+        mockCancelRemindersUseCase,
+      );
 
       when(() => mockRepository.completePrescriptionItem(
             prescriptionItemId: 'rx-1',
@@ -136,6 +193,9 @@ void main() {
         (failure) => expect(failure.message, 'Failed'),
         (_) => fail('should be left'),
       );
+      verifyNever(() => mockCancelRemindersUseCase(
+            prescriptionItemId: any(named: 'prescriptionItemId'),
+          ));
     });
   });
 
