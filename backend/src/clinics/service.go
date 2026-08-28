@@ -1,6 +1,11 @@
 package clinics
 
 import (
+
+	"afyamind-backend/src/shared/auth"
+	appErrors "afyamind-backend/src/shared/errors"
+
+
 	"context"
 	"crypto/rand"
 	"database/sql"
@@ -23,6 +28,11 @@ type Service interface {
 	ActivateClinic(ctx context.Context, id uuid.UUID) error
 	DeactivateDoctor(ctx context.Context, clinicID, doctorID, callerID uuid.UUID) error
 	ActivateDoctor(ctx context.Context, clinicID, doctorID, callerID uuid.UUID) error
+
+	GetClinic(ctx context.Context, user *auth.UserContext, id uuid.UUID) (*Clinic, error)
+	GetClinicDoctors(ctx context.Context, user *auth.UserContext, clinicID uuid.UUID) ([]DoctorResponse, error)
+	GetClinicInvitations(ctx context.Context, user *auth.UserContext, clinicID uuid.UUID) ([]InvitationResponse, error)
+
 }
 
 type service struct {
@@ -198,3 +208,68 @@ func (s *service) ActivateDoctor(ctx context.Context, clinicID, doctorID, caller
 
 	return s.repo.ActivateDoctor(ctx, clinicID, doctorID)
 }
+
+
+func (s *service) GetClinic(ctx context.Context, user *auth.UserContext, id uuid.UUID) (*Clinic, error) {
+	if user.Role == "clinic_admin" && (user.ClinicID == nil || *user.ClinicID != id) {
+		return nil, appErrors.ErrForbiddenRole()
+	}
+
+	clinic, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if clinic == nil {
+		return nil, appErrors.ErrNotFound("")
+	}
+	return clinic, nil
+}
+
+func (s *service) GetClinicDoctors(ctx context.Context, user *auth.UserContext, clinicID uuid.UUID) ([]DoctorResponse, error) {
+	if user.ClinicID == nil || *user.ClinicID != clinicID {
+		return nil, appErrors.ErrForbiddenRole()
+	}
+
+	// Verify clinic exists
+	clinic, err := s.repo.FindByID(ctx, clinicID)
+	if err != nil {
+		return nil, err
+	}
+	if clinic == nil {
+		return nil, appErrors.ErrNotFound("")
+	}
+
+	doctors, err := s.repo.FindDoctorsByClinicID(ctx, clinicID)
+	if err != nil {
+		return nil, err
+	}
+	if doctors == nil {
+		return []DoctorResponse{}, nil // Return empty array instead of null
+	}
+	return doctors, nil
+}
+
+func (s *service) GetClinicInvitations(ctx context.Context, user *auth.UserContext, clinicID uuid.UUID) ([]InvitationResponse, error) {
+	if user.ClinicID == nil || *user.ClinicID != clinicID {
+		return nil, appErrors.ErrForbiddenRole()
+	}
+
+	// Verify clinic exists
+	clinic, err := s.repo.FindByID(ctx, clinicID)
+	if err != nil {
+		return nil, err
+	}
+	if clinic == nil {
+		return nil, appErrors.ErrNotFound("")
+	}
+
+	invitations, err := s.repo.FindInvitationsByClinicID(ctx, clinicID)
+	if err != nil {
+		return nil, err
+	}
+	if invitations == nil {
+		return []InvitationResponse{}, nil // Return empty array instead of null
+	}
+	return invitations, nil
+}
+

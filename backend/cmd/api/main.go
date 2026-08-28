@@ -7,11 +7,13 @@ import (
 
 	"afyamind-backend/src/access-requests"
 	"afyamind-backend/src/auth"
+	"afyamind-backend/src/appointments"
 	"afyamind-backend/src/bootstrap"
 	"afyamind-backend/src/clinics"
 	"afyamind-backend/src/config"
 	"afyamind-backend/src/database"
 	"afyamind-backend/src/invitations"
+	sharedAuth "afyamind-backend/src/shared/auth"
 	"afyamind-backend/src/shared/email"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/users"
@@ -52,11 +54,15 @@ func main() {
 	}
 
 	// 4. Initialize Repositories
+	sharedAuth.DB = db
 	userRepo := users.NewRepository(db)
 	authRepo := auth.NewRepository(db)
 	invRepo := invitations.NewRepository(db)
 	clinicRepo := clinics.NewRepository(db)
 	arRepo := accessrequests.NewRepository(db)
+
+	apptRepo := appointments.NewRepository(db)
+
 
 	// 4. Initialize Email Sender (optional — logs warning if SMTP not configured)
 	var emailSender *email.Sender
@@ -74,12 +80,17 @@ func main() {
 	clinicService := clinics.NewService(db, clinicRepo, emailSender)
 	arService := accessrequests.NewService(db, arRepo, userRepo, emailSender)
 
+	apptService := appointments.NewService(apptRepo)
+
 	// 6. Initialize Handlers
 	userHandler := users.NewHandler(userService)
 	authHandler := auth.NewHandler(authService, cfg)
 	invHandler := invitations.NewHandler(invService)
 	clinicHandler := clinics.NewHandler(clinicService)
 	arHandler := accessrequests.NewHandler(arService)
+
+	apptHandler := appointments.NewHandler(apptService)
+
 
 	// 6b. Start background expiration jobs
 	appCtx := context.Background()
@@ -105,6 +116,9 @@ func main() {
 		invitations.RegisterRoutes(apiV1, invHandler, cfg.JWTSecret)
 		clinics.RegisterRoutes(apiV1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(apiV1, arHandler, cfg.JWTSecret)
+
+		appointments.RegisterRoutes(apiV1, apptHandler, cfg.JWTSecret)
+
 	}
 
 	v1 := router.Group("/v1")
@@ -114,6 +128,9 @@ func main() {
 		invitations.RegisterRoutes(v1, invHandler, cfg.JWTSecret)
 		clinics.RegisterRoutes(v1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(v1, arHandler, cfg.JWTSecret)
+
+		appointments.RegisterRoutes(v1, apptHandler, cfg.JWTSecret)
+
 	}
 
 	// 8. Start HTTP Server
