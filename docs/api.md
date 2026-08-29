@@ -230,45 +230,6 @@ _(If omitted, the server reads the `refresh_token` HTTP-Only cookie)._
 
 - **400 Bad Request** (`validation_error`): Invalid email format.
 
----
-
-### 6. Reset Password
-
-- **Endpoint**: `POST /api/v1/auth/reset-password`
-- **Auth Required**: No (Public; token provided via `reset_token` cookie or JSON body)
-- **Description**: Verifies the reset token (read automatically from the `reset_token` cookie or optional `token` body payload) and securely updates the user's password using bcrypt. Clears the `reset_token` cookie upon success.
-
-#### Cookie / Request Body
-
-**Cookie**: `reset_token=<RESET_TOKEN_FROM_EMAIL>`
-
-**Request Body**:
-
-```json
-{
-  "token": "<RESET_TOKEN_FROM_EMAIL>",
-  "password": "newSecurePassword123"
-}
-```
-
-_(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
-
-#### Responses
-
-- **200 OK**: Clears `reset_token` cookie and returns success message.
-
-```json
-{
-  "data": {
-    "message": "Password has been successfully reset. You can now log in."
-  }
-}
-```
-
-- **400 Bad Request** (`validation_error`): Missing reset token or password shorter than 8 characters.
-- **410 Gone** (`expired`): Reset token is invalid or expired.
-
----
 
 ## User Management Endpoints (`/api/v1/users`)
 
@@ -763,51 +724,6 @@ _(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
 
 ---
 
-### 22. Approve Access Request
-
-- **Endpoint**: `POST /api/v1/access-requests/:id/approve`
-- **Auth Required**: Yes (`patient` required)
-- **Description**: Allows a patient to approve a pending access request for their records.
-
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "status": "approved"
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
-- **403 Forbidden** (`forbidden_role`): Authenticated user is not the target patient of this request.
-- **409 Conflict** (`conflict`): Request is not in `pending` status.
-- **410 Gone** (`expired`): Access request has expired.
-
----
-
-### 23. Deny Access Request
-
-- **Endpoint**: `POST /api/v1/access-requests/:id/deny`
-- **Auth Required**: Yes (`patient` required)
-- **Description**: Allows a patient to deny a pending access request for their records.
-
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "status": "denied"
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
-- **403 Forbidden** (`forbidden_role`): Authenticated user is not the target patient of this request.
-- **409 Conflict** (`conflict`): Request is not in `pending` status.
-- **410 Gone** (`expired`): Access request has expired.
-
----
 
 ### 24. Revoke Approved Access Request
 
