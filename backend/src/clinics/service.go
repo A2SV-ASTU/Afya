@@ -12,7 +12,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 
 	"afyamind-backend/src/database"
 	"afyamind-backend/src/shared/email"
@@ -155,9 +154,6 @@ func (s *service) CreateClinic(ctx context.Context, req CreateClinicRequest) (*C
 		go func(email, subject, body string) {
 			_ = s.sender.Send(email, subject, body)
 		}(req.Email, subject, body)
-	} else {
-		// Log the credentials so developers can test locally without SMTP
-		log.Printf("LOCAL DEV: Created clinic admin %s with password: %s", req.Email, generatedPassword)
 	}
 
 	return newClinic, nil
