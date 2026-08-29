@@ -1,11 +1,14 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-  static const String baseUrl = 'https://api.afyamind.com/api/v1'; // Update to target host
+  static const String baseUrl = 'https://api.afyamind.com/api/v1';
 
   // Auth
-  static const String register = '/auth/register';
+  static const String signup = '/auth/signup';
+  static const String register = '/auth/signup';
   static const String login = '/auth/login';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String resetPassword = '/auth/reset-password';
   static const String refresh = '/auth/refresh';
   static const String logout = '/auth/logout';
 

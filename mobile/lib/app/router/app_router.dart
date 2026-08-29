@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../core/di/injection_container.dart';
+import '../../features/auth/presentation/screens/sign_in_screen.dart';
+import '../../features/auth/presentation/screens/sign_up_screen.dart';
+import '../../features/auth/presentation/screens/splash_screen.dart';
 import '../../features/clinical_history/presentation/bloc/history_timeline_bloc.dart';
 import '../../features/clinical_history/presentation/cubit/appointments_cubit.dart';
 import '../../features/clinical_history/presentation/cubit/encounter_detail_cubit.dart';
@@ -27,20 +30,20 @@ final GlobalKey<NavigatorState> _profileNavigatorKey =
 class AppRouter {
   late final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: RoutePaths.dashboard,
+    initialLocation: RoutePaths.splash,
     routes: [
       // Splash & Auth Routes
       GoRoute(
         path: RoutePaths.splash,
-        builder: (context, state) => const SplashPlaceholderScreen(),
+        builder: (context, state) => const SplashScreen(),
       ),
       GoRoute(
         path: RoutePaths.signIn,
-        builder: (context, state) => const SignInPlaceholderScreen(),
+        builder: (context, state) => const SignInScreen(),
       ),
       GoRoute(
         path: RoutePaths.signUp,
-        builder: (context, state) => const SignUpPlaceholderScreen(),
+        builder: (context, state) => const SignUpScreen(),
       ),
 
       // Email Deep-Link Route for Access Consent
