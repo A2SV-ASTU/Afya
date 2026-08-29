@@ -23,7 +23,7 @@ type DoctorResponse struct {
 	FirstName      string     `json:"first_name"`
 	LastName       string     `json:"last_name"`
 	Role           string     `json:"role"`
-	Phone          string     `json:"phone"`
+	Phone          *string    `json:"phone"`
 	Email          *string    `json:"email"`
 	Specialization *string    `json:"specialization"`
 	LicenseNumber  *string    `json:"license_number"`
