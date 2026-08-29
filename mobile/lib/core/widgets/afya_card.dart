@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 import '../theme/app_dimensions.dart';
 
@@ -19,16 +20,16 @@ class AfyaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final content = Container(
-      padding: padding ?? const EdgeInsets.all(AppDimensions.space16),
+      padding: padding ?? const EdgeInsets.all(AppDimensions.space24),
       decoration: BoxDecoration(
         color: color ?? AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXLarge),
+        border: Border.all(color: AppColors.border, width: 1),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Color(0x0D21988D),
+            blurRadius: 20,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -38,7 +39,7 @@ class AfyaCard extends StatelessWidget {
     if (onTap != null) {
       return InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMedium),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusXLarge),
         child: content,
       );
     }

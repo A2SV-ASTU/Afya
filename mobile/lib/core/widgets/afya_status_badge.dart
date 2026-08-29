@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
+
 import '../theme/app_colors.dart';
 import '../theme/app_dimensions.dart';
 import '../theme/app_typography.dart';
 
-enum BadgeType { normal, abnormal, critical, active, completed, deactivated, pending }
+enum BadgeType {
+  normal,
+  abnormal,
+  critical,
+  active,
+  completed,
+  deactivated,
+  pending
+}
 
 class AfyaStatusBadge extends StatelessWidget {
   final String label;
@@ -24,8 +33,8 @@ class AfyaStatusBadge extends StatelessWidget {
       case BadgeType.normal:
       case BadgeType.completed:
       case BadgeType.active:
-        bg = AppColors.successLight;
-        fg = AppColors.success;
+        bg = AppColors.primaryLight;
+        fg = AppColors.primaryDark;
         break;
       case BadgeType.abnormal:
       case BadgeType.pending:
@@ -41,19 +50,20 @@ class AfyaStatusBadge extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.space8,
+        horizontal: AppDimensions.space12,
         vertical: AppDimensions.space4,
       ),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusSmall),
+        borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
       ),
       child: Text(
         label.toUpperCase(),
         style: AppTypography.caption.copyWith(
           color: fg,
           fontWeight: FontWeight.w700,
-          fontSize: 10,
+          fontSize: 11,
+          letterSpacing: 0.5,
         ),
       ),
     );
