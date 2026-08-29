@@ -3,6 +3,7 @@ package invitations
 import (
 	"net/http"
 
+	"afyamind-backend/src/config"
 	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/shared/response"
@@ -13,10 +14,11 @@ import (
 
 type Handler struct {
 	svc Service
+	cfg *config.Config
 }
 
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Service, cfg *config.Config) *Handler {
+	return &Handler{svc: svc, cfg: cfg}
 }
 
 func (h *Handler) CreateInvitation(c *gin.Context) {
@@ -39,7 +41,7 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.CreateInvitation(c.Request.Context(), clinicID, callerID, req); err != nil {
+	if err := h.svc.CreateInvitation(c.Request.Context(), clinicID, callerID, req, h.cfg.APIBaseURL); err != nil {
 		if err.Error() == "unauthorized to invite for this clinic" {
 			response.RespondAppError(c, appErrors.ErrForbiddenRole())
 			return

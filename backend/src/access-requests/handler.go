@@ -3,6 +3,7 @@ package accessrequests
 import (
 	"net/http"
 
+	"afyamind-backend/src/config"
 	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/shared/response"
@@ -13,10 +14,11 @@ import (
 
 type Handler struct {
 	svc Service
+	cfg *config.Config
 }
 
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Service, cfg *config.Config) *Handler {
+	return &Handler{svc: svc, cfg: cfg}
 }
 
 func (h *Handler) LookupPatient(c *gin.Context) {
@@ -59,7 +61,7 @@ func (h *Handler) CreateRequest(c *gin.Context) {
 		return
 	}
 
-	ar, err := h.svc.CreateRequest(c.Request.Context(), clinicID, callerID, req)
+	ar, err := h.svc.CreateRequest(c.Request.Context(), clinicID, callerID, req, h.cfg.APIBaseURL)
 	if err != nil {
 		if err.Error() == "patient_not_found" {
 			response.RespondAppError(c, appErrors.ErrNotFound("patient"))

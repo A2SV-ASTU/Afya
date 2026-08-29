@@ -828,3 +828,94 @@ _(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
 - **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
 - **403 Forbidden** (`forbidden_role`): Caller is unauthorized for this clinic or not a clinic admin.
 - **409 Conflict** (`conflict`): Access request is not currently in `approved` status.
+
+---
+
+## Magic Links Endpoints (`/api/v1/magic`)
+
+### 25. View Access Request Page
+
+- **Endpoint**: `GET /api/v1/magic/access-request`
+- **Auth Required**: No (Public)
+- **Description**: Serves the HTML confirmation page for a patient to approve or deny an access request.
+
+#### Query Parameters
+
+- `token` (string, required): The secure token from the email link.
+- `action` (string, required): Must be `approve` or `deny`.
+
+#### Responses
+
+- **200 OK**: Returns an HTML confirmation page.
+- **400 Bad Request**: Invalid or missing token/action (returns error HTML page).
+
+---
+
+### 26. Confirm Access Request
+
+- **Endpoint**: `POST /api/v1/magic/access-request`
+- **Auth Required**: No (Public)
+- **Description**: Processes the HTML form submission to approve or deny an access request.
+
+#### Request Body (Form Data)
+
+- `token` (string, required): The secure token.
+- `action` (string, required): Must be `approve` or `deny`.
+
+#### Responses
+
+- **200 OK**: Returns a success HTML page if processed, or an error HTML page if the token is invalid/expired.
+- **400 Bad Request**: Invalid or missing token/action (returns error HTML page).
+
+---
+
+### 27. View Reset Password Page
+
+- **Endpoint**: `GET /api/v1/magic/reset-password`
+- **Auth Required**: No (Public)
+- **Description**: Serves the HTML form page for a user to reset their password.
+
+#### Query Parameters
+
+- `token` (string, required): The secure token from the email link.
+
+#### Responses
+
+- **200 OK**: Returns the password reset HTML page.
+- **400 Bad Request**: Invalid or missing token (returns error HTML page).
+
+---
+
+### 28. Confirm Reset Password
+
+- **Endpoint**: `POST /api/v1/magic/reset-password`
+- **Auth Required**: No (Public)
+- **Description**: Processes the HTML form submission to securely reset the user's password.
+
+#### Request Body (Form Data)
+
+- `token` (string, required): The secure token.
+- `password` (string, required): The new password (min 8 characters).
+- `confirm_password` (string, required): Must match the new password.
+
+#### Responses
+
+- **200 OK**: Returns a success HTML page if processed, or an error HTML page if the token is invalid/expired or passwords do not match.
+- **400 Bad Request**: Missing token (returns error HTML page).
+
+---
+
+### 29. View Accept Invitation Page
+
+- **Endpoint**: `GET /api/v1/magic/accept-invitation`
+- **Auth Required**: No (Public)
+- **Description**: Serves the HTML form page for an invited doctor to complete their registration.
+
+#### Query Parameters
+
+- `token` (string, required): The secure token from the email link.
+
+#### Responses
+
+- **200 OK**: Returns the registration HTML page containing JavaScript to POST to the JSON endpoint (`/api/v1/invitations/:token/accept`).
+- **400 Bad Request**: Invalid or missing token (returns error HTML page).

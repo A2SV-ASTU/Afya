@@ -17,6 +17,7 @@ type Config struct {
 	RefreshTokenExpiryDays   int
 	CookieDomain             string
 	CookieSecure             bool
+	APIBaseURL               string
 }
 
 func Load() (*Config, error) {
@@ -37,6 +38,7 @@ func Load() (*Config, error) {
 
 	accessTokenExpiry := getEnvAsInt("ACCESS_TOKEN_EXPIRY_MINUTES", 15)
 	refreshTokenExpiry := getEnvAsInt("REFRESH_TOKEN_EXPIRY_DAYS", 7)
+	apiBaseURL := getEnv("API_BASE_URL", "http://localhost:8080")
 
 	cfg := &Config{
 		Port:                     port,
@@ -47,6 +49,7 @@ func Load() (*Config, error) {
 		RefreshTokenExpiryDays:   refreshTokenExpiry,
 		CookieDomain:             cookieDomain,
 		CookieSecure:             cookieSecure,
+		APIBaseURL:               apiBaseURL,
 	}
 
 	return cfg, nil
