@@ -1,18 +1,49 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:afyamind_mobile/app.dart';
+import 'package:afyamind_mobile/app/router/app_router.dart';
 import 'package:afyamind_mobile/core/di/injection_container.dart';
+import 'package:afyamind_mobile/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:afyamind_mobile/features/auth/presentation/bloc/auth_event.dart';
+import 'package:afyamind_mobile/features/auth/presentation/bloc/auth_state.dart';
+import 'package:bloc_test/bloc_test.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+
+class MockAuthBloc extends MockBloc<AuthEvent, AuthState> implements AuthBloc {}
 
 void main() {
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    await configureDependencies();
+  late MockAuthBloc mockAuthBloc;
+
+  setUp(() {
+    mockAuthBloc = MockAuthBloc();
+    if (!sl.isRegistered<AppRouter>()) {
+      sl.registerLazySingleton<AppRouter>(() => AppRouter());
+    }
+    if (!sl.isRegistered<AuthBloc>()) {
+      sl.registerLazySingleton<AuthBloc>(() => mockAuthBloc);
+    }
   });
 
-  testWidgets('AfyaMind App initial render smoke test', (WidgetTester tester) async {
-    await tester.pumpWidget(const AfyaMindApp());
-    await tester.pumpAndSettle();
+  tearDown(() async {
+    await sl.reset();
+  });
 
-    // Verify root dashboard renders successfully
-    expect(find.text('Dashboard'), findsWidgets);
+  testWidgets('App renders splash route initial screen', (tester) async {
+    when(() => mockAuthBloc.state).thenReturn(const Unauthenticated());
+
+    final appRouter = AppRouter();
+
+    await tester.pumpWidget(
+      BlocProvider<AuthBloc>.value(
+        value: mockAuthBloc,
+        child: MaterialApp.router(
+          routerConfig: appRouter.router,
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('Afya'), findsWidgets);
   });
 }

@@ -9,6 +9,11 @@ class AppColors {
   static const Color primaryLight = Color(0xFFE8F1EF);
   static const Color primaryContainer = Color(0xFF008379);
 
+  static const Color tealPrimary = Color(0xFF006A60);
+  static const Color tealDark = Color(0xFF004D47);
+  static const Color tealLight = Color(0xFFE0F3EF);
+  static const Color pinBackground = Color(0xFFF4F9F7);
+
   // Status & Alerts
   static const Color urgentAlert = Color(0xFFBA1A1A);
   static const Color urgentBackground = Color(0xFFFFDAD6);
@@ -19,7 +24,7 @@ class AppColors {
   static const Color success = Color(0xFF21988D);
   static const Color successLight = Color(0xFFE8F1EF);
 
-  // Surface & Canvas (AfyaMind Soft Off-White System)
+  // Surface & Canvas (Afya Soft Off-White System)
   static const Color background = Color(0xFFF7FAF9);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceContainer = Color(0xFFF1F4F3);

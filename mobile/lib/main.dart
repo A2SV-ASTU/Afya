@@ -10,14 +10,23 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await configureDependencies();
 
-  final notificationService = sl<NotificationService>();
-  final notificationHandler = sl<MedicationNotificationHandler>();
-  await notificationService.initialize(
-    onResponse: notificationHandler.handleNotificationResponse,
-  );
-
-  // Run on-device dose scheduler & missed-dose startup reconciliation
-  await sl<MedicationReconciliationService>().reconcile();
-
   runApp(const AfyaMindApp());
+
+  // Non-blocking background initialization after initial UI frame renders
+  _initializeBackgroundServices();
+}
+
+Future<void> _initializeBackgroundServices() async {
+  try {
+    final notificationService = sl<NotificationService>();
+    final notificationHandler = sl<MedicationNotificationHandler>();
+    await notificationService.initialize(
+      onResponse: notificationHandler.handleNotificationResponse,
+    );
+
+    // Run on-device dose scheduler & missed-dose startup reconciliation
+    await sl<MedicationReconciliationService>().reconcile();
+  } catch (_) {
+    // Avoid crashing background initialization
+  }
 }
