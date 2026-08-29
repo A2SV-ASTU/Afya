@@ -2,7 +2,7 @@
 
 import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Stethoscope, CheckCircle2, ShieldCheck, ArrowRight, Building2, Loader2 } from 'lucide-react';
+import { Stethoscope, CheckCircle2, ShieldCheck, Building2, Loader2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/modules/core/ui/Button';
 import { Input } from '@/modules/core/ui/Input';

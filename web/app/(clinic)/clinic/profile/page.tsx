@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { ClinicProfileForm } from '@/modules/clinic/components/ClinicProfileForm';
+import { ClinicProfile } from '@/modules/clinic/ClinicProfile';
 
 export default function ClinicProfilePage() {
-  return <ClinicProfileForm />;
+  return <ClinicProfile />;
 }
