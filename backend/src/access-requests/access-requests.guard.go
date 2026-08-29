@@ -18,12 +18,48 @@ import (
 // for the target patient. The grant is keyed on clinic_id, not doctor_id.
 func AccessGuard(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
+		var patientID uuid.UUID
 		patientIDStr := c.Param("patientId")
-		patientID, err := uuid.Parse(patientIDStr)
-		if err != nil {
-			response.RespondAppError(c, appErrors.ErrValidationError("Invalid patient ID"))
-			c.Abort()
-			return
+
+		if patientIDStr != "" {
+			parsedID, err := uuid.Parse(patientIDStr)
+			if err != nil {
+				response.RespondAppError(c, appErrors.ErrValidationError("Invalid patient ID"))
+				c.Abort()
+				return
+			}
+			patientID = parsedID
+		} else {
+			encounterIDStr := c.Param("encounterId")
+			if encounterIDStr == "" {
+				encounterIDStr = c.Param("id")
+			}
+
+			if encounterIDStr == "" {
+				response.RespondAppError(c, appErrors.ErrValidationError("Missing patient or encounter ID"))
+				c.Abort()
+				return
+			}
+
+			encounterID, err := uuid.Parse(encounterIDStr)
+			if err != nil {
+				response.RespondAppError(c, appErrors.ErrValidationError("Invalid encounter ID"))
+				c.Abort()
+				return
+			}
+
+			var fetchedPatientID uuid.UUID
+			err = db.QueryRowContext(c.Request.Context(), "SELECT patient_id FROM encounters WHERE id = $1", encounterID).Scan(&fetchedPatientID)
+			if err != nil {
+				if err == sql.ErrNoRows {
+					response.RespondAppError(c, appErrors.ErrNotFound("Encounter not found"))
+				} else {
+					response.RespondAppError(c, appErrors.ErrInternal("Failed to lookup encounter"))
+				}
+				c.Abort()
+				return
+			}
+			patientID = fetchedPatientID
 		}
 
 		callerID, ok := middleware.GetUserID(c)

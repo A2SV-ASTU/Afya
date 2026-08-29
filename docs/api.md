@@ -1004,3 +1004,278 @@ _(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
 - **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
 - **403 Forbidden** (`forbidden_role`): Patient attempting to access another patient's records.
 - **403 Forbidden** (`forbidden_grant`): Doctor attempting to access records without an active grant.
+
+---
+
+## Encounters & Clinical Evaluations (`/api/v1/encounters` & `/api/v1/patients/:patientId/encounters`)
+
+### 30. Create Encounter
+
+- **Endpoint**: `POST /api/v1/patients/:patientId/encounters`
+- **Auth Required**: Yes (`doctor` required, active access grant required)
+- **Description**: Opens a new medical encounter session for a patient at the doctor's clinic.
+
+#### Request Body (Optional)
+
+```json
+{
+  "notes": "Initial consultation visit"
+}
+```
+
+#### Responses
+
+- **201 Created**:
+
+```json
+{
+  "encounter": {
+    "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+    "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+    "opened_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+    "status": "open",
+    "started_at": "2026-08-29T16:00:00Z",
+    "ended_at": null,
+    "created_at": "2026-08-29T16:00:00Z"
+  }
+}
+```
+
+- **400 Bad Request** (`validation_error`): Invalid patient ID format.
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **403 Forbidden** (`forbidden_role` / `forbidden_grant`): Caller is not a doctor or clinic lacks an active access grant for patient.
+- **409 Conflict** (`open_encounter_exists`): Patient already has an active open encounter. Close current encounter first.
+
+---
+
+### 31. List Patient Encounters
+
+- **Endpoint**: `GET /api/v1/patients/:patientId/encounters`
+- **Auth Required**: Yes (`doctor` with active grant, or `patient` for own records)
+- **Description**: Returns a paginated list of encounters for a patient, ordered by `started_at DESC`.
+
+#### Query Parameters
+
+- `page` (integer, default: 1): Page number.
+- `limit` (integer, default: 20): Number of records per page.
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "encounters": [
+    {
+      "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+      "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "opened_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+      "status": "open",
+      "started_at": "2026-08-29T16:00:00Z",
+      "ended_at": null,
+      "created_at": "2026-08-29T16:00:00Z"
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 1
+}
+```
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **403 Forbidden** (`forbidden_grant` / `forbidden_role`): Access denied.
+
+---
+
+### 32. Get Aggregated Encounter Record
+
+- **Endpoint**: `GET /api/v1/encounters/:id`
+- **Auth Required**: Yes (`doctor` with active grant, or `patient` for own records)
+- **Description**: Assembles the full aggregated encounter payload including vitals, lab results, diagnoses, and prescriptions.
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "encounter": {
+    "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+    "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+    "opened_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+    "status": "open",
+    "started_at": "2026-08-29T16:00:00Z",
+    "ended_at": null,
+    "created_at": "2026-08-29T16:00:00Z"
+  },
+  "vitals": [],
+  "labs": [],
+  "diagnoses": [],
+  "prescriptions": []
+}
+```
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **404 Not Found** (`not_found`): Encounter record not found.
+
+---
+
+### 33. Close Encounter
+
+- **Endpoint**: `PATCH /api/v1/encounters/:id/close`
+- **Auth Required**: Yes (`doctor` required, active access grant required)
+- **Description**: Closes an active encounter, updating status to `"closed"` and setting `ended_at` timestamp.
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "encounter": {
+    "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+    "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+    "opened_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+    "status": "closed",
+    "started_at": "2026-08-29T16:00:00Z",
+    "ended_at": "2026-08-29T16:45:00Z",
+    "created_at": "2026-08-29T16:00:00Z"
+  }
+}
+```
+
+- **409 Conflict** (`encounter_closed`): Encounter is already closed.
+
+---
+
+### 34. Create Clinical Evaluation
+
+- **Endpoint**: `POST /api/v1/encounters/:encounterId/clinical-evaluation`
+- **Auth Required**: Yes (`doctor` required, active access grant required)
+- **Description**: Submits initial clinical evaluation write-up for an open encounter.
+
+#### Request Body
+
+```json
+{
+  "chief_complaint": "Persistent headache and fever for 3 days",
+  "history_of_present_illness": "Patient reports gradual onset of mild-to-moderate frontal headache...",
+  "past_admissions": "None",
+  "family_history": "Mother has hypertension",
+  "allergies_notes": "Penicillin (rash)",
+  "general_appearance": "Patient appears tired but alert",
+  "system_examination": {
+    "cardiovascular": "Normal S1/S2, no murmurs",
+    "respiratory": "Clear to auscultation bilaterally"
+  }
+}
+```
+
+#### Responses
+
+- **201 Created**:
+
+```json
+{
+  "clinical_evaluation": {
+    "id": "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+    "encounter_id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+    "chief_complaint": "Persistent headache and fever for 3 days",
+    "history_of_present_illness": "Patient reports gradual onset of mild-to-moderate frontal headache...",
+    "past_admissions": "None",
+    "family_history": "Mother has hypertension",
+    "allergies_notes": "Penicillin (rash)",
+    "general_appearance": "Patient appears tired but alert",
+    "system_examination": {
+      "cardiovascular": "Normal S1/S2, no murmurs",
+      "respiratory": "Clear to auscultation bilaterally"
+    },
+    "created_at": "2026-08-29T16:05:00Z"
+  }
+}
+```
+
+- **400 Bad Request** (`validation_error`): Missing required fields (`chief_complaint` or `history_of_present_illness`).
+- **409 Conflict** (`encounter_closed`): Cannot add evaluation to a closed encounter.
+- **409 Conflict** (`clinical_evaluation_already_exists`): Evaluation write-up already exists for this encounter.
+
+---
+
+### 35. Get Clinical Evaluation
+
+- **Endpoint**: `GET /api/v1/encounters/:encounterId/clinical-evaluation`
+- **Auth Required**: Yes (`doctor` with active grant, or `patient` for own records)
+- **Description**: Retrieves clinical evaluation details for an encounter.
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "clinical_evaluation": {
+    "id": "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+    "encounter_id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+    "chief_complaint": "Persistent headache and fever for 3 days",
+    "history_of_present_illness": "Patient reports gradual onset of mild-to-moderate frontal headache...",
+    "past_admissions": "None",
+    "family_history": "Mother has hypertension",
+    "allergies_notes": "Penicillin (rash)",
+    "general_appearance": "Patient appears tired but alert",
+    "system_examination": {
+      "cardiovascular": "Normal S1/S2, no murmurs",
+      "respiratory": "Clear to auscultation bilaterally"
+    },
+    "created_at": "2026-08-29T16:05:00Z"
+  }
+}
+```
+
+- **404 Not Found** (`clinical_evaluation_not_found`): Evaluation record not found.
+
+---
+
+### 36. Get Medical History Summary
+
+- **Endpoint**: `GET /api/v1/encounters/:encounterId/medical-history`
+- **Auth Required**: Yes (`doctor` with active grant, or `patient` for own records)
+- **Description**: Retrieves condensed medical history summary of the encounter (chief complaint, diagnosis, prescription items, vitals).
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "encounter_id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+  "date": "2026-08-29T16:00:00Z",
+  "chief_complaint": "Persistent headache and fever for 3 days",
+  "diagnosis": "Acute Viral Pharyngitis",
+  "prescription": [
+    {
+      "medication_name": "Paracetamol",
+      "dose": "500mg",
+      "route": "oral",
+      "frequency": "TDS",
+      "duration": "5 days"
+    }
+  ],
+  "vitals": {
+    "systolic_bp": 120,
+    "diastolic_bp": 80,
+    "pulse": 72,
+    "respiratory_rate": 16,
+    "temperature": 37.5,
+    "spo2": 98.0,
+    "blood_sugar": null,
+    "weight": 70.0
+  }
+}
+```
+
+- **404 Not Found** (`not_found`): Encounter record not found.
+
