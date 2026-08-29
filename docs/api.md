@@ -828,3 +828,179 @@ _(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
 - **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
 - **403 Forbidden** (`forbidden_role`): Caller is unauthorized for this clinic or not a clinic admin.
 - **409 Conflict** (`conflict`): Access request is not currently in `approved` status.
+
+---
+
+### 25. Get Clinic Details
+
+- **Endpoint**: `GET /api/v1/clinics/:clinicId`
+- **Auth Required**: Yes (`super_admin` or `clinic_admin`)
+- **Description**: Fetches the details of a specific clinic.
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "clinic": {
+    "id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+    "name": "General Hospital",
+    "email": "contact@generalhospital.com",
+    "phone": "+1234567890",
+    "address": "123 Main St",
+    "status": "active",
+    "created_at": "2026-08-28T14:00:00Z",
+    "updated_at": "2026-08-28T14:00:00Z"
+  }
+}
+```
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
+- **403 Forbidden** (`forbidden_role`): Caller is a clinic admin for a different clinic.
+- **404 Not Found** (`not_found`): Clinic not found.
+
+---
+
+### 26. List Clinic Doctors
+
+- **Endpoint**: `GET /api/v1/clinics/:clinicId/doctors`
+- **Auth Required**: Yes (`super_admin` or `clinic_admin`)
+- **Description**: Returns all doctors associated with the specified clinic.
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "doctors": [
+    {
+      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+      "first_name": "John",
+      "last_name": "Doe",
+      "email": "doctor@example.com",
+      "phone": "+1999888777",
+      "specialization": "Cardiology",
+      "license_number": "LIC-999-555",
+      "status": "active"
+    }
+  ]
+}
+```
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **403 Forbidden** (`forbidden_role`): Caller is unauthorized for this clinic.
+
+---
+
+### 27. List Clinic Invitations
+
+- **Endpoint**: `GET /api/v1/clinics/:clinicId/invitations`
+- **Auth Required**: Yes (`super_admin` or `clinic_admin`)
+- **Description**: Returns all doctor invitations for the specified clinic.
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "invitations": [
+    {
+      "id": "d2eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "email": "newdoctor@example.com",
+      "token": "inv_12345",
+      "status": "pending",
+      "expires_at": "2026-08-29T14:00:00Z",
+      "created_at": "2026-08-28T14:00:00Z"
+    }
+  ]
+}
+```
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **403 Forbidden** (`forbidden_role`): Caller is unauthorized for this clinic.
+
+---
+
+## Appointments (`/api/v1/appointments` & `/api/v1/patients/:patientId/appointments`)
+
+### 28. Create Appointment
+
+- **Endpoint**: `POST /api/v1/appointments`
+- **Auth Required**: Yes (`doctor`)
+- **Description**: Creates a new appointment. The doctor must have an active access grant from the target patient's clinic.
+
+#### Request Body
+
+```json
+{
+  "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "scheduled_at": "2026-09-01T10:00:00Z",
+  "notes": "Follow-up checkup"
+}
+```
+
+#### Responses
+
+- **201 Created**:
+
+```json
+{
+  "appointment": {
+    "id": "e3eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+    "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+    "doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+    "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "scheduled_at": "2026-09-01T10:00:00Z",
+    "status": "scheduled",
+    "notes": "Follow-up checkup",
+    "created_at": "2026-08-28T14:00:00Z",
+    "updated_at": "2026-08-28T14:00:00Z"
+  }
+}
+```
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **403 Forbidden** (`forbidden_role`): Caller is not a doctor.
+- **403 Forbidden** (`forbidden_grant`): Doctor's clinic does not have an active access grant for the patient.
+
+---
+
+### 29. List Patient Appointments
+
+- **Endpoint**: `GET /api/v1/patients/:patientId/appointments`
+- **Auth Required**: Yes (`patient` or `doctor`)
+- **Description**: Lists appointments for a specific patient. Patients can only view their own appointments. Doctors require an active access grant.
+
+#### Query Parameters
+
+- `status` (string, optional): Filter by appointment status (e.g., `scheduled`, `completed`, `cancelled`).
+
+#### Responses
+
+- **200 OK**:
+
+```json
+{
+  "appointments": [
+    {
+      "id": "e3eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+      "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "scheduled_at": "2026-09-01T10:00:00Z",
+      "status": "scheduled",
+      "notes": "Follow-up checkup",
+      "created_at": "2026-08-28T14:00:00Z",
+      "updated_at": "2026-08-28T14:00:00Z"
+    }
+  ]
+}
+```
+
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **403 Forbidden** (`forbidden_role`): Patient attempting to access another patient's records.
+- **403 Forbidden** (`forbidden_grant`): Doctor attempting to access records without an active grant.
