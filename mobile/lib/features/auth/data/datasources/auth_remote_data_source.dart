@@ -84,7 +84,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           code: response.statusCode?.toString(),
         );
       }
+    } on ServerException {
+      rethrow;
     } on DioException catch (e) {
+      if (e.error is ServerException) {
+        throw e.error as ServerException;
+      }
       final errorMessage = e.response?.data?['error']?['message'] ??
           e.response?.data?['message'] ??
           e.message ??
@@ -121,7 +126,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           code: response.statusCode?.toString(),
         );
       }
+    } on ServerException {
+      rethrow;
     } on DioException catch (e) {
+      if (e.error is ServerException) {
+        throw e.error as ServerException;
+      }
       final errorMessage = e.response?.data?['error']?['message'] ??
           e.response?.data?['message'] ??
           e.message ??

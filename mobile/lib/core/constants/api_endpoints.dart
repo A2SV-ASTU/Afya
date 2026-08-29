@@ -1,7 +1,7 @@
 class ApiEndpoints {
   ApiEndpoints._();
 
-  static const String baseUrl = 'https://afya-c1ez.onrender.com/api/v1';
+  static const String baseUrl = 'http://10.42.0.40:8080/api/v1';
 
   // Auth
   static const String signup = '/auth/signup';
