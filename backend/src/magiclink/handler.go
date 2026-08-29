@@ -350,7 +350,7 @@ func renderSuccessPage(title, color, message string) string {
         </div>
     </div>
 </body>
-</html>`, color, title, message)
+</html>`, title, color, title, message)
 }
 
 func renderErrorPage(title, message string) string {
