@@ -80,7 +80,7 @@ func main() {
 	clinicService := clinics.NewService(db, clinicRepo, emailSender)
 	arService := accessrequests.NewService(db, arRepo, userRepo, emailSender)
 
-	apptService := appointments.NewService(apptRepo)
+	apptService := appointments.NewService(apptRepo, arRepo)
 
 	// 6. Initialize Handlers
 	userHandler := users.NewHandler(userService)

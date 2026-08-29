@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	accessrequests "afyamind-backend/src/access-requests"
 	"afyamind-backend/src/shared/auth"
 	"afyamind-backend/src/shared/errors"
 	"github.com/google/uuid"
@@ -15,16 +16,22 @@ type Service interface {
 }
 
 type service struct {
-	repo Repository
+	repo   Repository
+	arRepo accessrequests.Repository
 }
 
-func NewService(repo Repository) Service {
-	return &service{repo: repo}
+func NewService(repo Repository, arRepo accessrequests.Repository) Service {
+	return &service{repo: repo, arRepo: arRepo}
 }
 
 func (s *service) CreateAppointment(ctx context.Context, user *auth.UserContext, req CreateAppointmentRequest) (*Appointment, error) {
 	if user.Role != "doctor" || user.ClinicID == nil {
 		return nil, errors.ErrForbiddenRole()
+	}
+
+	_, err := s.arRepo.FindActiveGrant(ctx, *user.ClinicID, req.PatientID)
+	if err != nil {
+		return nil, errors.ErrForbiddenGrant()
 	}
 
 	appt := &Appointment{
@@ -39,7 +46,7 @@ func (s *service) CreateAppointment(ctx context.Context, user *auth.UserContext,
 		UpdatedAt:   time.Now(),
 	}
 
-	err := s.repo.Create(ctx, appt)
+	err = s.repo.Create(ctx, appt)
 	if err != nil {
 		return nil, err
 	}
