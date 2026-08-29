@@ -5,7 +5,6 @@ import (
 
 	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/response"
-	"afyamind-backend/src/shared/middleware"
 
 	sharedAuth "afyamind-backend/src/shared/auth"
 
@@ -89,13 +88,13 @@ func (h *Handler) DeactivateDoctor(c *gin.Context) {
 		return
 	}
 
-	callerID, ok := middleware.GetUserID(c)
-	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+	user, err := sharedAuth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
 		return
 	}
 
-	if err := h.svc.DeactivateDoctor(c.Request.Context(), clinicID, doctorID, callerID); err != nil {
+	if err := h.svc.DeactivateDoctor(c.Request.Context(), user, clinicID, doctorID); err != nil {
 		if err.Error() == "unauthorized for this clinic" {
 			response.RespondAppError(c, appErrors.ErrForbiddenRole())
 			return
@@ -147,13 +146,13 @@ func (h *Handler) ActivateDoctor(c *gin.Context) {
 		return
 	}
 
-	callerID, ok := middleware.GetUserID(c)
-	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+	user, err := sharedAuth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
 		return
 	}
 
-	if err := h.svc.ActivateDoctor(c.Request.Context(), clinicID, doctorID, callerID); err != nil {
+	if err := h.svc.ActivateDoctor(c.Request.Context(), user, clinicID, doctorID); err != nil {
 		if err.Error() == "unauthorized for this clinic" {
 			response.RespondAppError(c, appErrors.ErrForbiddenRole())
 			return
@@ -190,7 +189,7 @@ func (h *Handler) GetClinic(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"clinic": clinic})
+	response.JSON(c, http.StatusOK, gin.H{"clinic": clinic})
 }
 
 func (h *Handler) GetClinicDoctors(c *gin.Context) {
@@ -213,7 +212,7 @@ func (h *Handler) GetClinicDoctors(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, doctors)
+	response.List(c, http.StatusOK, "doctors", doctors)
 }
 
 func (h *Handler) GetClinicInvitations(c *gin.Context) {
@@ -236,6 +235,6 @@ func (h *Handler) GetClinicInvitations(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, invitations)
+	response.List(c, http.StatusOK, "invitations", invitations)
 }
 

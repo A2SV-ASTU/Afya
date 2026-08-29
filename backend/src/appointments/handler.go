@@ -37,7 +37,7 @@ func (h *Handler) CreateAppointment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"appointment": appt})
+	response.JSON(c, http.StatusCreated, gin.H{"appointment": appt})
 }
 
 func (h *Handler) GetPatientAppointments(c *gin.Context) {
@@ -66,5 +66,5 @@ func (h *Handler) GetPatientAppointments(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, appointments)
+	response.List(c, http.StatusOK, "appointments", appointments)
 }

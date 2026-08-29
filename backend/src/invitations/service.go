@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"afyamind-backend/src/database"
@@ -121,6 +122,9 @@ func (s *service) CreateInvitation(ctx context.Context, clinicID, invitedBy uuid
 		go func(email, subject, body string) {
 			_ = s.sender.Send(email, subject, body)
 		}(req.Email, subject, body)
+	} else {
+		// Log the token so developers can test locally without SMTP
+		log.Printf("LOCAL DEV: Created doctor invitation for %s with token: %s", req.Email, rawToken)
 	}
 
 	return nil

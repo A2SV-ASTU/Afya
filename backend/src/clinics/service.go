@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 
 	"afyamind-backend/src/database"
 	"afyamind-backend/src/shared/email"
@@ -26,8 +27,8 @@ type Service interface {
 	GetClinics(ctx context.Context) ([]*Clinic, error)
 	DeactivateClinic(ctx context.Context, id uuid.UUID) error
 	ActivateClinic(ctx context.Context, id uuid.UUID) error
-	DeactivateDoctor(ctx context.Context, clinicID, doctorID, callerID uuid.UUID) error
-	ActivateDoctor(ctx context.Context, clinicID, doctorID, callerID uuid.UUID) error
+	DeactivateDoctor(ctx context.Context, user *auth.UserContext, clinicID, doctorID uuid.UUID) error
+	ActivateDoctor(ctx context.Context, user *auth.UserContext, clinicID, doctorID uuid.UUID) error
 
 	GetClinic(ctx context.Context, user *auth.UserContext, id uuid.UUID) (*Clinic, error)
 	GetClinicDoctors(ctx context.Context, user *auth.UserContext, clinicID uuid.UUID) ([]DoctorResponse, error)
@@ -154,6 +155,9 @@ func (s *service) CreateClinic(ctx context.Context, req CreateClinicRequest) (*C
 		go func(email, subject, body string) {
 			_ = s.sender.Send(email, subject, body)
 		}(req.Email, subject, body)
+	} else {
+		// Log the credentials so developers can test locally without SMTP
+		log.Printf("LOCAL DEV: Created clinic admin %s with password: %s", req.Email, generatedPassword)
 	}
 
 	return newClinic, nil
@@ -174,12 +178,8 @@ func (s *service) DeactivateClinic(ctx context.Context, id uuid.UUID) error {
 	return s.repo.UpdateStatus(ctx, id, StatusDeactivated)
 }
 
-func (s *service) DeactivateDoctor(ctx context.Context, clinicID, doctorID, callerID uuid.UUID) error {
-	caller, err := users.NewRepository(s.db).FindByID(ctx, callerID)
-	if err != nil {
-		return err
-	}
-	if caller.Role == users.RoleClinicAdmin && (caller.ClinicID == nil || *caller.ClinicID != clinicID) {
+func (s *service) DeactivateDoctor(ctx context.Context, user *auth.UserContext, clinicID, doctorID uuid.UUID) error {
+	if user.Role == string(users.RoleClinicAdmin) && (user.ClinicID == nil || *user.ClinicID != clinicID) {
 		return errors.New("unauthorized for this clinic")
 	}
 
@@ -197,12 +197,8 @@ func (s *service) ActivateClinic(ctx context.Context, id uuid.UUID) error {
 	return s.repo.UpdateStatus(ctx, id, StatusActive)
 }
 
-func (s *service) ActivateDoctor(ctx context.Context, clinicID, doctorID, callerID uuid.UUID) error {
-	caller, err := users.NewRepository(s.db).FindByID(ctx, callerID)
-	if err != nil {
-		return err
-	}
-	if caller.Role == users.RoleClinicAdmin && (caller.ClinicID == nil || *caller.ClinicID != clinicID) {
+func (s *service) ActivateDoctor(ctx context.Context, user *auth.UserContext, clinicID, doctorID uuid.UUID) error {
+	if user.Role == string(users.RoleClinicAdmin) && (user.ClinicID == nil || *user.ClinicID != clinicID) {
 		return errors.New("unauthorized for this clinic")
 	}
 
@@ -226,7 +222,7 @@ func (s *service) GetClinic(ctx context.Context, user *auth.UserContext, id uuid
 }
 
 func (s *service) GetClinicDoctors(ctx context.Context, user *auth.UserContext, clinicID uuid.UUID) ([]DoctorResponse, error) {
-	if user.ClinicID == nil || *user.ClinicID != clinicID {
+	if user.Role != "super_admin" && (user.ClinicID == nil || *user.ClinicID != clinicID) {
 		return nil, appErrors.ErrForbiddenRole()
 	}
 
@@ -250,7 +246,7 @@ func (s *service) GetClinicDoctors(ctx context.Context, user *auth.UserContext, 
 }
 
 func (s *service) GetClinicInvitations(ctx context.Context, user *auth.UserContext, clinicID uuid.UUID) ([]InvitationResponse, error) {
-	if user.ClinicID == nil || *user.ClinicID != clinicID {
+	if user.Role != "super_admin" && (user.ClinicID == nil || *user.ClinicID != clinicID) {
 		return nil, appErrors.ErrForbiddenRole()
 	}
 

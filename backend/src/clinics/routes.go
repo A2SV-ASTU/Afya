@@ -31,8 +31,8 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 
 	// General clinic routes
 	clinicsGroup.GET("/:clinicId", middleware.RequireRole("super_admin", "clinic_admin"), handler.GetClinic)
-	clinicsGroup.GET("/:clinicId/doctors", middleware.RequireRole("clinic_admin"), handler.GetClinicDoctors)
-	clinicsGroup.GET("/:clinicId/invitations", middleware.RequireRole("clinic_admin"), handler.GetClinicInvitations)
+	clinicsGroup.GET("/:clinicId/doctors", middleware.RequireRole("super_admin", "clinic_admin"), handler.GetClinicDoctors)
+	clinicsGroup.GET("/:clinicId/invitations", middleware.RequireRole("super_admin", "clinic_admin"), handler.GetClinicInvitations)
 
 	// NOTE: Other clinics endpoints (e.g. GET /clinics/:clinicId, GET /clinics/:clinicId/doctors)
 	// are owned by another dev and will be added here later.
