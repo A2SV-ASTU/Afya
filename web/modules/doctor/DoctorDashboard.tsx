@@ -29,7 +29,7 @@ export function DoctorDashboard() {
     navigateTo,
   } = useStore();
 
-  const activeClinic = clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0];
+  const activeClinic = clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0];
 
   // Patients scoped strictly to clinic's active access
   const authorizedPatients = patients.filter((p) =>
@@ -52,7 +52,7 @@ export function DoctorDashboard() {
             Doctor Clinical Practice
           </h2>
           <p className="text-sm text-slate-500">
-            Dr. {currentUser.first_name} {currentUser.last_name} • {currentUser.specialization || 'Attending Physician'} • {activeClinic.name}
+            Dr. {currentUser?.first_name} {currentUser?.last_name} • {currentUser?.specialization || 'Attending Physician'} • {activeClinic.name}
           </p>
         </div>
 

@@ -96,7 +96,7 @@ export function DoctorDetail() {
                 <h3 className="text-base font-bold text-slate-900">
                   Dr. {doctor.first_name} {doctor.last_name}
                 </h3>
-                <StatusBadge variant={doctor.doctor_status}>{doctor.doctor_status}</StatusBadge>
+                <StatusBadge variant={doctor.doctor_status || 'active'}>{doctor.doctor_status}</StatusBadge>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">{doctor.specialization}</p>
             </div>

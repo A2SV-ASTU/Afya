@@ -102,7 +102,7 @@ export function CollapsibleSidebar() {
                     Physician Scope
                   </span>
                   <p className="text-xs font-bold text-slate-900 truncate">
-                    Dr. {currentUser.first_name} {currentUser.last_name}
+                    Dr. {currentUser?.first_name} {currentUser?.last_name}
                   </p>
                 </div>
               </div>
