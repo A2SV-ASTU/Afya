@@ -44,6 +44,35 @@ class LocalDoseRecordModel {
     );
   }
 
+  LocalDoseRecordModel copyWith({
+    String? id,
+    String? prescriptionItemId,
+    String? medicationName,
+    String? dose,
+    DateTime? scheduledTime,
+    DateTime? snoozedUntil,
+    bool clearSnoozedUntil = false,
+    DoseStatus? status,
+    DateTime? recordedAt,
+    int? snoozeCount,
+    String? skipReason,
+    bool clearSkipReason = false,
+  }) {
+    return LocalDoseRecordModel(
+      id: id ?? this.id,
+      prescriptionItemId: prescriptionItemId ?? this.prescriptionItemId,
+      medicationName: medicationName ?? this.medicationName,
+      dose: dose ?? this.dose,
+      scheduledTime: scheduledTime ?? this.scheduledTime,
+      snoozedUntil:
+          clearSnoozedUntil ? null : (snoozedUntil ?? this.snoozedUntil),
+      status: status ?? this.status,
+      recordedAt: recordedAt ?? this.recordedAt,
+      snoozeCount: snoozeCount ?? this.snoozeCount,
+      skipReason: clearSkipReason ? null : (skipReason ?? this.skipReason),
+    );
+  }
+
   static DoseStatus _parseStatus(String value) {
     switch (value.toLowerCase()) {
       case 'pending':

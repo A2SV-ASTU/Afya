@@ -43,17 +43,28 @@ import '../../features/medication_and_adherence/data/repositories/medication_rep
     as _i106;
 import '../../features/medication_and_adherence/domain/repositories/medication_repository.dart'
     as _i735;
+import '../../features/medication_and_adherence/domain/services/medication_reconciliation_service.dart'
+    as _i570;
+import '../../features/medication_and_adherence/domain/usecases/cancel_prescription_reminders_usecase.dart'
+    as _i854;
 import '../../features/medication_and_adherence/domain/usecases/complete_prescription_usecase.dart'
     as _i724;
+import '../../features/medication_and_adherence/domain/usecases/generate_dose_schedule_usecase.dart'
+    as _i492;
 import '../../features/medication_and_adherence/domain/usecases/get_local_dose_records_usecase.dart'
     as _i240;
 import '../../features/medication_and_adherence/domain/usecases/get_prescriptions_usecase.dart'
     as _i453;
+import '../../features/medication_and_adherence/domain/usecases/handle_snooze_usecase.dart'
+    as _i46;
+import '../../features/medication_and_adherence/domain/usecases/process_missed_doses_usecase.dart'
+    as _i779;
 import '../../features/medication_and_adherence/domain/usecases/record_dose_adherence_usecase.dart'
     as _i851;
 import '../network/api_client.dart' as _i557;
 import '../network/network_info.dart' as _i932;
 import '../notifications/local_alarm_scheduler.dart' as _i949;
+import '../notifications/medication_notification_handler.dart' as _i275;
 import '../notifications/notification_service.dart' as _i229;
 import '../storage/cookie_storage_service.dart' as _i916;
 import '../storage/local_database_service.dart' as _i605;
@@ -101,12 +112,44 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i666.SecureStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i469.RouteGuards>(
         () => _i469.RouteGuards(gh<_i666.SecureStorageService>()));
+    gh.lazySingleton<_i779.ProcessMissedDosesUseCase>(
+        () => _i779.ProcessMissedDosesUseCase(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i949.LocalAlarmScheduler>(),
+              missedThreshold: gh<Duration>(),
+            ));
+    gh.lazySingleton<_i854.CancelPrescriptionRemindersUseCase>(
+        () => _i854.CancelPrescriptionRemindersUseCase(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i949.LocalAlarmScheduler>(),
+            ));
+    gh.lazySingleton<_i492.GenerateDoseScheduleUseCase>(
+        () => _i492.GenerateDoseScheduleUseCase(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i949.LocalAlarmScheduler>(),
+            ));
+    gh.lazySingleton<_i46.HandleSnoozeUseCase>(() => _i46.HandleSnoozeUseCase(
+          gh<_i894.MedicationLocalDataSource>(),
+          gh<_i949.LocalAlarmScheduler>(),
+        ));
     gh.lazySingletonAsync<_i113.ClinicalHistoryRemoteDataSource>(() async =>
         _i113.ClinicalHistoryRemoteDataSourceImpl(
             await getAsync<_i557.ApiClient>()));
     gh.lazySingletonAsync<_i1022.MedicationRemoteDataSource>(() async =>
         _i1022.MedicationRemoteDataSourceImpl(
             await getAsync<_i557.ApiClient>()));
+    gh.lazySingleton<_i570.MedicationReconciliationService>(
+        () => _i570.MedicationReconciliationService(
+              gh<_i779.ProcessMissedDosesUseCase>(),
+              gh<_i492.GenerateDoseScheduleUseCase>(),
+              gh<_i894.MedicationLocalDataSource>(),
+            ));
+    gh.lazySingleton<_i275.MedicationNotificationHandler>(
+        () => _i275.MedicationNotificationHandler(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i949.LocalAlarmScheduler>(),
+              gh<_i46.HandleSnoozeUseCase>(),
+            ));
     gh.lazySingletonAsync<_i735.MedicationRepository>(() async =>
         _i106.MedicationRepositoryImpl(
           remoteDataSource: await getAsync<_i1022.MedicationRemoteDataSource>(),
@@ -118,18 +161,22 @@ extension GetItInjectableX on _i174.GetIt {
                   await getAsync<_i113.ClinicalHistoryRemoteDataSource>(),
               localDataSource: gh<_i196.ClinicalHistoryLocalDataSource>(),
             ));
-    gh.lazySingletonAsync<_i724.CompletePrescriptionUseCase>(() async =>
-        _i724.CompletePrescriptionUseCase(
-            await getAsync<_i735.MedicationRepository>()));
+    gh.lazySingletonAsync<_i453.GetPrescriptionsUseCase>(
+        () async => _i453.GetPrescriptionsUseCase(
+              await getAsync<_i735.MedicationRepository>(),
+              gh<_i492.GenerateDoseScheduleUseCase>(),
+            ));
     gh.lazySingletonAsync<_i240.GetLocalDoseRecordsUseCase>(() async =>
         _i240.GetLocalDoseRecordsUseCase(
-            await getAsync<_i735.MedicationRepository>()));
-    gh.lazySingletonAsync<_i453.GetPrescriptionsUseCase>(() async =>
-        _i453.GetPrescriptionsUseCase(
             await getAsync<_i735.MedicationRepository>()));
     gh.lazySingletonAsync<_i851.RecordDoseAdherenceUseCase>(() async =>
         _i851.RecordDoseAdherenceUseCase(
             await getAsync<_i735.MedicationRepository>()));
+    gh.lazySingletonAsync<_i724.CompletePrescriptionUseCase>(
+        () async => _i724.CompletePrescriptionUseCase(
+              await getAsync<_i735.MedicationRepository>(),
+              gh<_i854.CancelPrescriptionRemindersUseCase>(),
+            ));
     return this;
   }
 }
