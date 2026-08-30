@@ -13,7 +13,7 @@ class ClinicGrantModel extends ClinicGrantEntity {
       grantId: json['grant_id'] as String,
       clinicId: json['clinic_id'] as String,
       clinicName: json['clinic_name'] as String,
-      grantedAt: DateTime.parse(json['granted_at'] as String),
+      grantedAt: DateTime.parse(json['granted_at'] as String).toLocal(),
     );
   }
 

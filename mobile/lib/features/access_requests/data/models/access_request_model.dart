@@ -20,8 +20,8 @@ class AccessRequestModel extends AccessRequestEntity {
       doctorName: json['doctor_name'] as String,
       reason: json['reason'] as String,
       status: json['status'] as String,
-      expiresAt: DateTime.parse(json['expires_at'] as String),
-      createdAt: DateTime.parse(json['created_at'] as String),
+      expiresAt: DateTime.parse(json['expires_at'] as String).toLocal(),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
   }
 
