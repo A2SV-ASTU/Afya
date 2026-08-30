@@ -224,3 +224,52 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 		},
 	})
 }
+
+// ResetPassword godoc
+//
+//	@Summary		Reset user password
+//	@Description	Sets a new password using a reset token provided via request body, cookie, or query parameter.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.ResetPasswordRequest	true	"New password and optional reset token"
+//	@Success		200		{object}	response.MessageEnvelope	"Password has been reset successfully"
+//	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
+//	@Router			/auth/reset-password [post]
+func (h *Handler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request body"))
+		return
+	}
+
+	resetToken := req.Token
+	if resetToken == "" {
+		if cookieToken, err := c.Cookie("reset_token"); err == nil && cookieToken != "" {
+			resetToken = cookieToken
+		}
+	}
+	if resetToken == "" {
+		resetToken = c.Query("token")
+	}
+
+	if resetToken == "" {
+		response.RespondAppError(c, appErrors.ErrValidationError("Reset token is required"))
+		return
+	}
+
+	if appErr := h.service.ResetPassword(c.Request.Context(), resetToken, req.Password); appErr != nil {
+		response.RespondAppError(c, appErr)
+		return
+	}
+
+	// Clear reset_token cookie if present
+	c.SetCookie("reset_token", "", -1, "/", h.cfg.CookieDomain, h.cfg.CookieSecure, true)
+
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "Password has been reset successfully",
+		},
+	})
+}
+
