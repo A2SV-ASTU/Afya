@@ -20,6 +20,18 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
+// CreateEncounter godoc
+//
+//	@Summary		Open a new clinical encounter
+//	@Description	Opens a clinical encounter session for a patient. Enforces doctor access.
+//	@Tags			Encounters
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			patientId	path		string								true	"Patient UUID"
+//	@Success		201			{object}	encounters.EncounterResponse		"Encounter created successfully"
+//	@Failure		400			{object}	response.ErrorEnvelope				"Invalid Patient ID"
+//	@Failure		401			{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Router			/patients/{patientId}/encounters [post]
 func (h *Handler) CreateEncounter(c *gin.Context) {
 	patientIDStr := c.Param("patientId")
 	patientID, err := uuid.Parse(patientIDStr)
@@ -43,6 +55,20 @@ func (h *Handler) CreateEncounter(c *gin.Context) {
 	c.JSON(http.StatusCreated, res)
 }
 
+// ListEncounters godoc
+//
+//	@Summary		List encounters for a patient
+//	@Description	Retrieves all encounters recorded for a specific patient. Supports pagination.
+//	@Tags			Encounters
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			patientId	path		string	true	"Patient ID"
+//	@Param			page		query		int		false	"Page number (default: 1)"
+//	@Param			limit		query		int		false	"Items per page (default: 20)"
+//	@Success		200			{object}	object{encounters=[]encounters.Encounter,page=int,limit=int,total=int}	"List of encounters"
+//	@Failure		400			{object}	response.ErrorEnvelope	"Invalid Patient ID"
+//	@Failure		401			{object}	response.ErrorEnvelope	"Not authenticated"
+//	@Router			/patients/{patientId}/encounters [get]
 func (h *Handler) ListEncounters(c *gin.Context) {
 	patientIDStr := c.Param("patientId")
 	patientID, err := uuid.Parse(patientIDStr)
@@ -68,6 +94,18 @@ func (h *Handler) ListEncounters(c *gin.Context) {
 	})
 }
 
+// GetEncounter godoc
+//
+//	@Summary		Get details of an encounter
+//	@Description	Returns full details of an encounter including vitals, lab results, diagnoses and prescriptions.
+//	@Tags			Encounters
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string										true	"Encounter ID"
+//	@Success		200	{object}	encounters.AggregatedEncounterResponse		"Encounter details"
+//	@Failure		400	{object}	response.ErrorEnvelope						"Invalid Encounter ID"
+//	@Failure		401	{object}	response.ErrorEnvelope						"Not authenticated"
+//	@Router			/encounters/{id} [get]
 func (h *Handler) GetEncounter(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
@@ -85,6 +123,18 @@ func (h *Handler) GetEncounter(c *gin.Context) {
 	c.JSON(http.StatusOK, agg)
 }
 
+// CloseEncounter godoc
+//
+//	@Summary		Close an open encounter
+//	@Description	Marks a clinical encounter session as closed/finalized. Doctor only.
+//	@Tags			Encounters
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string								true	"Encounter ID"
+//	@Success		200	{object}	encounters.EncounterResponse		"Encounter marked closed"
+//	@Failure		400	{object}	response.ErrorEnvelope				"Invalid Encounter ID"
+//	@Failure		401	{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Router			/encounters/{id}/close [patch]
 func (h *Handler) CloseEncounter(c *gin.Context) {
 	idStr := c.Param("id")
 	id, err := uuid.Parse(idStr)
@@ -102,6 +152,18 @@ func (h *Handler) CloseEncounter(c *gin.Context) {
 	c.JSON(http.StatusOK, res)
 }
 
+// GetMedicalHistory godoc
+//
+//	@Summary		Get patient medical history summary
+//	@Description	Returns a summary of the patient's medical history from the vantage point of this encounter.
+//	@Tags			Encounters
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string										true	"Encounter ID"
+//	@Success		200	{object}	[]encounters.MedicalHistoryResponse			"Medical history summary list"
+//	@Failure		400	{object}	response.ErrorEnvelope						"Invalid Encounter ID"
+//	@Failure		401	{object}	response.ErrorEnvelope						"Not authenticated"
+//	@Router			/encounters/{id}/medical-history [get]
 func (h *Handler) GetMedicalHistory(c *gin.Context) {
 	encounterIDStr := c.Param("encounterId")
 	if encounterIDStr == "" {
