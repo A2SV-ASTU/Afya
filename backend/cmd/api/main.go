@@ -1,9 +1,72 @@
+// Package main is the entry point for the AfyaMind API server.
+//
+//	@title			AfyaMind API
+//	@version		1.0
+//	@description	AfyaMind telemedicine platform REST API.
+//	@description	**Authentication:** Most protected endpoints require a JWT Bearer token.
+//	@description	Login via POST /auth/login, then click the **Authorize** button above and enter: `Bearer <your_token>`
+//
+//	@contact.name	AfyaMind Support
+//	@contact.email	support@afyamind.com
+//
+//	@license.name	MIT
+//	@license.url	https://opensource.org/licenses/MIT
+//
+//	@host		localhost:8080
+//	@BasePath	/api/v1
+//	@schemes	http https
+//
+//	@securityDefinitions.apikey	BearerAuth
+//	@in							header
+//	@name						Authorization
+//	@description				JWT access token. Format: **Bearer &lt;token&gt;**
+//
+//	@tag.name			Health
+//	@tag.description	Service liveness and readiness check
+//
+//	@tag.name			Auth
+//	@tag.description	Registration, login, token refresh, forgot/reset password, and logout
+//
+//	@tag.name			Users
+//	@tag.description	Authenticated user profile management (self-service)
+//
+//	@tag.name			Invitations
+//	@tag.description	Doctor registration/invitation links
+//
+//	@tag.name			Clinics
+//	@tag.description	Clinic registration, status toggle, and doctor list/status administration
+//
+//	@tag.name			AccessRequests
+//	@tag.description	Patient consent & clinical record access control
+//
+//	@tag.name			Appointments
+//	@tag.description	Appointment scheduling between patients and doctors
+//
+//	@tag.name			Encounters
+//	@tag.description	Clinical encounter records, medical history, and status
+//
+//	@tag.name			ClinicalEvaluations
+//	@tag.description	Chief complaints and examinations recorded during encounters
+//
+//	@tag.name			Prescriptions
+//	@tag.description	(Coming soon) Prescription management
+//
+//	@tag.name			Labs
+//	@tag.description	(Coming soon) Laboratory test orders and results
+//
+//	@tag.name			Diagnoses
+//	@tag.description	(Coming soon) Diagnosis records
+//
+//	@tag.name			Vitals
+//	@tag.description	(Coming soon) Patient vital signs
 package main
 
 import (
 	"context"
 	"log"
 	"time"
+
+	_ "afyamind-backend/docs" // swaggo generated docs — DO NOT REMOVE
 
 	"afyamind-backend/src/access-requests"
 	"afyamind-backend/src/appointments"
@@ -21,6 +84,8 @@ import (
 	"afyamind-backend/src/users"
 
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func main() {
@@ -107,9 +172,23 @@ func main() {
 	router.Use(middleware.CORS(cfg.CookieDomain))
 
 	// Health check endpoint
+	//
+	//	@Summary		Health check
+	//	@Description	Returns the current service status and environment name.
+	//	@Tags			Health
+	//	@Produce		json
+	//	@Success		200	{object}	map[string]string	"Service is healthy"
+	//	@Router			/health [get]
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok", "env": cfg.Env})
 	})
+
+	// Swagger UI — available at /swagger/index.html
+	// Disabled in production to avoid exposing API internals.
+	if cfg.Env != "production" {
+		router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		log.Printf("Swagger UI available at http://localhost:%s/swagger/index.html", cfg.Port)
+	}
 
 	// 8. Register API v1 Group (Base path /api/v1 as per API_Contract.md)
 	apiV1 := router.Group("/api/v1")
