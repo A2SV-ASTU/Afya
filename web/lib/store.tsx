@@ -1,5 +1,6 @@
 'use client';
 
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   Clinic,
@@ -21,6 +22,7 @@ import {
   DiagnosisType,
   AppointmentStatus,
 } from '@/types/database';
+import { getClinics, activateClinic as apiActivateClinic, deactivateClinic as apiDeactivateClinic } from '@/lib/api/clinics';
 
 interface StoreContextType {
   // Current user & navigation state
@@ -35,6 +37,8 @@ interface StoreContextType {
 
   // Clinics (Admin actions)
   clinics: Clinic[];
+  clinicsLoading: boolean;
+  clinicsError: string | null;
   createClinic: (clinicData: {
     name: string;
     email: string;
@@ -43,6 +47,7 @@ interface StoreContextType {
     admin_name: string;
     admin_password?: string;
   }) => Clinic;
+  activateClinic: (clinicId: string) => void;
   deactivateClinic: (clinicId: string) => void;
 
   // Doctors & Invitations (Clinic actions)
@@ -641,7 +646,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     created_at: '2025-01-15T09:00:00Z',
   });
 
-  const [clinics, setClinics] = useState<Clinic[]>(DEFAULT_CLINICS);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [clinicsLoading, setClinicsLoading] = useState(true);
+  const [clinicsError, setClinicsError] = useState<string | null>(null);
   const [doctors, setDoctors] = useState<User[]>(DEFAULT_DOCTORS);
   const [invitations, setInvitations] = useState<DoctorInvitation[]>(DEFAULT_INVITATIONS);
   const [patients, setPatients] = useState<Patient[]>(DEFAULT_PATIENTS);
@@ -676,7 +683,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           }
           if (p.activeView) setActiveView(p.activeView);
           if (p.viewParams) setViewParams(p.viewParams);
-          if (p.clinics) setClinics(p.clinics);
+
           if (p.doctors) setDoctors(p.doctors);
           if (p.invitations) setInvitations(p.invitations);
           if (p.patients) setPatients(p.patients);
@@ -689,11 +696,27 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     rehydrate();
   }, []);
 
+  useEffect(() => {
+    getClinics()
+      .then((data) =>
+        setClinics(
+          data.map((c) => ({
+            ...c,
+            admin_name: (c as unknown as { admin_name?: string }).admin_name ?? '',
+            admin_email: (c as unknown as { admin_email?: string }).admin_email ?? '',
+            total_doctors: (c as unknown as { total_doctors?: number }).total_doctors ?? 0,
+            active_grants_count: (c as unknown as { active_grants_count?: number }).active_grants_count ?? 0,
+          }))
+        )
+      )
+      .catch((err) => setClinicsError(err.message || 'Failed to load clinics'))
+      .finally(() => setClinicsLoading(false));
+  }, []);
+
   // Save changes to LocalStorage
   const persistState = (overrides: Partial<Record<string, unknown>> = {}) => {
     try {
       const dataToSave = {
-        clinics,
         doctors,
         invitations,
         patients,
@@ -775,14 +798,23 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return newClinic;
   };
 
-  const deactivateClinic = (clinicId: string) => {
-    const updated = clinics.map((c) =>
-      c.id === clinicId ? { ...c, status: (c.status === 'active' ? 'deactivated' : 'active') as 'active' | 'deactivated' } : c
-    );
-    setClinics(updated);
-    persistState({ clinics: updated });
-  };
+  const activateClinic = async (clinicId: string) => {
+  try {
+    await apiActivateClinic(clinicId);
+    setClinics((prev) => prev.map((c) => (c.id === clinicId ? { ...c, status: 'active' as const } : c)));
+  } catch (err: any) {
+    setClinicsError(err.message || 'Failed to activate clinic');
+  }
+};
 
+const deactivateClinic = async (clinicId: string) => {
+  try {
+    await apiDeactivateClinic(clinicId);
+    setClinics((prev) => prev.map((c) => (c.id === clinicId ? { ...c, status: 'deactivated' as const } : c)));
+  } catch (err: any) {
+    setClinicsError(err.message || 'Failed to deactivate clinic');
+  }
+};
   // Clinic Actions - Doctors & Invitations
   const inviteDoctor = (email: string, specialization: string, clinicId = 'cln_horizon'): DoctorInvitation => {
     const currentClinic = clinics.find((c) => c.id === clinicId) || clinics[0];
@@ -1263,13 +1295,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         currentUser,
         currentRole,
         setCurrentRole,
-        activeClinic: clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0],
+        activeClinic: clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0] || {
+  id: '',
+  name: '',
+  email: '',
+  phone: '',
+  address: '',
+  status: 'active' as const,
+  created_at: '',
+},
         activeView,
         setActiveView,
         viewParams,
         navigateTo,
         clinics,
+        clinicsLoading,
+        clinicsError,
         createClinic,
+        activateClinic,
         deactivateClinic,
         doctors,
         invitations,
