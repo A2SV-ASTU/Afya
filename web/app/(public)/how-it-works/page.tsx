@@ -46,7 +46,7 @@ export default function HowItWorksPage() {
         <div className="text-center mb-20">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">The AfyaMind Care Journey</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            How data securely flows from your doctor's office, into your daily life, and back again.
+            How data securely flows from your doctor&apos;s office, into your daily life, and back again.
           </p>
         </div>
 

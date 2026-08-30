@@ -25,7 +25,7 @@ export function SecurityCards() {
             Uncompromising Security &amp; Privacy.
           </h2>
           <p className="text-lg text-gray-600 leading-relaxed">
-            We understand that health data is the most sensitive information you possess. That's why we don't just protect it; we mathematically guarantee its privacy through advanced end-to-end encryption. Trust is the foundation of AfyaMind.
+            We understand that health data is the most sensitive information you possess. That&apos;s why we don&apos;t just protect it; we mathematically guarantee its privacy through advanced end-to-end encryption. Trust is the foundation of AfyaMind.
           </p>
         </div>
 
