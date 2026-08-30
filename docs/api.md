@@ -230,45 +230,6 @@ _(If omitted, the server reads the `refresh_token` HTTP-Only cookie)._
 
 - **400 Bad Request** (`validation_error`): Invalid email format.
 
----
-
-### 6. Reset Password
-
-- **Endpoint**: `POST /api/v1/auth/reset-password`
-- **Auth Required**: No (Public; token provided via `reset_token` cookie or JSON body)
-- **Description**: Verifies the reset token (read automatically from the `reset_token` cookie or optional `token` body payload) and securely updates the user's password using bcrypt. Clears the `reset_token` cookie upon success.
-
-#### Cookie / Request Body
-
-**Cookie**: `reset_token=<RESET_TOKEN_FROM_EMAIL>`
-
-**Request Body**:
-
-```json
-{
-  "token": "<RESET_TOKEN_FROM_EMAIL>",
-  "password": "newSecurePassword123"
-}
-```
-
-_(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
-
-#### Responses
-
-- **200 OK**: Clears `reset_token` cookie and returns success message.
-
-```json
-{
-  "data": {
-    "message": "Password has been successfully reset. You can now log in."
-  }
-}
-```
-
-- **400 Bad Request** (`validation_error`): Missing reset token or password shorter than 8 characters.
-- **410 Gone** (`expired`): Reset token is invalid or expired.
-
----
 
 ## User Management Endpoints (`/api/v1/users`)
 
@@ -763,51 +724,6 @@ _(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
 
 ---
 
-### 22. Approve Access Request
-
-- **Endpoint**: `POST /api/v1/access-requests/:id/approve`
-- **Auth Required**: Yes (`patient` required)
-- **Description**: Allows a patient to approve a pending access request for their records.
-
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "status": "approved"
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
-- **403 Forbidden** (`forbidden_role`): Authenticated user is not the target patient of this request.
-- **409 Conflict** (`conflict`): Request is not in `pending` status.
-- **410 Gone** (`expired`): Access request has expired.
-
----
-
-### 23. Deny Access Request
-
-- **Endpoint**: `POST /api/v1/access-requests/:id/deny`
-- **Auth Required**: Yes (`patient` required)
-- **Description**: Allows a patient to deny a pending access request for their records.
-
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "status": "denied"
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
-- **403 Forbidden** (`forbidden_role`): Authenticated user is not the target patient of this request.
-- **409 Conflict** (`conflict`): Request is not in `pending` status.
-- **410 Gone** (`expired`): Access request has expired.
-
----
 
 ### 24. Revoke Approved Access Request
 
@@ -831,451 +747,91 @@ _(Note: `token` in JSON body is optional if sent via `reset_token` cookie)._
 
 ---
 
-### 25. Get Clinic Details
+## Magic Links Endpoints (`/api/v1/magic`)
 
-- **Endpoint**: `GET /api/v1/clinics/:clinicId`
-- **Auth Required**: Yes (`super_admin` or `clinic_admin`)
-- **Description**: Fetches the details of a specific clinic.
+### 25. View Access Request Page
 
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "clinic": {
-    "id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
-    "name": "General Hospital",
-    "email": "contact@generalhospital.com",
-    "phone": "+1234567890",
-    "address": "123 Main St",
-    "status": "active",
-    "created_at": "2026-08-28T14:00:00Z",
-    "updated_at": "2026-08-28T14:00:00Z"
-  }
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid authentication token.
-- **403 Forbidden** (`forbidden_role`): Caller is a clinic admin for a different clinic.
-- **404 Not Found** (`not_found`): Clinic not found.
-
----
-
-### 26. List Clinic Doctors
-
-- **Endpoint**: `GET /api/v1/clinics/:clinicId/doctors`
-- **Auth Required**: Yes (`super_admin` or `clinic_admin`)
-- **Description**: Returns all doctors associated with the specified clinic.
-
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "doctors": [
-    {
-      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-      "first_name": "John",
-      "last_name": "Doe",
-      "email": "doctor@example.com",
-      "phone": "+1999888777",
-      "specialization": "Cardiology",
-      "license_number": "LIC-999-555",
-      "status": "active"
-    }
-  ]
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
-- **403 Forbidden** (`forbidden_role`): Caller is unauthorized for this clinic.
-
----
-
-### 27. List Clinic Invitations
-
-- **Endpoint**: `GET /api/v1/clinics/:clinicId/invitations`
-- **Auth Required**: Yes (`super_admin` or `clinic_admin`)
-- **Description**: Returns all doctor invitations for the specified clinic.
-
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "invitations": [
-    {
-      "id": "d2eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
-      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
-      "email": "newdoctor@example.com",
-      "token": "inv_12345",
-      "status": "pending",
-      "expires_at": "2026-08-29T14:00:00Z",
-      "created_at": "2026-08-28T14:00:00Z"
-    }
-  ]
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
-- **403 Forbidden** (`forbidden_role`): Caller is unauthorized for this clinic.
-
----
-
-## Appointments (`/api/v1/appointments` & `/api/v1/patients/:patientId/appointments`)
-
-### 28. Create Appointment
-
-- **Endpoint**: `POST /api/v1/appointments`
-- **Auth Required**: Yes (`doctor`)
-- **Description**: Creates a new appointment. The doctor must have an active access grant from the target patient's clinic.
-
-#### Request Body
-
-```json
-{
-  "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-  "scheduled_at": "2026-09-01T10:00:00Z",
-  "notes": "Follow-up checkup"
-}
-```
-
-#### Responses
-
-- **201 Created**:
-
-```json
-{
-  "appointment": {
-    "id": "e3eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
-    "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
-    "doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-    "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-    "scheduled_at": "2026-09-01T10:00:00Z",
-    "status": "scheduled",
-    "notes": "Follow-up checkup",
-    "created_at": "2026-08-28T14:00:00Z",
-    "updated_at": "2026-08-28T14:00:00Z"
-  }
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
-- **403 Forbidden** (`forbidden_role`): Caller is not a doctor.
-- **403 Forbidden** (`forbidden_grant`): Doctor's clinic does not have an active access grant for the patient.
-
----
-
-### 29. List Patient Appointments
-
-- **Endpoint**: `GET /api/v1/patients/:patientId/appointments`
-- **Auth Required**: Yes (`patient` or `doctor`)
-- **Description**: Lists appointments for a specific patient. Patients can only view their own appointments. Doctors require an active access grant.
+- **Endpoint**: `GET /api/v1/magic/access-request`
+- **Auth Required**: No (Public)
+- **Description**: Serves the HTML confirmation page for a patient to approve or deny an access request.
 
 #### Query Parameters
 
-- `status` (string, optional): Filter by appointment status (e.g., `scheduled`, `completed`, `cancelled`).
+- `token` (string, required): The secure token from the email link.
+- `action` (string, required): Must be `approve` or `deny`.
 
 #### Responses
 
-- **200 OK**:
-
-```json
-{
-  "appointments": [
-    {
-      "id": "e3eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
-      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
-      "doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-      "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-      "scheduled_at": "2026-09-01T10:00:00Z",
-      "status": "scheduled",
-      "notes": "Follow-up checkup",
-      "created_at": "2026-08-28T14:00:00Z",
-      "updated_at": "2026-08-28T14:00:00Z"
-    }
-  ]
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
-- **403 Forbidden** (`forbidden_role`): Patient attempting to access another patient's records.
-- **403 Forbidden** (`forbidden_grant`): Doctor attempting to access records without an active grant.
+- **200 OK**: Returns an HTML confirmation page.
+- **400 Bad Request**: Invalid or missing token/action (returns error HTML page).
 
 ---
 
-## Encounters & Clinical Evaluations (`/api/v1/encounters` & `/api/v1/patients/:patientId/encounters`)
+### 26. Confirm Access Request
 
-### 30. Create Encounter
+- **Endpoint**: `POST /api/v1/magic/access-request`
+- **Auth Required**: No (Public)
+- **Description**: Processes the HTML form submission to approve or deny an access request.
 
-- **Endpoint**: `POST /api/v1/patients/:patientId/encounters`
-- **Auth Required**: Yes (`doctor` required, active access grant required)
-- **Description**: Opens a new medical encounter session for a patient at the doctor's clinic.
+#### Request Body (Form Data)
 
-#### Request Body (Optional)
-
-```json
-{
-  "notes": "Initial consultation visit"
-}
-```
+- `token` (string, required): The secure token.
+- `action` (string, required): Must be `approve` or `deny`.
 
 #### Responses
 
-- **201 Created**:
-
-```json
-{
-  "encounter": {
-    "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
-    "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-    "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
-    "opened_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-    "status": "open",
-    "started_at": "2026-08-29T16:00:00Z",
-    "ended_at": null,
-    "created_at": "2026-08-29T16:00:00Z"
-  }
-}
-```
-
-- **400 Bad Request** (`validation_error`): Invalid patient ID format.
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
-- **403 Forbidden** (`forbidden_role` / `forbidden_grant`): Caller is not a doctor or clinic lacks an active access grant for patient.
-- **409 Conflict** (`open_encounter_exists`): Patient already has an active open encounter. Close current encounter first.
+- **200 OK**: Returns a success HTML page if processed, or an error HTML page if the token is invalid/expired.
+- **400 Bad Request**: Invalid or missing token/action (returns error HTML page).
 
 ---
 
-### 31. List Patient Encounters
+### 27. View Reset Password Page
 
-- **Endpoint**: `GET /api/v1/patients/:patientId/encounters`
-- **Auth Required**: Yes (`doctor` with active grant, or `patient` for own records)
-- **Description**: Returns a paginated list of encounters for a patient, ordered by `started_at DESC`.
+- **Endpoint**: `GET /api/v1/magic/reset-password`
+- **Auth Required**: No (Public)
+- **Description**: Serves the HTML form page for a user to reset their password.
 
 #### Query Parameters
 
-- `page` (integer, default: 1): Page number.
-- `limit` (integer, default: 20): Number of records per page.
+- `token` (string, required): The secure token from the email link.
 
 #### Responses
 
-- **200 OK**:
-
-```json
-{
-  "encounters": [
-    {
-      "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
-      "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
-      "opened_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-      "status": "open",
-      "started_at": "2026-08-29T16:00:00Z",
-      "ended_at": null,
-      "created_at": "2026-08-29T16:00:00Z"
-    }
-  ],
-  "page": 1,
-  "limit": 20,
-  "total": 1
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
-- **403 Forbidden** (`forbidden_grant` / `forbidden_role`): Access denied.
+- **200 OK**: Returns the password reset HTML page.
+- **400 Bad Request**: Invalid or missing token (returns error HTML page).
 
 ---
 
-### 32. Get Aggregated Encounter Record
+### 28. Confirm Reset Password
 
-- **Endpoint**: `GET /api/v1/encounters/:id`
-- **Auth Required**: Yes (`doctor` with active grant, or `patient` for own records)
-- **Description**: Assembles the full aggregated encounter payload including vitals, lab results, diagnoses, and prescriptions.
+- **Endpoint**: `POST /api/v1/magic/reset-password`
+- **Auth Required**: No (Public)
+- **Description**: Processes the HTML form submission to securely reset the user's password.
+
+#### Request Body (Form Data)
+
+- `token` (string, required): The secure token.
+- `password` (string, required): The new password (min 8 characters).
+- `confirm_password` (string, required): Must match the new password.
 
 #### Responses
 
-- **200 OK**:
-
-```json
-{
-  "encounter": {
-    "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
-    "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-    "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
-    "opened_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-    "status": "open",
-    "started_at": "2026-08-29T16:00:00Z",
-    "ended_at": null,
-    "created_at": "2026-08-29T16:00:00Z"
-  },
-  "vitals": [],
-  "labs": [],
-  "diagnoses": [],
-  "prescriptions": []
-}
-```
-
-- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
-- **404 Not Found** (`not_found`): Encounter record not found.
+- **200 OK**: Returns a success HTML page if processed, or an error HTML page if the token is invalid/expired or passwords do not match.
+- **400 Bad Request**: Missing token (returns error HTML page).
 
 ---
 
-### 33. Close Encounter
+### 29. View Accept Invitation Page
 
-- **Endpoint**: `PATCH /api/v1/encounters/:id/close`
-- **Auth Required**: Yes (`doctor` required, active access grant required)
-- **Description**: Closes an active encounter, updating status to `"closed"` and setting `ended_at` timestamp.
+- **Endpoint**: `GET /api/v1/magic/accept-invitation`
+- **Auth Required**: No (Public)
+- **Description**: Serves the HTML form page for an invited doctor to complete their registration.
 
-#### Responses
+#### Query Parameters
 
-- **200 OK**:
-
-```json
-{
-  "encounter": {
-    "id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
-    "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-    "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
-    "opened_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-    "status": "closed",
-    "started_at": "2026-08-29T16:00:00Z",
-    "ended_at": "2026-08-29T16:45:00Z",
-    "created_at": "2026-08-29T16:00:00Z"
-  }
-}
-```
-
-- **409 Conflict** (`encounter_closed`): Encounter is already closed.
-
----
-
-### 34. Create Clinical Evaluation
-
-- **Endpoint**: `POST /api/v1/encounters/:encounterId/clinical-evaluation`
-- **Auth Required**: Yes (`doctor` required, active access grant required)
-- **Description**: Submits initial clinical evaluation write-up for an open encounter.
-
-#### Request Body
-
-```json
-{
-  "chief_complaint": "Persistent headache and fever for 3 days",
-  "history_of_present_illness": "Patient reports gradual onset of mild-to-moderate frontal headache...",
-  "past_admissions": "None",
-  "family_history": "Mother has hypertension",
-  "allergies_notes": "Penicillin (rash)",
-  "general_appearance": "Patient appears tired but alert",
-  "system_examination": {
-    "cardiovascular": "Normal S1/S2, no murmurs",
-    "respiratory": "Clear to auscultation bilaterally"
-  }
-}
-```
+- `token` (string, required): The secure token from the email link.
 
 #### Responses
 
-- **201 Created**:
-
-```json
-{
-  "clinical_evaluation": {
-    "id": "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
-    "encounter_id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
-    "chief_complaint": "Persistent headache and fever for 3 days",
-    "history_of_present_illness": "Patient reports gradual onset of mild-to-moderate frontal headache...",
-    "past_admissions": "None",
-    "family_history": "Mother has hypertension",
-    "allergies_notes": "Penicillin (rash)",
-    "general_appearance": "Patient appears tired but alert",
-    "system_examination": {
-      "cardiovascular": "Normal S1/S2, no murmurs",
-      "respiratory": "Clear to auscultation bilaterally"
-    },
-    "created_at": "2026-08-29T16:05:00Z"
-  }
-}
-```
-
-- **400 Bad Request** (`validation_error`): Missing required fields (`chief_complaint` or `history_of_present_illness`).
-- **409 Conflict** (`encounter_closed`): Cannot add evaluation to a closed encounter.
-- **409 Conflict** (`clinical_evaluation_already_exists`): Evaluation write-up already exists for this encounter.
-
----
-
-### 35. Get Clinical Evaluation
-
-- **Endpoint**: `GET /api/v1/encounters/:encounterId/clinical-evaluation`
-- **Auth Required**: Yes (`doctor` with active grant, or `patient` for own records)
-- **Description**: Retrieves clinical evaluation details for an encounter.
-
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "clinical_evaluation": {
-    "id": "f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
-    "encounter_id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
-    "chief_complaint": "Persistent headache and fever for 3 days",
-    "history_of_present_illness": "Patient reports gradual onset of mild-to-moderate frontal headache...",
-    "past_admissions": "None",
-    "family_history": "Mother has hypertension",
-    "allergies_notes": "Penicillin (rash)",
-    "general_appearance": "Patient appears tired but alert",
-    "system_examination": {
-      "cardiovascular": "Normal S1/S2, no murmurs",
-      "respiratory": "Clear to auscultation bilaterally"
-    },
-    "created_at": "2026-08-29T16:05:00Z"
-  }
-}
-```
-
-- **404 Not Found** (`clinical_evaluation_not_found`): Evaluation record not found.
-
----
-
-### 36. Get Medical History Summary
-
-- **Endpoint**: `GET /api/v1/encounters/:encounterId/medical-history`
-- **Auth Required**: Yes (`doctor` with active grant, or `patient` for own records)
-- **Description**: Retrieves condensed medical history summary of the encounter (chief complaint, diagnosis, prescription items, vitals).
-
-#### Responses
-
-- **200 OK**:
-
-```json
-{
-  "encounter_id": "e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
-  "date": "2026-08-29T16:00:00Z",
-  "chief_complaint": "Persistent headache and fever for 3 days",
-  "diagnosis": "Acute Viral Pharyngitis",
-  "prescription": [
-    {
-      "medication_name": "Paracetamol",
-      "dose": "500mg",
-      "route": "oral",
-      "frequency": "TDS",
-      "duration": "5 days"
-    }
-  ],
-  "vitals": {
-    "systolic_bp": 120,
-    "diastolic_bp": 80,
-    "pulse": 72,
-    "respiratory_rate": 16,
-    "temperature": 37.5,
-    "spo2": 98.0,
-    "blood_sugar": null,
-    "weight": 70.0
-  }
-}
-```
-
-- **404 Not Found** (`not_found`): Encounter record not found.
-
+- **200 OK**: Returns the registration HTML page containing JavaScript to POST to the JSON endpoint (`/api/v1/invitations/:token/accept`).
+- **400 Bad Request**: Invalid or missing token (returns error HTML page).

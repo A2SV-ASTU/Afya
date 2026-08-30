@@ -78,7 +78,7 @@ import (
 	"afyamind-backend/src/database"
 	"afyamind-backend/src/encounters"
 	"afyamind-backend/src/invitations"
-	sharedAuth "afyamind-backend/src/shared/auth"
+	"afyamind-backend/src/magiclink"
 	"afyamind-backend/src/shared/email"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/users"
@@ -143,7 +143,7 @@ func main() {
 	// 5. Initialize Services
 	userService := users.NewService(userRepo)
 	authService := auth.NewService(authRepo, cfg, emailSender)
-	invService := invitations.NewService(db, invRepo, emailSender)
+	invService := invitations.NewService(db, invRepo, emailSender, cfg)
 	clinicService := clinics.NewService(db, clinicRepo, emailSender)
 	arService := accessrequests.NewService(db, arRepo, userRepo, emailSender)
 	apptService := appointments.NewService(apptRepo, arRepo)
@@ -153,12 +153,10 @@ func main() {
 	// 6. Initialize Handlers
 	userHandler := users.NewHandler(userService)
 	authHandler := auth.NewHandler(authService, cfg)
-	invHandler := invitations.NewHandler(invService)
+	invHandler := invitations.NewHandler(invService, cfg)
 	clinicHandler := clinics.NewHandler(clinicService)
-	arHandler := accessrequests.NewHandler(arService)
-	apptHandler := appointments.NewHandler(apptService)
-	encHandler := encounters.NewHandler(encService)
-	evalHandler := clinicalevaluations.NewHandler(evalService)
+	arHandler := accessrequests.NewHandler(arService, cfg)
+	magicHandler := magiclink.NewHandler(arService, authService, cfg)
 
 	// 6b. Start background expiration jobs
 	appCtx := context.Background()
@@ -198,9 +196,7 @@ func main() {
 		invitations.RegisterRoutes(apiV1, invHandler, cfg.JWTSecret)
 		clinics.RegisterRoutes(apiV1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(apiV1, arHandler, cfg.JWTSecret)
-		appointments.RegisterRoutes(apiV1, apptHandler, cfg.JWTSecret)
-		encounters.RegisterRoutes(apiV1, encHandler, db, cfg.JWTSecret)
-		clinicalevaluations.RegisterRoutes(apiV1, evalHandler, db, cfg.JWTSecret)
+		magiclink.RegisterRoutes(apiV1, magicHandler)
 	}
 
 	v1 := router.Group("/v1")
@@ -210,9 +206,7 @@ func main() {
 		invitations.RegisterRoutes(v1, invHandler, cfg.JWTSecret)
 		clinics.RegisterRoutes(v1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(v1, arHandler, cfg.JWTSecret)
-		appointments.RegisterRoutes(v1, apptHandler, cfg.JWTSecret)
-		encounters.RegisterRoutes(v1, encHandler, db, cfg.JWTSecret)
-		clinicalevaluations.RegisterRoutes(v1, evalHandler, db, cfg.JWTSecret)
+		magiclink.RegisterRoutes(v1, magicHandler)
 	}
 
 	// 8. Start HTTP Server
