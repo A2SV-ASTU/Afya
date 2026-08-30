@@ -14,6 +14,9 @@ class RoutePaths {
   static const String accessDecision = '/access-requests/:id';
   static String accessDecisionPath(String id) => '/access-requests/$id';
 
+  // Clinic Grants
+  static const String activeGrants = '/profile/active-grants';
+
   // Clinical History & Appointments Routes
   static const String encounterDetail = '/history/encounter/:id';
   static String encounterDetailPath(String id) => '/history/encounter/$id';

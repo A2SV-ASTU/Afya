@@ -75,20 +75,20 @@ void main() {
         (WidgetTester tester) async {
       final request = tActiveRequest();
       final state =
-          AccessRequestActive(request: request, secondsRemaining: 300);
+          AccessRequestActive(request: request, secondsRemaining: 300, formattedTime: '5:00');
 
       await tester.pumpWidget(buildTestWidget(initialState: state));
       await tester.pump();
 
       expect(find.text('Clinic A'), findsOneWidget);
-      expect(find.text('Access request pending'), findsOneWidget);
+      expect(find.text('Requested by Dr. Smith'), findsOneWidget);
     });
 
     testWidgets('should display formatted time when state is Active',
         (WidgetTester tester) async {
       final request = tActiveRequest();
       final state =
-          AccessRequestActive(request: request, secondsRemaining: 245);
+          AccessRequestActive(request: request, secondsRemaining: 245, formattedTime: '4:05');
 
       await tester.pumpWidget(buildTestWidget(initialState: state));
       await tester.pump();
@@ -100,7 +100,7 @@ void main() {
         (WidgetTester tester) async {
       final request = tActiveRequest();
       final state =
-          AccessRequestActive(request: request, secondsRemaining: 0);
+          AccessRequestActive(request: request, secondsRemaining: 0, formattedTime: '0:00');
 
       await tester.pumpWidget(buildTestWidget(initialState: state));
       await tester.pump();
@@ -111,7 +111,7 @@ void main() {
     testWidgets('should be tappable', (WidgetTester tester) async {
       final request = tActiveRequest();
       final state =
-          AccessRequestActive(request: request, secondsRemaining: 300);
+          AccessRequestActive(request: request, secondsRemaining: 300, formattedTime: '5:00');
 
       await tester.pumpWidget(buildTestWidget(initialState: state));
       await tester.pump();

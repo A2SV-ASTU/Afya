@@ -13,6 +13,7 @@ import '../../features/clinical_history/presentation/cubit/encounter_detail_cubi
 import '../../features/clinical_history/presentation/screens/appointments_screen.dart';
 import '../../features/clinical_history/presentation/screens/encounter_detail_screen.dart';
 import '../../features/clinical_history/presentation/screens/history_timeline_screen.dart';
+import '../../features/access_requests/presentation/screens/clinic_grants_screen.dart';
 import '../view/app_shell.dart';
 import '../view/placeholder_screens.dart';
 import 'route_paths.dart';
@@ -113,6 +114,12 @@ class AppRouter {
               GoRoute(
                 path: RoutePaths.profile,
                 builder: (context, state) => const ProfilePlaceholderScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'active-grants',
+                    builder: (context, state) => const ClinicGrantsScreen(),
+                  ),
+                ],
               ),
             ],
           ),

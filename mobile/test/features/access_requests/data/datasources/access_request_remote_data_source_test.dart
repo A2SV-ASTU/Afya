@@ -2,21 +2,27 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:afyamind_mobile/core/network/api_client.dart';
 import 'package:afyamind_mobile/features/access_requests/data/datasources/access_request_remote_data_source.dart';
 import 'package:afyamind_mobile/features/access_requests/data/models/access_request_model.dart';
 import 'package:afyamind_mobile/features/access_requests/data/models/clinic_grant_model.dart';
 
 class MockDio extends Mock implements Dio {}
 
+class MockApiClient extends Mock implements ApiClient {}
+
 class MockResponse extends Mock implements Response {}
 
 void main() {
   late AccessRequestRemoteDataSourceImpl dataSource;
+  late MockApiClient mockApiClient;
   late MockDio mockDio;
 
   setUp(() {
+    mockApiClient = MockApiClient();
     mockDio = MockDio();
-    dataSource = AccessRequestRemoteDataSourceImpl(dio: mockDio);
+    when(() => mockApiClient.dio).thenReturn(mockDio);
+    dataSource = AccessRequestRemoteDataSourceImpl(mockApiClient);
   });
 
   final tAccessRequestJson = {

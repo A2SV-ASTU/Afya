@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/afya_button.dart';
@@ -38,8 +39,18 @@ class ProfilePlaceholderScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Patient Profile', style: AppTypography.titleMedium)),
-      body: const Center(
-        child: Text('Patient Profile (Assigned to Yehabesha)', style: AppTypography.bodyMedium),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text('Patient Profile (Assigned to Yehabesha)', style: AppTypography.bodyMedium),
+            const SizedBox(height: 24),
+            AfyaButton(
+              text: 'View Active Clinic Grants',
+              onPressed: () => GoRouter.of(context).go('/profile/active-grants'),
+            ),
+          ],
+        ),
       ),
     );
   }

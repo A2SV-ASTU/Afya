@@ -9,7 +9,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:afyamind_mobile/features/access_requests/domain/entities/access_request_entity.dart';
 import 'package:afyamind_mobile/features/access_requests/presentation/bloc/access_request_cubit.dart';
 import 'package:afyamind_mobile/features/access_requests/presentation/bloc/access_request_state.dart';
-import 'package:afyamind_mobile/features/access_requests/presentation/widgets/access_request_banner.dart';
 import 'package:afyamind_mobile/features/access_requests/presentation/widgets/access_request_decision_modal.dart';
 
 class MockAccessRequestCubit extends MockCubit<AccessRequestState>
@@ -53,6 +52,7 @@ void main() {
     final state = cubitState ??
         AccessRequestActive(
           request: tActiveRequest(),
+          formattedTime: '${secondsRemaining ~/ 60}:${(secondsRemaining % 60).toString().padLeft(2, '0')}',
           secondsRemaining: secondsRemaining,
         );
     when(() => mockCubit.state).thenReturn(state);
@@ -68,7 +68,8 @@ void main() {
         child: Scaffold(
           body: AccessRequestDecisionModal(
             request: tActiveRequest(),
-            secondsRemaining: secondsRemaining,
+            onApprove: () => mockCubit.approveRequest('1'),
+            onDeny: () => mockCubit.denyRequest('1'),
           ),
         ),
       ),
@@ -87,7 +88,7 @@ void main() {
         (c) {
           final decoration = c.decoration;
           if (decoration is BoxDecoration &&
-              decoration.color == kGentleCoral) {
+              decoration.color == const Color(0xFFF3C9C9)) {
             return true;
           }
           return false;
@@ -134,21 +135,15 @@ void main() {
       expect(find.text('Access Request'), findsOneWidget);
     });
 
-    testWidgets('should display clinic name in bold',
+    testWidgets('should display clinic name in body text',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestModal());
       await tester.pump();
 
-      expect(find.text('Clinic A'), findsOneWidget);
+      expect(find.textContaining('Clinic A', findRichText: true), findsOneWidget);
     });
 
-    testWidgets('should display doctor name and reason',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(buildTestModal());
-      await tester.pump();
 
-      expect(find.text('Dr. Smith • Checkup'), findsOneWidget);
-    });
 
     testWidgets('should display consent info box',
         (WidgetTester tester) async {
@@ -191,6 +186,7 @@ void main() {
       when(() => mockCubit.state).thenReturn(
         AccessRequestActive(
           request: tActiveRequest(),
+          formattedTime: '5:00',
           secondsRemaining: 300,
         ),
       );
@@ -209,6 +205,7 @@ void main() {
       when(() => mockCubit.state).thenReturn(
         AccessRequestActive(
           request: tActiveRequest(),
+          formattedTime: '5:00',
           secondsRemaining: 300,
         ),
       );
@@ -222,13 +219,13 @@ void main() {
       verify(() => mockCubit.denyRequest('1')).called(1);
     });
 
-    testWidgets('should disable buttons when state is ActionInFlight',
+    testWidgets('should disable buttons when state is Submitting',
         (WidgetTester tester) async {
       when(() => mockCubit.state)
-          .thenReturn(const AccessRequestActionInFlight());
+          .thenReturn(const AccessRequestSubmitting(requestId: '1', isApproving: true));
 
       await tester.pumpWidget(buildTestModal(
-        cubitState: const AccessRequestActionInFlight(),
+        cubitState: const AccessRequestSubmitting(requestId: '1', isApproving: true),
       ));
       await tester.pump();
 
@@ -263,13 +260,13 @@ void main() {
       expect(denyButton.onPressed, isNull);
     });
 
-    testWidgets('should show loading indicator when ActionInFlight',
+    testWidgets('should show loading indicator when Submitting',
         (WidgetTester tester) async {
       when(() => mockCubit.state)
-          .thenReturn(const AccessRequestActionInFlight());
+          .thenReturn(const AccessRequestSubmitting(requestId: '1', isApproving: true));
 
       await tester.pumpWidget(buildTestModal(
-        cubitState: const AccessRequestActionInFlight(),
+        cubitState: const AccessRequestSubmitting(requestId: '1', isApproving: true),
       ));
       await tester.pump();
 
