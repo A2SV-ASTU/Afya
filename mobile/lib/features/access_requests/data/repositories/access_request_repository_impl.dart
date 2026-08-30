@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:injectable/injectable.dart';
 
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
@@ -8,6 +9,7 @@ import '../../domain/entities/clinic_grant_entity.dart';
 import '../../domain/repositories/access_request_repository.dart';
 import '../datasources/access_request_remote_data_source.dart';
 
+@LazySingleton(as: AccessRequestRepository)
 class AccessRequestRepositoryImpl implements AccessRequestRepository {
   final AccessRequestRemoteDataSource remoteDataSource;
 

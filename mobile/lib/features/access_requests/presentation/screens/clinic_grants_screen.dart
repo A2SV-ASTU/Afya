@@ -1,22 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/di/injection_container.dart';
 import '../bloc/grants_management_bloc.dart';
 import '../widgets/clinic_grant_card.dart';
 import '../widgets/revoke_confirm_dialog.dart';
 
-class ClinicGrantsScreen extends StatefulWidget {
+class ClinicGrantsScreen extends StatelessWidget {
   const ClinicGrantsScreen({super.key});
 
   @override
-  State<ClinicGrantsScreen> createState() => _ClinicGrantsScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) => sl<GrantsManagementBloc>()..add(FetchActiveGrantsEvent()),
+      child: const ClinicGrantsView(),
+    );
+  }
 }
 
-class _ClinicGrantsScreenState extends State<ClinicGrantsScreen> {
+class ClinicGrantsView extends StatefulWidget {
+  const ClinicGrantsView({super.key});
+
+  @override
+  State<ClinicGrantsView> createState() => _ClinicGrantsViewState();
+}
+
+class _ClinicGrantsViewState extends State<ClinicGrantsView> {
   @override
   void initState() {
     super.initState();
-    // Assuming Bloc is provided above this screen
-    context.read<GrantsManagementBloc>().add(FetchActiveGrantsEvent());
+    // Bloc fetches data on creation via BlocProvider
   }
 
   void _showRevokeDialog(BuildContext context, String clinicId) {

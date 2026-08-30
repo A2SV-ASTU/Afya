@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
 
 import '../../domain/entities/clinic_grant_entity.dart';
 import '../../domain/usecases/get_active_grants_usecase.dart';
@@ -59,6 +60,7 @@ class GrantsManagementError extends GrantsManagementState {
 }
 
 // --- BLoC ---
+@injectable
 class GrantsManagementBloc extends Bloc<GrantsManagementEvent, GrantsManagementState> {
   final GetActiveGrantsUseCase _getActiveGrantsUseCase;
   final RevokeClinicGrantUseCase _revokeClinicGrantUseCase;
