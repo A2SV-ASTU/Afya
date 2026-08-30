@@ -764,6 +764,166 @@ definitions:
     required:
     - email
     type: object
+  src_prescriptions.CompletePrescriptionRequest:
+    properties:
+      item_ids:
+        items:
+          type: string
+        type: array
+    type: object
+  src_prescriptions.CreatePrescriptionItemRequest:
+    properties:
+      dose:
+        type: string
+      duration:
+        type: string
+      frequency:
+        $ref: '#/definitions/src_prescriptions.PrescriptionFrequency'
+      instructions:
+        type: string
+      medication_name:
+        type: string
+      route:
+        $ref: '#/definitions/src_prescriptions.PrescriptionRoute'
+    required:
+    - dose
+    - duration
+    - frequency
+    - medication_name
+    - route
+    type: object
+  src_prescriptions.CreatePrescriptionRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/src_prescriptions.CreatePrescriptionItemRequest'
+        minItems: 1
+        type: array
+      notes:
+        type: string
+    required:
+    - items
+    type: object
+  src_prescriptions.PrescriptionFrequency:
+    enum:
+    - OD
+    - BD
+    - TDS
+    - QID
+    - QHS
+    - PRN
+    - STAT
+    - Q4H
+    - Q6H
+    - Q8H
+    - Q12H
+    type: string
+    x-enum-varnames:
+    - FreqOD
+    - FreqBD
+    - FreqTDS
+    - FreqQID
+    - FreqQHS
+    - FreqPRN
+    - FreqSTAT
+    - FreqQ4H
+    - FreqQ6H
+    - FreqQ8H
+    - FreqQ12H
+  src_prescriptions.PrescriptionItem:
+    properties:
+      dose:
+        type: string
+      duration:
+        type: string
+      frequency:
+        $ref: '#/definitions/src_prescriptions.PrescriptionFrequency'
+      id:
+        type: string
+      instructions:
+        type: string
+      medicationName:
+        type: string
+      prescriptionID:
+        type: string
+      route:
+        $ref: '#/definitions/src_prescriptions.PrescriptionRoute'
+      startedAt:
+        type: string
+      status:
+        $ref: '#/definitions/src_prescriptions.PrescriptionItemStatus'
+    type: object
+  src_prescriptions.PrescriptionItemStatus:
+    enum:
+    - active
+    - deactivated
+    - completed
+    type: string
+    x-enum-varnames:
+    - ItemStatusActive
+    - ItemStatusDeactivated
+    - ItemStatusCompleted
+  src_prescriptions.PrescriptionResponse:
+    properties:
+      encounterID:
+        type: string
+      id:
+        type: string
+      items:
+        items:
+          $ref: '#/definitions/src_prescriptions.PrescriptionItem'
+        type: array
+      notes:
+        type: string
+      prescribedAt:
+        type: string
+    type: object
+  src_prescriptions.PrescriptionRoute:
+    enum:
+    - oral
+    - iv
+    - im
+    - subcutaneous
+    - topical
+    - other
+    type: string
+    x-enum-varnames:
+    - RouteOral
+    - RouteIV
+    - RouteIM
+    - RouteSubcutaneous
+    - RouteTopical
+    - RouteOther
+  src_prescriptions.UpdatePrescriptionItemRequest:
+    properties:
+      dose:
+        type: string
+      duration:
+        type: string
+      frequency:
+        $ref: '#/definitions/src_prescriptions.PrescriptionFrequency'
+      instructions:
+        type: string
+      medication_name:
+        type: string
+      route:
+        $ref: '#/definitions/src_prescriptions.PrescriptionRoute'
+    required:
+    - dose
+    - duration
+    - frequency
+    - medication_name
+    - route
+    type: object
+  src_prescriptions.UpdatePrescriptionRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/src_prescriptions.UpdatePrescriptionItemRequest'
+        type: array
+      notes:
+        type: string
+    type: object
   src_users.ChangePasswordRequest:
     properties:
       current_password:
@@ -892,6 +1052,154 @@ definitions:
       updated_at:
         type: string
     type: object
+  src_vitals.AckVitalsRequest:
+    properties:
+      synced_ids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+    required:
+    - synced_ids
+    type: object
+  src_vitals.LogPatientVitalRequest:
+    properties:
+      blood_sugar:
+        type: number
+      diastolic_bp:
+        type: integer
+      pulse:
+        type: integer
+      recorded_at:
+        type: string
+      respiratory_rate:
+        type: integer
+      spo2:
+        type: number
+      systolic_bp:
+        type: integer
+      temperature:
+        type: number
+      weight:
+        type: number
+    type: object
+  src_vitals.RecordEncounterVitalsRequest:
+    properties:
+      blood_sugar:
+        type: number
+      diastolic_bp:
+        type: integer
+      pulse:
+        type: integer
+      recorded_at:
+        type: string
+      respiratory_rate:
+        type: integer
+      spo2:
+        type: number
+      systolic_bp:
+        type: integer
+      temperature:
+        type: number
+      weight:
+        type: number
+    type: object
+  src_vitals.SyncVitalEntry:
+    properties:
+      blood_sugar:
+        type: number
+      client_id:
+        type: string
+      diastolic_bp:
+        type: integer
+      pulse:
+        type: integer
+      recorded_at:
+        type: string
+      respiratory_rate:
+        type: integer
+      spo2:
+        type: number
+      systolic_bp:
+        type: integer
+      temperature:
+        type: number
+      weight:
+        type: number
+    required:
+    - client_id
+    type: object
+  src_vitals.SyncVitalResult:
+    properties:
+      client_id:
+        type: string
+      created:
+        type: boolean
+      id:
+        type: string
+    type: object
+  src_vitals.SyncVitalsRequest:
+    properties:
+      vitals:
+        items:
+          $ref: '#/definitions/src_vitals.SyncVitalEntry'
+        minItems: 1
+        type: array
+    required:
+    - vitals
+    type: object
+  src_vitals.SyncVitalsResponse:
+    properties:
+      results:
+        items:
+          $ref: '#/definitions/src_vitals.SyncVitalResult'
+        type: array
+    type: object
+  src_vitals.VitalSign:
+    properties:
+      bloodSugar:
+        format: float64
+        type: number
+      clientID:
+        description: nullable client-generated dedup token
+        type: string
+      diastolicBP:
+        type: integer
+      encounterID:
+        description: nullable, nil for patient self-logs
+        type: string
+      id:
+        type: string
+      patientID:
+        type: string
+      pulse:
+        type: integer
+      recordedAt:
+        type: string
+      respiratoryRate:
+        type: integer
+      source:
+        $ref: '#/definitions/src_vitals.VitalSource'
+      spO2:
+        format: float64
+        type: number
+      systolicBP:
+        type: integer
+      temperature:
+        format: float64
+        type: number
+      weight:
+        format: float64
+        type: number
+    type: object
+  src_vitals.VitalSource:
+    enum:
+    - clinic
+    - patient
+    type: string
+    x-enum-varnames:
+    - SourceClinic
+    - SourcePatient
 host: localhost:8080
 info:
   contact:
@@ -1860,6 +2168,125 @@ paths:
       summary: Get patient medical history summary
       tags:
       - Encounters
+  /encounters/{id}/prescriptions:
+    get:
+      description: Lists all prescriptions associated with a specific encounter. Patient
+        or Doctor with active access grant only.
+      parameters:
+      - description: Encounter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of prescriptions
+          schema:
+            items:
+              $ref: '#/definitions/src_prescriptions.PrescriptionResponse'
+            type: array
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Forbidden / Access denied
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List prescriptions for an encounter
+      tags:
+      - Prescriptions
+    post:
+      consumes:
+      - application/json
+      description: Creates a new medical prescription with items during an encounter.
+        Enforces doctor access.
+      parameters:
+      - description: Encounter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Prescription creation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_prescriptions.CreatePrescriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Prescription created successfully
+          schema:
+            $ref: '#/definitions/src_prescriptions.PrescriptionResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Forbidden role / Access denied
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Create a prescription for an encounter
+      tags:
+      - Prescriptions
+  /encounters/{id}/vitals:
+    post:
+      consumes:
+      - application/json
+      description: Records vital signs recorded during a clinical encounter. Enforces
+        doctor access.
+      parameters:
+      - description: Encounter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Vital signs details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_vitals.RecordEncounterVitalsRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Vital signs recorded successfully
+          schema:
+            $ref: '#/definitions/src_vitals.VitalSign'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Forbidden role / Access denied
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Record vitals for an encounter
+      tags:
+      - Vitals
   /invitations/{token}/accept:
     post:
       consumes:
@@ -2018,6 +2445,54 @@ paths:
       summary: Open a new clinical encounter
       tags:
       - Encounters
+  /patients/{patientId}/vitals:
+    get:
+      description: Lists vital signs history for a patient. Patient or Doctor with
+        active access grant only.
+      parameters:
+      - description: Patient ID
+        in: path
+        name: patientId
+        required: true
+        type: string
+      - description: Filter start time (RFC3339 format)
+        in: query
+        name: from
+        type: string
+      - description: Filter end time (RFC3339 format)
+        in: query
+        name: to
+        type: string
+      - description: Filter by source (clinic or patient)
+        in: query
+        name: source
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of vital signs
+          schema:
+            items:
+              $ref: '#/definitions/src_vitals.VitalSign'
+            type: array
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Forbidden / No access grant
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List patient vitals
+      tags:
+      - Vitals
   /patients/lookup:
     get:
       description: Looks up a patient by their exact email. Accessible by clinic admins.
@@ -2051,6 +2526,227 @@ paths:
       summary: Lookup a patient by email
       tags:
       - AccessRequests
+  /patients/me/vitals/doctor-sync:
+    get:
+      description: Fetches clinic-recorded vitals since a specific timestamp to sync
+        back to patient's app. Patient only.
+      parameters:
+      - description: Fetch records since this timestamp (RFC3339 format)
+        in: query
+        name: since
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of clinical vital signs to sync
+          schema:
+            items:
+              $ref: '#/definitions/src_vitals.VitalSign'
+            type: array
+        "400":
+          description: Validation / parsing error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Get clinic-recorded vitals for sync
+      tags:
+      - Vitals
+  /patients/me/vitals/doctor-sync/ack:
+    post:
+      consumes:
+      - application/json
+      description: Acknowledges that clinic-recorded vitals have been successfully
+        synced to the patient's device. Patient only.
+      parameters:
+      - description: List of vital IDs successfully synced
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_vitals.AckVitalsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Count of acknowledged records under key 'acked'
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Acknowledge synced clinic vitals
+      tags:
+      - Vitals
+  /patients/me/vitals/sync:
+    post:
+      consumes:
+      - application/json
+      description: Syncs offline logged patient vitals with deduplication support.
+        Patient only.
+      parameters:
+      - description: Offline vitals entries
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_vitals.SyncVitalsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Sync results with status
+          schema:
+            $ref: '#/definitions/src_vitals.SyncVitalsResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Sync offline patient vitals
+      tags:
+      - Vitals
+  /prescriptions/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: Updates notes or items of an active prescription. Enforces doctor
+        access.
+      parameters:
+      - description: Prescription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Prescription update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_prescriptions.UpdatePrescriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Prescription updated successfully
+          schema:
+            $ref: '#/definitions/src_prescriptions.PrescriptionResponse'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Forbidden / Access denied
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Update a prescription
+      tags:
+      - Prescriptions
+  /prescriptions/{id}/complete:
+    patch:
+      consumes:
+      - application/json
+      description: Marks specific items in a prescription as completed. Enforces patient
+        access.
+      parameters:
+      - description: Prescription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Optional list of item IDs to mark completed (if empty, marks
+          all)
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/src_prescriptions.CompletePrescriptionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns status 'completed' on success
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Forbidden / Access denied
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Complete prescription items
+      tags:
+      - Prescriptions
+  /prescriptions/{id}/deactivate:
+    patch:
+      description: Deactivates all active items within a prescription. Enforces doctor
+        access.
+      parameters:
+      - description: Prescription ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Returns status 'deactivated' on success
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Forbidden / Access denied
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Deactivate active prescription items
+      tags:
+      - Prescriptions
   /users/me:
     delete:
       description: Permanently deletes the authenticated user's account. This action
@@ -2173,6 +2869,38 @@ paths:
       summary: Change account password
       tags:
       - Users
+  /vitals:
+    post:
+      consumes:
+      - application/json
+      description: Logs patient vital signs as a self-entry. Enforces patient access.
+      parameters:
+      - description: Vital signs details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_vitals.LogPatientVitalRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Vital signs logged successfully
+          schema:
+            $ref: '#/definitions/src_vitals.VitalSign'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Log patient vital signs self-entry
+      tags:
+      - Vitals
 schemes:
 - http
 - https

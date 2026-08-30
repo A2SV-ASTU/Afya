@@ -1509,6 +1509,187 @@
                 }
             }
         },
+        "/encounters/{id}/prescriptions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lists all prescriptions associated with a specific encounter. Patient or Doctor with active access grant only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Prescriptions"
+                ],
+                "summary": "List prescriptions for an encounter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Encounter ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of prescriptions",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/src_prescriptions.PrescriptionResponse"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden / Access denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new medical prescription with items during an encounter. Enforces doctor access.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Prescriptions"
+                ],
+                "summary": "Create a prescription for an encounter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Encounter ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Prescription creation payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_prescriptions.CreatePrescriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Prescription created successfully",
+                        "schema": {
+                            "$ref": "#/definitions/src_prescriptions.PrescriptionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden role / Access denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/encounters/{id}/vitals": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Records vital signs recorded during a clinical encounter. Enforces doctor access.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vitals"
+                ],
+                "summary": "Record vitals for an encounter",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Encounter ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Vital signs details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_vitals.RecordEncounterVitalsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Vital signs recorded successfully",
+                        "schema": {
+                            "$ref": "#/definitions/src_vitals.VitalSign"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden role / Access denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/invitations/{token}/accept": {
             "post": {
                 "description": "Doctor accepts invitation and fills in profile to complete registration.",
@@ -1613,6 +1794,159 @@
                     },
                     "404": {
                         "description": "Patient not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patients/me/vitals/doctor-sync": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Fetches clinic-recorded vitals since a specific timestamp to sync back to patient's app. Patient only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vitals"
+                ],
+                "summary": "Get clinic-recorded vitals for sync",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Fetch records since this timestamp (RFC3339 format)",
+                        "name": "since",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of clinical vital signs to sync",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/src_vitals.VitalSign"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation / parsing error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patients/me/vitals/doctor-sync/ack": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Acknowledges that clinic-recorded vitals have been successfully synced to the patient's device. Patient only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vitals"
+                ],
+                "summary": "Acknowledge synced clinic vitals",
+                "parameters": [
+                    {
+                        "description": "List of vital IDs successfully synced",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_vitals.AckVitalsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Count of acknowledged records under key 'acked'",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patients/me/vitals/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Syncs offline logged patient vitals with deduplication support. Patient only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vitals"
+                ],
+                "summary": "Sync offline patient vitals",
+                "parameters": [
+                    {
+                        "description": "Offline vitals entries",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_vitals.SyncVitalsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Sync results with status",
+                        "schema": {
+                            "$ref": "#/definitions/src_vitals.SyncVitalsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
                         "schema": {
                             "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
@@ -1799,6 +2133,264 @@
                     },
                     "401": {
                         "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patients/{patientId}/vitals": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Lists vital signs history for a patient. Patient or Doctor with active access grant only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vitals"
+                ],
+                "summary": "List patient vitals",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter start time (RFC3339 format)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter end time (RFC3339 format)",
+                        "name": "to",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by source (clinic or patient)",
+                        "name": "source",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "List of vital signs",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/src_vitals.VitalSign"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden / No access grant",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/prescriptions/{id}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates notes or items of an active prescription. Enforces doctor access.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Prescriptions"
+                ],
+                "summary": "Update a prescription",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Prescription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Prescription update payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_prescriptions.UpdatePrescriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Prescription updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/src_prescriptions.PrescriptionResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden / Access denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/prescriptions/{id}/complete": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Marks specific items in a prescription as completed. Enforces patient access.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Prescriptions"
+                ],
+                "summary": "Complete prescription items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Prescription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Optional list of item IDs to mark completed (if empty, marks all)",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/src_prescriptions.CompletePrescriptionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns status 'completed' on success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden / Access denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/prescriptions/{id}/deactivate": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deactivates all active items within a prescription. Enforces doctor access.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Prescriptions"
+                ],
+                "summary": "Deactivate active prescription items",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Prescription ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns status 'deactivated' on success",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden / Access denied",
                         "schema": {
                             "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
@@ -1995,6 +2587,57 @@
                     },
                     "401": {
                         "description": "Not authenticated or wrong current password",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/vitals": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Logs patient vital signs as a self-entry. Enforces patient access.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Vitals"
+                ],
+                "summary": "Log patient vital signs self-entry",
+                "parameters": [
+                    {
+                        "description": "Vital signs details",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_vitals.LogPatientVitalRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Vital signs logged successfully",
+                        "schema": {
+                            "$ref": "#/definitions/src_vitals.VitalSign"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
                         "schema": {
                             "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
@@ -3073,6 +3716,228 @@
                 }
             }
         },
+        "src_prescriptions.CompletePrescriptionRequest": {
+            "type": "object",
+            "properties": {
+                "item_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "src_prescriptions.CreatePrescriptionItemRequest": {
+            "type": "object",
+            "required": [
+                "dose",
+                "duration",
+                "frequency",
+                "medication_name",
+                "route"
+            ],
+            "properties": {
+                "dose": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionFrequency"
+                },
+                "instructions": {
+                    "type": "string"
+                },
+                "medication_name": {
+                    "type": "string"
+                },
+                "route": {
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionRoute"
+                }
+            }
+        },
+        "src_prescriptions.CreatePrescriptionRequest": {
+            "type": "object",
+            "required": [
+                "items"
+            ],
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/src_prescriptions.CreatePrescriptionItemRequest"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
+        "src_prescriptions.PrescriptionFrequency": {
+            "type": "string",
+            "enum": [
+                "OD",
+                "BD",
+                "TDS",
+                "QID",
+                "QHS",
+                "PRN",
+                "STAT",
+                "Q4H",
+                "Q6H",
+                "Q8H",
+                "Q12H"
+            ],
+            "x-enum-varnames": [
+                "FreqOD",
+                "FreqBD",
+                "FreqTDS",
+                "FreqQID",
+                "FreqQHS",
+                "FreqPRN",
+                "FreqSTAT",
+                "FreqQ4H",
+                "FreqQ6H",
+                "FreqQ8H",
+                "FreqQ12H"
+            ]
+        },
+        "src_prescriptions.PrescriptionItem": {
+            "type": "object",
+            "properties": {
+                "dose": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionFrequency"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "instructions": {
+                    "type": "string"
+                },
+                "medicationName": {
+                    "type": "string"
+                },
+                "prescriptionID": {
+                    "type": "string"
+                },
+                "route": {
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionRoute"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionItemStatus"
+                }
+            }
+        },
+        "src_prescriptions.PrescriptionItemStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "deactivated",
+                "completed"
+            ],
+            "x-enum-varnames": [
+                "ItemStatusActive",
+                "ItemStatusDeactivated",
+                "ItemStatusCompleted"
+            ]
+        },
+        "src_prescriptions.PrescriptionResponse": {
+            "type": "object",
+            "properties": {
+                "encounterID": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/src_prescriptions.PrescriptionItem"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "prescribedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "src_prescriptions.PrescriptionRoute": {
+            "type": "string",
+            "enum": [
+                "oral",
+                "iv",
+                "im",
+                "subcutaneous",
+                "topical",
+                "other"
+            ],
+            "x-enum-varnames": [
+                "RouteOral",
+                "RouteIV",
+                "RouteIM",
+                "RouteSubcutaneous",
+                "RouteTopical",
+                "RouteOther"
+            ]
+        },
+        "src_prescriptions.UpdatePrescriptionItemRequest": {
+            "type": "object",
+            "required": [
+                "dose",
+                "duration",
+                "frequency",
+                "medication_name",
+                "route"
+            ],
+            "properties": {
+                "dose": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "frequency": {
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionFrequency"
+                },
+                "instructions": {
+                    "type": "string"
+                },
+                "medication_name": {
+                    "type": "string"
+                },
+                "route": {
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionRoute"
+                }
+            }
+        },
+        "src_prescriptions.UpdatePrescriptionRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/src_prescriptions.UpdatePrescriptionItemRequest"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
         "src_users.ChangePasswordRequest": {
             "type": "object",
             "required": [
@@ -3247,6 +4112,227 @@
                     "type": "string"
                 }
             }
+        },
+        "src_vitals.AckVitalsRequest": {
+            "type": "object",
+            "required": [
+                "synced_ids"
+            ],
+            "properties": {
+                "synced_ids": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "src_vitals.LogPatientVitalRequest": {
+            "type": "object",
+            "properties": {
+                "blood_sugar": {
+                    "type": "number"
+                },
+                "diastolic_bp": {
+                    "type": "integer"
+                },
+                "pulse": {
+                    "type": "integer"
+                },
+                "recorded_at": {
+                    "type": "string"
+                },
+                "respiratory_rate": {
+                    "type": "integer"
+                },
+                "spo2": {
+                    "type": "number"
+                },
+                "systolic_bp": {
+                    "type": "integer"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "weight": {
+                    "type": "number"
+                }
+            }
+        },
+        "src_vitals.RecordEncounterVitalsRequest": {
+            "type": "object",
+            "properties": {
+                "blood_sugar": {
+                    "type": "number"
+                },
+                "diastolic_bp": {
+                    "type": "integer"
+                },
+                "pulse": {
+                    "type": "integer"
+                },
+                "recorded_at": {
+                    "type": "string"
+                },
+                "respiratory_rate": {
+                    "type": "integer"
+                },
+                "spo2": {
+                    "type": "number"
+                },
+                "systolic_bp": {
+                    "type": "integer"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "weight": {
+                    "type": "number"
+                }
+            }
+        },
+        "src_vitals.SyncVitalEntry": {
+            "type": "object",
+            "required": [
+                "client_id"
+            ],
+            "properties": {
+                "blood_sugar": {
+                    "type": "number"
+                },
+                "client_id": {
+                    "type": "string"
+                },
+                "diastolic_bp": {
+                    "type": "integer"
+                },
+                "pulse": {
+                    "type": "integer"
+                },
+                "recorded_at": {
+                    "type": "string"
+                },
+                "respiratory_rate": {
+                    "type": "integer"
+                },
+                "spo2": {
+                    "type": "number"
+                },
+                "systolic_bp": {
+                    "type": "integer"
+                },
+                "temperature": {
+                    "type": "number"
+                },
+                "weight": {
+                    "type": "number"
+                }
+            }
+        },
+        "src_vitals.SyncVitalResult": {
+            "type": "object",
+            "properties": {
+                "client_id": {
+                    "type": "string"
+                },
+                "created": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "src_vitals.SyncVitalsRequest": {
+            "type": "object",
+            "required": [
+                "vitals"
+            ],
+            "properties": {
+                "vitals": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/src_vitals.SyncVitalEntry"
+                    }
+                }
+            }
+        },
+        "src_vitals.SyncVitalsResponse": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/src_vitals.SyncVitalResult"
+                    }
+                }
+            }
+        },
+        "src_vitals.VitalSign": {
+            "type": "object",
+            "properties": {
+                "bloodSugar": {
+                    "type": "number",
+                    "format": "float64"
+                },
+                "clientID": {
+                    "description": "nullable client-generated dedup token",
+                    "type": "string"
+                },
+                "diastolicBP": {
+                    "type": "integer"
+                },
+                "encounterID": {
+                    "description": "nullable, nil for patient self-logs",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "patientID": {
+                    "type": "string"
+                },
+                "pulse": {
+                    "type": "integer"
+                },
+                "recordedAt": {
+                    "type": "string"
+                },
+                "respiratoryRate": {
+                    "type": "integer"
+                },
+                "source": {
+                    "$ref": "#/definitions/src_vitals.VitalSource"
+                },
+                "spO2": {
+                    "type": "number",
+                    "format": "float64"
+                },
+                "systolicBP": {
+                    "type": "integer"
+                },
+                "temperature": {
+                    "type": "number",
+                    "format": "float64"
+                },
+                "weight": {
+                    "type": "number",
+                    "format": "float64"
+                }
+            }
+        },
+        "src_vitals.VitalSource": {
+            "type": "string",
+            "enum": [
+                "clinic",
+                "patient"
+            ],
+            "x-enum-varnames": [
+                "SourceClinic",
+                "SourcePatient"
+            ]
         }
     },
     "securityDefinitions": {
