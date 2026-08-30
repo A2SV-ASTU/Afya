@@ -802,8 +802,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   try {
     await apiActivateClinic(clinicId);
     setClinics((prev) => prev.map((c) => (c.id === clinicId ? { ...c, status: 'active' as const } : c)));
-  } catch (err: any) {
-    setClinicsError(err.message || 'Failed to activate clinic');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to activate clinic';
+    setClinicsError(message);
   }
 };
 
@@ -811,8 +812,9 @@ const deactivateClinic = async (clinicId: string) => {
   try {
     await apiDeactivateClinic(clinicId);
     setClinics((prev) => prev.map((c) => (c.id === clinicId ? { ...c, status: 'deactivated' as const } : c)));
-  } catch (err: any) {
-    setClinicsError(err.message || 'Failed to deactivate clinic');
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to deactivate clinic';
+    setClinicsError(message);
   }
 };
   // Clinic Actions - Doctors & Invitations
