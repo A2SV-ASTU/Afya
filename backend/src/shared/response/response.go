@@ -34,6 +34,14 @@ func RespondAppError(c *gin.Context, err *appErrors.AppError) {
 	Error(c, err.StatusCode, err.Code, err.Message)
 }
 
+func SendError(c *gin.Context, err error) {
+	if appErr, ok := err.(*appErrors.AppError); ok {
+		RespondAppError(c, appErr)
+		return
+	}
+	Error(c, http.StatusInternalServerError, "internal_error", err.Error())
+}
+
 // JSON sends a standard JSON payload
 func JSON(c *gin.Context, statusCode int, data any) {
 	c.JSON(statusCode, data)

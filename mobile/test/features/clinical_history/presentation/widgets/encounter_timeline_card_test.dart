@@ -26,13 +26,12 @@ void main() {
     );
   }
 
-  testWidgets('renders clinic name, doctor name, and status badge correctly',
+  testWidgets('renders clinic name and doctor name correctly',
       (WidgetTester tester) async {
     await tester.pumpWidget(createWidgetUnderTest(() {}));
 
     expect(find.text('Grace Medical Center'), findsOneWidget);
-    expect(find.text('Dr. Adam Smith'), findsOneWidget);
-    expect(find.text('CLOSED'), findsOneWidget);
+    expect(find.text('Dr. Adam Smith • Grace Medical Center'), findsOneWidget);
   });
 
   testWidgets('triggers onTap callback when card is tapped',

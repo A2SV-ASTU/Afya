@@ -5,7 +5,9 @@ import (
 
 	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/response"
-	"afyamind-backend/src/shared/middleware"
+
+	sharedAuth "afyamind-backend/src/shared/auth"
+
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -86,13 +88,13 @@ func (h *Handler) DeactivateDoctor(c *gin.Context) {
 		return
 	}
 
-	callerID, ok := middleware.GetUserID(c)
-	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+	user, err := sharedAuth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
 		return
 	}
 
-	if err := h.svc.DeactivateDoctor(c.Request.Context(), clinicID, doctorID, callerID); err != nil {
+	if err := h.svc.DeactivateDoctor(c.Request.Context(), user, clinicID, doctorID); err != nil {
 		if err.Error() == "unauthorized for this clinic" {
 			response.RespondAppError(c, appErrors.ErrForbiddenRole())
 			return
@@ -144,13 +146,13 @@ func (h *Handler) ActivateDoctor(c *gin.Context) {
 		return
 	}
 
-	callerID, ok := middleware.GetUserID(c)
-	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+	user, err := sharedAuth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
 		return
 	}
 
-	if err := h.svc.ActivateDoctor(c.Request.Context(), clinicID, doctorID, callerID); err != nil {
+	if err := h.svc.ActivateDoctor(c.Request.Context(), user, clinicID, doctorID); err != nil {
 		if err.Error() == "unauthorized for this clinic" {
 			response.RespondAppError(c, appErrors.ErrForbiddenRole())
 			return
@@ -165,3 +167,74 @@ func (h *Handler) ActivateDoctor(c *gin.Context) {
 
 	response.JSON(c, http.StatusOK, gin.H{"status": "active"})
 }
+
+
+func (h *Handler) GetClinic(c *gin.Context) {
+	user, err := sharedAuth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	idParam := c.Param("clinicId")
+	id, err := uuid.Parse(idParam)
+	if err != nil {
+		response.SendError(c, appErrors.ErrValidationError(""))
+		return
+	}
+
+	clinic, err := h.svc.GetClinic(c.Request.Context(), user, id)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{"clinic": clinic})
+}
+
+func (h *Handler) GetClinicDoctors(c *gin.Context) {
+	user, err := sharedAuth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	clinicIDParam := c.Param("clinicId")
+	clinicID, err := uuid.Parse(clinicIDParam)
+	if err != nil {
+		response.SendError(c, appErrors.ErrValidationError(""))
+		return
+	}
+
+	doctors, err := h.svc.GetClinicDoctors(c.Request.Context(), user, clinicID)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	response.List(c, http.StatusOK, "doctors", doctors)
+}
+
+func (h *Handler) GetClinicInvitations(c *gin.Context) {
+	user, err := sharedAuth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	clinicIDParam := c.Param("clinicId")
+	clinicID, err := uuid.Parse(clinicIDParam)
+	if err != nil {
+		response.SendError(c, appErrors.ErrValidationError(""))
+		return
+	}
+
+	invitations, err := h.svc.GetClinicInvitations(c.Request.Context(), user, clinicID)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	response.List(c, http.StatusOK, "invitations", invitations)
+}
+

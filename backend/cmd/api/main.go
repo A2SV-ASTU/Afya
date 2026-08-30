@@ -6,12 +6,16 @@ import (
 	"time"
 
 	"afyamind-backend/src/access-requests"
+	"afyamind-backend/src/appointments"
 	"afyamind-backend/src/auth"
 	"afyamind-backend/src/bootstrap"
+	clinicalevaluations "afyamind-backend/src/clinical-evaluations"
 	"afyamind-backend/src/clinics"
 	"afyamind-backend/src/config"
 	"afyamind-backend/src/database"
+	"afyamind-backend/src/encounters"
 	"afyamind-backend/src/invitations"
+	sharedAuth "afyamind-backend/src/shared/auth"
 	"afyamind-backend/src/shared/email"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/users"
@@ -52,11 +56,15 @@ func main() {
 	}
 
 	// 4. Initialize Repositories
+	sharedAuth.DB = db
 	userRepo := users.NewRepository(db)
 	authRepo := auth.NewRepository(db)
 	invRepo := invitations.NewRepository(db)
 	clinicRepo := clinics.NewRepository(db)
 	arRepo := accessrequests.NewRepository(db)
+	apptRepo := appointments.NewRepository(db)
+	encRepo := encounters.NewRepository(db)
+	evalRepo := clinicalevaluations.NewRepository(db)
 
 	// 4. Initialize Email Sender (optional — logs warning if SMTP not configured)
 	var emailSender *email.Sender
@@ -73,6 +81,9 @@ func main() {
 	invService := invitations.NewService(db, invRepo, emailSender)
 	clinicService := clinics.NewService(db, clinicRepo, emailSender)
 	arService := accessrequests.NewService(db, arRepo, userRepo, emailSender)
+	apptService := appointments.NewService(apptRepo, arRepo)
+	encService := encounters.NewService(encRepo, userRepo)
+	evalService := clinicalevaluations.NewService(evalRepo, encRepo)
 
 	// 6. Initialize Handlers
 	userHandler := users.NewHandler(userService)
@@ -80,6 +91,9 @@ func main() {
 	invHandler := invitations.NewHandler(invService)
 	clinicHandler := clinics.NewHandler(clinicService)
 	arHandler := accessrequests.NewHandler(arService)
+	apptHandler := appointments.NewHandler(apptService)
+	encHandler := encounters.NewHandler(encService)
+	evalHandler := clinicalevaluations.NewHandler(evalService)
 
 	// 6b. Start background expiration jobs
 	appCtx := context.Background()
@@ -105,6 +119,9 @@ func main() {
 		invitations.RegisterRoutes(apiV1, invHandler, cfg.JWTSecret)
 		clinics.RegisterRoutes(apiV1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(apiV1, arHandler, cfg.JWTSecret)
+		appointments.RegisterRoutes(apiV1, apptHandler, cfg.JWTSecret)
+		encounters.RegisterRoutes(apiV1, encHandler, db, cfg.JWTSecret)
+		clinicalevaluations.RegisterRoutes(apiV1, evalHandler, db, cfg.JWTSecret)
 	}
 
 	v1 := router.Group("/v1")
@@ -114,6 +131,9 @@ func main() {
 		invitations.RegisterRoutes(v1, invHandler, cfg.JWTSecret)
 		clinics.RegisterRoutes(v1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(v1, arHandler, cfg.JWTSecret)
+		appointments.RegisterRoutes(v1, apptHandler, cfg.JWTSecret)
+		encounters.RegisterRoutes(v1, encHandler, db, cfg.JWTSecret)
+		clinicalevaluations.RegisterRoutes(v1, evalHandler, db, cfg.JWTSecret)
 	}
 
 	// 8. Start HTTP Server

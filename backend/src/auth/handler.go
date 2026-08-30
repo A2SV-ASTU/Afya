@@ -179,6 +179,8 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 		return
 	}
 
+
+
 	token := req.Token
 	if token == "" {
 		if cookieToken, err := c.Cookie("reset_token"); err == nil && cookieToken != "" {
@@ -192,10 +194,12 @@ func (h *Handler) ResetPassword(c *gin.Context) {
 	}
 
 	appErr := h.service.ResetPassword(c.Request.Context(), token, req.Password)
+  
 	if appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
+
 
 	// Clear reset_token cookie after successful reset
 	c.SetSameSite(http.SameSiteStrictMode)

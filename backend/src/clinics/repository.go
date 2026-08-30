@@ -21,6 +21,11 @@ type Repository interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
 	DeactivateDoctor(ctx context.Context, clinicID, doctorID uuid.UUID) error
 	ActivateDoctor(ctx context.Context, clinicID, doctorID uuid.UUID) error
+
+	FindDoctorsByClinicID(ctx context.Context, clinicID uuid.UUID) ([]DoctorResponse, error)
+	FindInvitationsByClinicID(ctx context.Context, clinicID uuid.UUID) ([]InvitationResponse, error)
+
+
 }
 
 type repository struct {
@@ -178,3 +183,60 @@ func (r *repository) ActivateDoctor(ctx context.Context, clinicID, doctorID uuid
 	}
 	return nil
 }
+
+
+func (r *repository) FindDoctorsByClinicID(ctx context.Context, clinicID uuid.UUID) ([]DoctorResponse, error) {
+	query := `
+		SELECT id, first_name, last_name, role, phone, email, specialization, license_number, doctor_status, invited_by, created_at
+		FROM users
+		WHERE role = 'doctor' AND clinic_id = $1`
+
+	rows, err := r.db.QueryContext(ctx, query, clinicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var doctors []DoctorResponse
+	for rows.Next() {
+		var d DoctorResponse
+		err := rows.Scan(
+			&d.ID, &d.FirstName, &d.LastName, &d.Role, &d.Phone,
+			&d.Email, &d.Specialization, &d.LicenseNumber, &d.DoctorStatus,
+			&d.InvitedBy, &d.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		doctors = append(doctors, d)
+	}
+	return doctors, nil
+}
+
+func (r *repository) FindInvitationsByClinicID(ctx context.Context, clinicID uuid.UUID) ([]InvitationResponse, error) {
+	query := `
+		SELECT id, clinic_id, email, status, expires_at, accepted_at, created_at
+		FROM doctor_invitations
+		WHERE clinic_id = $1`
+
+	rows, err := r.db.QueryContext(ctx, query, clinicID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var invitations []InvitationResponse
+	for rows.Next() {
+		var i InvitationResponse
+		err := rows.Scan(
+			&i.ID, &i.ClinicID, &i.Email, &i.Status,
+			&i.ExpiresAt, &i.AcceptedAt, &i.CreatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		invitations = append(invitations, i)
+	}
+	return invitations, nil
+}
+

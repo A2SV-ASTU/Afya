@@ -9,6 +9,20 @@ jobs:
   commitlint:
     runs-on: ubuntu-latest
     steps:
+      # Step 1: Fetch only the commits belonging to the Pull Request branch
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
-      - uses: wagoid/commitlint-github-action@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # Step 2: Use node to install and run commitlint directly on the PR range
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install Commitlint
+        run: npm install --save-dev @commitlint/cli @commitlint/config-conventional
+
+      - name: Validate PR Commits Only
+        run: npx commitlint --config commitlint.config.cjs --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
