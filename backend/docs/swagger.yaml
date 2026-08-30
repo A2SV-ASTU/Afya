@@ -241,20 +241,6 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
-  src_auth.ResetPasswordRequest:
-    properties:
-      password:
-        description: The new password to set (minimum 8 characters)
-        example: NewSecurePass123!
-        minLength: 8
-        type: string
-      token:
-        description: Password reset token received via email
-        example: abc123resettoken
-        type: string
-    required:
-    - password
-    type: object
   src_auth.SignupRequest:
     properties:
       date_of_birth:
@@ -907,88 +893,6 @@ info:
   title: AfyaMind API
   version: "1.0"
 paths:
-  /access-requests/{id}/approve:
-    post:
-      description: Patient approves a pending access request from a clinic.
-      parameters:
-      - description: Access Request ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Access request approved
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.MessageEnvelope'
-        "400":
-          description: Validation/ID error
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "401":
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "403":
-          description: Forbidden — not target patient
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "409":
-          description: Request not pending
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "410":
-          description: Request expired
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Approve access request
-      tags:
-      - AccessRequests
-  /access-requests/{id}/deny:
-    post:
-      description: Patient denies a pending access request from a clinic.
-      parameters:
-      - description: Access Request ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Access request denied
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.MessageEnvelope'
-        "400":
-          description: Validation/ID error
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "401":
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "403":
-          description: Forbidden — not target patient
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "409":
-          description: Request not pending
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "410":
-          description: Request expired
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Deny access request
-      tags:
-      - AccessRequests
   /appointments:
     post:
       consumes:
@@ -1172,37 +1076,6 @@ paths:
           schema:
             $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
       summary: Register a new patient account
-      tags:
-      - Auth
-  /auth/reset-password:
-    post:
-      consumes:
-      - application/json
-      description: Resets the password if the token is valid and unexpired. Clears
-        reset token cookie.
-      parameters:
-      - description: Token and new password
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/src_auth.ResetPasswordRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: Password reset successfully
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.MessageEnvelope'
-        "400":
-          description: Validation error
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-        "401":
-          description: Invalid or expired token
-          schema:
-            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
-      summary: Reset password using token
       tags:
       - Auth
   /clinics:
@@ -1899,6 +1772,148 @@ paths:
       summary: Accept invitation & complete signup
       tags:
       - Invitations
+  /magic/accept-invitation:
+    get:
+      description: Serves the HTML form page for an invited doctor to complete registration.
+      parameters:
+      - description: Secure token from the invitation email
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Returns the doctor registration HTML page
+          schema:
+            type: string
+        "400":
+          description: Returns an HTML error page indicating missing token
+          schema:
+            type: string
+      summary: View accept invitation page
+      tags:
+      - MagicLinks
+  /magic/access-request:
+    get:
+      description: Serves the HTML confirmation page for a patient to approve or deny
+        a clinical records access request.
+      parameters:
+      - description: Secure token sent in the request email
+        in: query
+        name: token
+        required: true
+        type: string
+      - description: 'Action to perform: ''approve'' or ''deny'''
+        in: query
+        name: action
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Returns the HTML approval/denial confirmation page
+          schema:
+            type: string
+        "400":
+          description: Returns an HTML error page indicating bad request parameters
+          schema:
+            type: string
+      summary: View access request page
+      tags:
+      - MagicLinks
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Processes the HTML form submission to approve or deny the access
+        request.
+      parameters:
+      - description: Secure token
+        in: formData
+        name: token
+        required: true
+        type: string
+      - description: 'Action to confirm: ''approve'' or ''deny'''
+        in: formData
+        name: action
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Returns an HTML success or error page indicating the result
+            of the action
+          schema:
+            type: string
+        "400":
+          description: Returns an HTML error page indicating missing form data
+          schema:
+            type: string
+      summary: Confirm access request action
+      tags:
+      - MagicLinks
+  /magic/reset-password:
+    get:
+      description: Serves the HTML form page for a user to reset their password.
+      parameters:
+      - description: Secure token from the email link
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Returns the password reset HTML form
+          schema:
+            type: string
+        "400":
+          description: Returns an HTML error page indicating missing query parameters
+          schema:
+            type: string
+      summary: View password reset form page
+      tags:
+      - MagicLinks
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Processes the HTML form submission to securely reset the user's
+        password.
+      parameters:
+      - description: Secure token
+        in: formData
+        name: token
+        required: true
+        type: string
+      - description: New password (min 8 characters)
+        in: formData
+        name: password
+        required: true
+        type: string
+      - description: Must match the new password
+        in: formData
+        name: confirm_password
+        required: true
+        type: string
+      produces:
+      - text/html
+      responses:
+        "200":
+          description: Returns an HTML success or error page indicating the result
+            of the reset
+          schema:
+            type: string
+        "400":
+          description: Returns an HTML error page indicating missing form data
+          schema:
+            type: string
+      summary: Confirm password reset
+      tags:
+      - MagicLinks
   /patients/{patientId}/appointments:
     get:
       description: Retrieves all scheduled/past appointments for a specific patient.

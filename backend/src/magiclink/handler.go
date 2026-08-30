@@ -41,6 +41,17 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler) {
 
 // ---------- Access Request: View Confirmation Page ----------
 
+// ViewAccessRequestPage godoc
+//
+//	@Summary		View access request page
+//	@Description	Serves the HTML confirmation page for a patient to approve or deny a clinical records access request.
+//	@Tags			MagicLinks
+//	@Produce		html
+//	@Param			token	query		string	true	"Secure token sent in the request email"
+//	@Param			action	query		string	true	"Action to perform: 'approve' or 'deny'"
+//	@Success		200		{string}	string	"Returns the HTML approval/denial confirmation page"
+//	@Failure		400		{string}	string	"Returns an HTML error page indicating bad request parameters"
+//	@Router			/magic/access-request [get]
 func (h *Handler) ViewAccessRequestPage(c *gin.Context) {
 	token := c.Query("token")
 	action := c.Query("action")
@@ -66,6 +77,18 @@ func (h *Handler) ViewAccessRequestPage(c *gin.Context) {
 
 // ---------- Access Request: Process Confirmation ----------
 
+// ConfirmAccessRequest godoc
+//
+//	@Summary		Confirm access request action
+//	@Description	Processes the HTML form submission to approve or deny the access request.
+//	@Tags			MagicLinks
+//	@Accept			x-www-form-urlencoded
+//	@Produce		html
+//	@Param			token	formData	string	true	"Secure token"
+//	@Param			action	formData	string	true	"Action to confirm: 'approve' or 'deny'"
+//	@Success		200		{string}	string	"Returns an HTML success or error page indicating the result of the action"
+//	@Failure		400		{string}	string	"Returns an HTML error page indicating missing form data"
+//	@Router			/magic/access-request [post]
 func (h *Handler) ConfirmAccessRequest(c *gin.Context) {
 	token := c.PostForm("token")
 	action := c.PostForm("action")
@@ -112,6 +135,16 @@ func (h *Handler) ConfirmAccessRequest(c *gin.Context) {
 
 // ---------- Password Reset: View Page ----------
 
+// ViewResetPasswordPage godoc
+//
+//	@Summary		View password reset form page
+//	@Description	Serves the HTML form page for a user to reset their password.
+//	@Tags			MagicLinks
+//	@Produce		html
+//	@Param			token	query		string	true	"Secure token from the email link"
+//	@Success		200		{string}	string	"Returns the password reset HTML form"
+//	@Failure		400		{string}	string	"Returns an HTML error page indicating missing query parameters"
+//	@Router			/magic/reset-password [get]
 func (h *Handler) ViewResetPasswordPage(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {
@@ -126,6 +159,19 @@ func (h *Handler) ViewResetPasswordPage(c *gin.Context) {
 
 // ---------- Password Reset: Process Form ----------
 
+// ConfirmResetPassword godoc
+//
+//	@Summary		Confirm password reset
+//	@Description	Processes the HTML form submission to securely reset the user's password.
+//	@Tags			MagicLinks
+//	@Accept			x-www-form-urlencoded
+//	@Produce		html
+//	@Param			token				formData	string	true	"Secure token"
+//	@Param			password			formData	string	true	"New password (min 8 characters)"
+//	@Param			confirm_password	formData	string	true	"Must match the new password"
+//	@Success		200					{string}	string	"Returns an HTML success or error page indicating the result of the reset"
+//	@Failure		400					{string}	string	"Returns an HTML error page indicating missing form data"
+//	@Router			/magic/reset-password [post]
 func (h *Handler) ConfirmResetPassword(c *gin.Context) {
 	token := c.PostForm("token")
 	password := c.PostForm("password")
@@ -166,6 +212,16 @@ func (h *Handler) ConfirmResetPassword(c *gin.Context) {
 
 // ---------- Doctor Invitation: Redirect to Web ----------
 
+// ViewAcceptInvitationPage godoc
+//
+//	@Summary		View accept invitation page
+//	@Description	Serves the HTML form page for an invited doctor to complete registration.
+//	@Tags			MagicLinks
+//	@Produce		html
+//	@Param			token	query		string	true	"Secure token from the invitation email"
+//	@Success		200		{string}	string	"Returns the doctor registration HTML page"
+//	@Failure		400		{string}	string	"Returns an HTML error page indicating missing token"
+//	@Router			/magic/accept-invitation [get]
 func (h *Handler) ViewAcceptInvitationPage(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {

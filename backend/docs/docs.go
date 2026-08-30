@@ -22,134 +22,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/access-requests/{id}/approve": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Patient approves a pending access request from a clinic.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AccessRequests"
-                ],
-                "summary": "Approve access request",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Access Request ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Access request approved",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation/ID error",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Not authenticated",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden — not target patient",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "409": {
-                        "description": "Request not pending",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "410": {
-                        "description": "Request expired",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/access-requests/{id}/deny": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Patient denies a pending access request from a clinic.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "AccessRequests"
-                ],
-                "summary": "Deny access request",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Access Request ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Access request denied",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation/ID error",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Not authenticated",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden — not target patient",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "409": {
-                        "description": "Request not pending",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "410": {
-                        "description": "Request expired",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
         "/appointments": {
             "post": {
                 "security": [
@@ -432,52 +304,6 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Email or phone already in use",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/reset-password": {
-            "post": {
-                "description": "Resets the password if the token is valid and unexpired. Clears reset token cookie.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Reset password using token",
-                "parameters": [
-                    {
-                        "description": "Token and new password",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/src_auth.ResetPasswordRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Password reset successfully",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
-                        }
-                    },
-                    "400": {
-                        "description": "Validation error",
-                        "schema": {
-                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
-                        }
-                    },
-                    "401": {
-                        "description": "Invalid or expired token",
                         "schema": {
                             "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
@@ -1570,6 +1396,211 @@ const docTemplate = `{
                 }
             }
         },
+        "/magic/accept-invitation": {
+            "get": {
+                "description": "Serves the HTML form page for an invited doctor to complete registration.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "MagicLinks"
+                ],
+                "summary": "View accept invitation page",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secure token from the invitation email",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns the doctor registration HTML page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Returns an HTML error page indicating missing token",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/magic/access-request": {
+            "get": {
+                "description": "Serves the HTML confirmation page for a patient to approve or deny a clinical records access request.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "MagicLinks"
+                ],
+                "summary": "View access request page",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secure token sent in the request email",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action to perform: 'approve' or 'deny'",
+                        "name": "action",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns the HTML approval/denial confirmation page",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Returns an HTML error page indicating bad request parameters",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Processes the HTML form submission to approve or deny the access request.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "MagicLinks"
+                ],
+                "summary": "Confirm access request action",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secure token",
+                        "name": "token",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Action to confirm: 'approve' or 'deny'",
+                        "name": "action",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns an HTML success or error page indicating the result of the action",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Returns an HTML error page indicating missing form data",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/magic/reset-password": {
+            "get": {
+                "description": "Serves the HTML form page for a user to reset their password.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "MagicLinks"
+                ],
+                "summary": "View password reset form page",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secure token from the email link",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns the password reset HTML form",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Returns an HTML error page indicating missing query parameters",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Processes the HTML form submission to securely reset the user's password.",
+                "consumes": [
+                    "application/x-www-form-urlencoded"
+                ],
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "MagicLinks"
+                ],
+                "summary": "Confirm password reset",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secure token",
+                        "name": "token",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "New password (min 8 characters)",
+                        "name": "password",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Must match the new password",
+                        "name": "confirm_password",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Returns an HTML success or error page indicating the result of the reset",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Returns an HTML error page indicating missing form data",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/patients/lookup": {
             "get": {
                 "security": [
@@ -2350,25 +2381,6 @@ const docTemplate = `{
                     "description": "Refresh token (optional — cookie is preferred)",
                     "type": "string",
                     "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                }
-            }
-        },
-        "src_auth.ResetPasswordRequest": {
-            "type": "object",
-            "required": [
-                "password"
-            ],
-            "properties": {
-                "password": {
-                    "description": "The new password to set (minimum 8 characters)",
-                    "type": "string",
-                    "minLength": 8,
-                    "example": "NewSecurePass123!"
-                },
-                "token": {
-                    "description": "Password reset token received via email",
-                    "type": "string",
-                    "example": "abc123resettoken"
                 }
             }
         },
