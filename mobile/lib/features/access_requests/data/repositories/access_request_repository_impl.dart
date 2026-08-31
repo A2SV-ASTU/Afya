@@ -24,8 +24,12 @@ class AccessRequestRepositoryImpl implements AccessRequestRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, code: e.code));
     } on DioException catch (e) {
+      if (e.error is ServerException) {
+        final serverEx = e.error as ServerException;
+        return Left(ServerFailure(serverEx.message, code: serverEx.code));
+      }
       return Left(ServerFailure(
-        e.message ?? 'An unexpected error occurred',
+        e.message ?? e.error?.toString() ?? 'An unexpected error occurred',
       ));
     }
   }
@@ -38,8 +42,12 @@ class AccessRequestRepositoryImpl implements AccessRequestRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, code: e.code));
     } on DioException catch (e) {
+      if (e.error is ServerException) {
+        final serverEx = e.error as ServerException;
+        return Left(ServerFailure(serverEx.message, code: serverEx.code));
+      }
       return Left(ServerFailure(
-        e.message ?? 'An unexpected error occurred',
+        e.message ?? e.error?.toString() ?? 'An unexpected error occurred',
       ));
     }
   }
@@ -52,8 +60,12 @@ class AccessRequestRepositoryImpl implements AccessRequestRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, code: e.code));
     } on DioException catch (e) {
+      if (e.error is ServerException) {
+        final serverEx = e.error as ServerException;
+        return Left(ServerFailure(serverEx.message, code: serverEx.code));
+      }
       return Left(ServerFailure(
-        e.message ?? 'An unexpected error occurred',
+        e.message ?? e.error?.toString() ?? 'An unexpected error occurred',
       ));
     }
   }
@@ -66,8 +78,12 @@ class AccessRequestRepositoryImpl implements AccessRequestRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, code: e.code));
     } on DioException catch (e) {
+      if (e.error is ServerException) {
+        final serverEx = e.error as ServerException;
+        return Left(ServerFailure(serverEx.message, code: serverEx.code));
+      }
       return Left(ServerFailure(
-        e.message ?? 'An unexpected error occurred',
+        e.message ?? e.error?.toString() ?? 'An unexpected error occurred',
       ));
     }
   }
@@ -80,8 +96,12 @@ class AccessRequestRepositoryImpl implements AccessRequestRepository {
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, code: e.code));
     } on DioException catch (e) {
+      if (e.error is ServerException) {
+        final serverEx = e.error as ServerException;
+        return Left(ServerFailure(serverEx.message, code: serverEx.code));
+      }
       return Left(ServerFailure(
-        e.message ?? 'An unexpected error occurred',
+        e.message ?? e.error?.toString() ?? 'An unexpected error occurred',
       ));
     }
   }

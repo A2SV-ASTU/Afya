@@ -21,12 +21,20 @@ import '../../features/access_requests/data/repositories/access_request_reposito
     as _i345;
 import '../../features/access_requests/domain/repositories/access_request_repository.dart'
     as _i438;
+import '../../features/access_requests/domain/usecases/approve_access_request_usecase.dart'
+    as _i719;
+import '../../features/access_requests/domain/usecases/deny_access_request_usecase.dart'
+    as _i998;
 import '../../features/access_requests/domain/usecases/get_active_grants_usecase.dart'
     as _i211;
+import '../../features/access_requests/domain/usecases/get_pending_access_requests_usecase.dart'
+    as _i508;
 import '../../features/access_requests/domain/usecases/revoke_clinic_grant_usecase.dart'
     as _i1;
 import '../../features/access_requests/presentation/bloc/grants_management_bloc.dart'
     as _i506;
+import '../../features/access_requests/presentation/bloc/pending_access_requests_bloc.dart'
+    as _i427;
 import '../../features/auth/data/datasources/auth_local_data_source.dart'
     as _i852;
 import '../../features/auth/data/datasources/auth_remote_data_source.dart'
@@ -154,7 +162,6 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i779.ProcessMissedDosesUseCase(
               gh<_i894.MedicationLocalDataSource>(),
               gh<_i949.LocalAlarmScheduler>(),
-              missedThreshold: gh<Duration>(),
             ));
     gh.lazySingleton<_i854.CancelPrescriptionRemindersUseCase>(
         () => _i854.CancelPrescriptionRemindersUseCase(
@@ -207,8 +214,15 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i438.AccessRequestRepository>(() =>
         _i345.AccessRequestRepositoryImpl(
             remoteDataSource: gh<_i718.AccessRequestRemoteDataSource>()));
+    gh.lazySingleton<_i719.ApproveAccessRequestUseCase>(() =>
+        _i719.ApproveAccessRequestUseCase(gh<_i438.AccessRequestRepository>()));
+    gh.lazySingleton<_i998.DenyAccessRequestUseCase>(() =>
+        _i998.DenyAccessRequestUseCase(gh<_i438.AccessRequestRepository>()));
     gh.lazySingleton<_i211.GetActiveGrantsUseCase>(() =>
         _i211.GetActiveGrantsUseCase(gh<_i438.AccessRequestRepository>()));
+    gh.lazySingleton<_i508.GetPendingAccessRequestsUseCase>(() =>
+        _i508.GetPendingAccessRequestsUseCase(
+            gh<_i438.AccessRequestRepository>()));
     gh.lazySingleton<_i1.RevokeClinicGrantUseCase>(() =>
         _i1.RevokeClinicGrantUseCase(gh<_i438.AccessRequestRepository>()));
     gh.lazySingleton<_i797.AuthBloc>(() => _i797.AuthBloc(
@@ -233,6 +247,12 @@ extension GetItInjectableX on _i174.GetIt {
           getActiveGrantsUseCase: gh<_i211.GetActiveGrantsUseCase>(),
           revokeClinicGrantUseCase: gh<_i1.RevokeClinicGrantUseCase>(),
         ));
+    gh.factory<_i427.PendingAccessRequestsBloc>(
+        () => _i427.PendingAccessRequestsBloc(
+              getPendingUseCase: gh<_i508.GetPendingAccessRequestsUseCase>(),
+              approveUseCase: gh<_i719.ApproveAccessRequestUseCase>(),
+              denyUseCase: gh<_i998.DenyAccessRequestUseCase>(),
+            ));
     gh.lazySingleton<_i453.GetPrescriptionsUseCase>(
         () => _i453.GetPrescriptionsUseCase(
               gh<_i735.MedicationRepository>(),

@@ -25,9 +25,10 @@ void main() {
     dataSource = AccessRequestRemoteDataSourceImpl(mockApiClient);
   });
 
+  // Backend field names: requesting_clinic_id, created_at (no clinic_name/granted_at)
   final tAccessRequestJson = {
     'id': '1',
-    'clinic_id': 'c1',
+    'requesting_clinic_id': 'c1',
     'clinic_name': 'Clinic A',
     'doctor_name': 'Dr. Smith',
     'reason': 'Checkup',
@@ -36,17 +37,19 @@ void main() {
     'created_at': '2026-01-01T00:00:00.000',
   };
 
+  // Backend field names: id, requesting_clinic_id, created_at (no grant_id/granted_at)
   final tClinicGrantJson = {
-    'grant_id': 'g1',
-    'clinic_id': 'c1',
+    'id': 'g1',
+    'requesting_clinic_id': 'c1',
     'clinic_name': 'Clinic A',
-    'granted_at': '2026-01-01T00:00:00.000',
+    'created_at': '2026-01-01T00:00:00.000',
   };
 
   group('getPendingAccessRequests', () {
     test('should return list of AccessRequestModel on success', () async {
+      // Backend wraps response: {"access_requests": [...]}
       final response = Response(
-        data: [tAccessRequestJson],
+        data: {'access_requests': [tAccessRequestJson]},
         statusCode: 200,
         requestOptions: RequestOptions(path: '/patient/access-requests/active'),
       );
@@ -83,20 +86,20 @@ void main() {
       final response = Response(
         data: null,
         statusCode: 200,
-        requestOptions: RequestOptions(path: '/patient/access-requests/1/approve'),
+        requestOptions: RequestOptions(path: '/access-requests/1/approve'),
       );
-      when(() => mockDio.post('/patient/access-requests/1/approve'))
+      when(() => mockDio.post('/access-requests/1/approve'))
           .thenAnswer((_) async => response);
 
       await dataSource.approveAccessRequest('1');
 
-      verify(() => mockDio.post('/patient/access-requests/1/approve')).called(1);
+      verify(() => mockDio.post('/access-requests/1/approve')).called(1);
     });
 
     test('should throw DioException on failure', () async {
-      when(() => mockDio.post('/patient/access-requests/1/approve')).thenThrow(
+      when(() => mockDio.post('/access-requests/1/approve')).thenThrow(
         DioException(
-          requestOptions: RequestOptions(path: '/patient/access-requests/1/approve'),
+          requestOptions: RequestOptions(path: '/access-requests/1/approve'),
           message: 'Server error',
         ),
       );
@@ -113,20 +116,20 @@ void main() {
       final response = Response(
         data: null,
         statusCode: 200,
-        requestOptions: RequestOptions(path: '/patient/access-requests/1/deny'),
+        requestOptions: RequestOptions(path: '/access-requests/1/deny'),
       );
-      when(() => mockDio.post('/patient/access-requests/1/deny'))
+      when(() => mockDio.post('/access-requests/1/deny'))
           .thenAnswer((_) async => response);
 
       await dataSource.denyAccessRequest('1');
 
-      verify(() => mockDio.post('/patient/access-requests/1/deny')).called(1);
+      verify(() => mockDio.post('/access-requests/1/deny')).called(1);
     });
 
     test('should throw DioException on failure', () async {
-      when(() => mockDio.post('/patient/access-requests/1/deny')).thenThrow(
+      when(() => mockDio.post('/access-requests/1/deny')).thenThrow(
         DioException(
-          requestOptions: RequestOptions(path: '/patient/access-requests/1/deny'),
+          requestOptions: RequestOptions(path: '/access-requests/1/deny'),
           message: 'Server error',
         ),
       );
@@ -140,8 +143,9 @@ void main() {
 
   group('getActiveGrants', () {
     test('should return list of ClinicGrantModel on success', () async {
+      // Backend wraps response: {"grants": [...]}
       final response = Response(
-        data: [tClinicGrantJson],
+        data: {'grants': [tClinicGrantJson]},
         statusCode: 200,
         requestOptions: RequestOptions(path: '/patient/grants'),
       );

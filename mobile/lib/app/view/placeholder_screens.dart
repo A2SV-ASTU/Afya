@@ -46,6 +46,11 @@ class ProfilePlaceholderScreen extends StatelessWidget {
             const Text('Patient Profile (Assigned to Yehabesha)', style: AppTypography.bodyMedium),
             const SizedBox(height: 24),
             AfyaButton(
+              text: 'Access Requests',
+              onPressed: () => GoRouter.of(context).go('/profile/pending-access-requests'),
+            ),
+            const SizedBox(height: 12),
+            AfyaButton(
               text: 'View Active Clinic Grants',
               onPressed: () => GoRouter.of(context).go('/profile/active-grants'),
             ),
