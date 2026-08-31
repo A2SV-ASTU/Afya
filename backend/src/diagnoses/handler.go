@@ -17,6 +17,23 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
+// CreateDiagnosis godoc
+//
+//	@Summary		Add a diagnosis
+//	@Description	Adds a new diagnosis to a specific encounter.
+//	@Tags			Diagnoses
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			encounterId	path		string						true	"Encounter ID"
+//	@Param			body		body		diagnoses.CreateDiagnosisRequest	true	"Diagnosis details"
+//	@Success		201			{object}	diagnoses.Diagnosis			"Diagnosis created successfully"
+//	@Failure		400			{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403			{object}	response.ErrorEnvelope		"Forbidden"
+//	@Failure		404			{object}	response.ErrorEnvelope		"Encounter not found"
+//	@Failure		409			{object}	response.ErrorEnvelope		"Encounter is closed"
+//	@Router			/encounters/{encounterId}/diagnoses [post]
 func (h *Handler) CreateDiagnosis(c *gin.Context) {
 	encounterIDStr := c.Param("encounterId")
 	encounterID, err := uuid.Parse(encounterIDStr)
@@ -40,6 +57,20 @@ func (h *Handler) CreateDiagnosis(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"diagnosis": diagnosis})
 }
 
+// GetDiagnoses godoc
+//
+//	@Summary		Get diagnoses
+//	@Description	Retrieves all diagnoses for a specific encounter.
+//	@Tags			Diagnoses
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			encounterId	path		string						true	"Encounter ID"
+//	@Success		200			{array}		diagnoses.Diagnosis			"List of diagnoses"
+//	@Failure		400			{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403			{object}	response.ErrorEnvelope		"Forbidden"
+//	@Failure		404			{object}	response.ErrorEnvelope		"Encounter not found"
+//	@Router			/encounters/{encounterId}/diagnoses [get]
 func (h *Handler) GetDiagnoses(c *gin.Context) {
 	encounterIDStr := c.Param("encounterId")
 	encounterID, err := uuid.Parse(encounterIDStr)

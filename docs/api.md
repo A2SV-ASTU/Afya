@@ -16,6 +16,8 @@ This document contains the complete specification and reference for the AfyaMind
 - [Appointments Endpoints (`/api/v1/appointments`)](#appointments-endpoints-apiv1appointments)
 - [Clinical Encounters Endpoints (`/api/v1/encounters`)](#clinical-encounters-endpoints-apiv1encounters)
 - [Clinical Evaluations Endpoints (`/api/v1/encounters/{id}/clinical-evaluation`)](#clinical-evaluations-endpoints-apiv1encountersidclinical-evaluation)
+- [Labs Endpoints (`/api/v1/encounters/{encounterId}/labs`)](#labs-endpoints-apiv1encountersencounteridlabs)
+- [Diagnoses Endpoints (`/api/v1/encounters/{encounterId}/diagnoses`)](#diagnoses-endpoints-apiv1encountersencounteriddiagnoses)
 - [Magic Links Endpoints (`/api/v1/magic`)](#magic-links-endpoints-apiv1magic)
 
 ---
@@ -987,3 +989,83 @@ Magic links are browser-rendered HTML pages used for email-driven workflows with
 #### Responses
 - **200 OK**: Returns HTML doctor registration form.
 - **400 Bad Request**: Invalid or missing token.
+
+---
+
+## Labs Endpoints (`/api/v1/encounters/{encounterId}/labs`)
+
+### 36. Add a Lab Result
+- **Endpoint**: `POST /api/v1/encounters/{encounterId}/labs`
+- **Auth Required**: Yes (`doctor` role)
+- **Description**: Adds a new lab result to a specific encounter.
+
+#### Request Body
+```json
+{
+  "test_name": "Complete Blood Count",
+  "category": "laboratory",
+  "summary_notes": "Normal ranges",
+  "measurements": {
+    "wbc": 5.5,
+    "rbc": 4.2
+  },
+  "flag": "normal"
+}
+```
+
+#### Responses
+- **201 Created**: Returns the created lab result object.
+- **400 Bad Request**: Validation error.
+- **403 Forbidden**: Unauthorized role or missing access grant.
+- **404 Not Found**: Encounter not found.
+- **409 Conflict**: Encounter is closed.
+
+---
+
+### 37. Get Lab Results
+- **Endpoint**: `GET /api/v1/encounters/{encounterId}/labs`
+- **Auth Required**: Yes (`doctor` or `patient`)
+- **Description**: Retrieves all lab results for a specific encounter.
+
+#### Responses
+- **200 OK**: Returns an array of lab results.
+- **403 Forbidden**: Unauthorized role or missing access grant.
+- **404 Not Found**: Encounter not found.
+
+---
+
+## Diagnoses Endpoints (`/api/v1/encounters/{encounterId}/diagnoses`)
+
+### 38. Add a Diagnosis
+- **Endpoint**: `POST /api/v1/encounters/{encounterId}/diagnoses`
+- **Auth Required**: Yes (`doctor` role)
+- **Description**: Adds a new diagnosis to a specific encounter.
+
+#### Request Body
+```json
+{
+  "diagnosis_text": "Acute Bronchitis",
+  "diagnosis_type": "provisional",
+  "icd_code": "J20.9",
+  "notes": "Patient reports coughing."
+}
+```
+
+#### Responses
+- **201 Created**: Returns the created diagnosis object.
+- **400 Bad Request**: Validation error.
+- **403 Forbidden**: Unauthorized role or missing access grant.
+- **404 Not Found**: Encounter not found.
+- **409 Conflict**: Encounter is closed.
+
+---
+
+### 39. Get Diagnoses
+- **Endpoint**: `GET /api/v1/encounters/{encounterId}/diagnoses`
+- **Auth Required**: Yes (`doctor` or `patient`)
+- **Description**: Retrieves all diagnoses for a specific encounter.
+
+#### Responses
+- **200 OK**: Returns an array of diagnoses.
+- **403 Forbidden**: Unauthorized role or missing access grant.
+- **404 Not Found**: Encounter not found.
