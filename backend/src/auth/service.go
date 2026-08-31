@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"afyamind-backend/src/config"
-	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/email"
+	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/token"
 	"afyamind-backend/src/users"
 

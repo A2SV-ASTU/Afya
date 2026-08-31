@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	appErrors "afyamind-backend/src/shared/errors"
-	"afyamind-backend/src/shared/response"
 	"afyamind-backend/src/shared/middleware"
+	"afyamind-backend/src/shared/response"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

@@ -11,7 +11,9 @@ import (
 	"afyamind-backend/src/clinics"
 	"afyamind-backend/src/config"
 	"afyamind-backend/src/database"
+	"afyamind-backend/src/diagnoses"
 	"afyamind-backend/src/invitations"
+	"afyamind-backend/src/labs"
 	"afyamind-backend/src/shared/email"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/users"
@@ -57,6 +59,8 @@ func main() {
 	invRepo := invitations.NewRepository(db)
 	clinicRepo := clinics.NewRepository(db)
 	arRepo := accessrequests.NewRepository(db)
+	diagRepo := diagnoses.NewRepository(db)
+	labsRepo := labs.NewRepository(db)
 
 	// 4. Initialize Email Sender (optional — logs warning if SMTP not configured)
 	var emailSender *email.Sender
@@ -73,6 +77,8 @@ func main() {
 	invService := invitations.NewService(db, invRepo, emailSender)
 	clinicService := clinics.NewService(db, clinicRepo, emailSender)
 	arService := accessrequests.NewService(db, arRepo, userRepo, emailSender)
+	diagService := diagnoses.NewService(db, diagRepo)
+	labsService := labs.NewService(db, labsRepo)
 
 	// 6. Initialize Handlers
 	userHandler := users.NewHandler(userService)
@@ -80,6 +86,8 @@ func main() {
 	invHandler := invitations.NewHandler(invService)
 	clinicHandler := clinics.NewHandler(clinicService)
 	arHandler := accessrequests.NewHandler(arService)
+	diagHandler := diagnoses.NewHandler(diagService)
+	labsHandler := labs.NewHandler(labsService)
 
 	// 6b. Start background expiration jobs
 	appCtx := context.Background()
@@ -105,6 +113,8 @@ func main() {
 		invitations.RegisterRoutes(apiV1, invHandler, cfg.JWTSecret)
 		clinics.RegisterRoutes(apiV1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(apiV1, arHandler, cfg.JWTSecret)
+		diagnoses.RegisterRoutes(apiV1, diagHandler, db, cfg.JWTSecret)
+		labs.RegisterRoutes(apiV1, labsHandler, db, cfg.JWTSecret)
 	}
 
 	v1 := router.Group("/v1")
@@ -114,6 +124,8 @@ func main() {
 		invitations.RegisterRoutes(v1, invHandler, cfg.JWTSecret)
 		clinics.RegisterRoutes(v1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(v1, arHandler, cfg.JWTSecret)
+		diagnoses.RegisterRoutes(v1, diagHandler, db, cfg.JWTSecret)
+		labs.RegisterRoutes(v1, labsHandler, db, cfg.JWTSecret)
 	}
 
 	// 8. Start HTTP Server
