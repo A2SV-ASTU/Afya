@@ -60,11 +60,12 @@ func (s *service) CreateDiagnosis(ctx context.Context, encounterID uuid.UUID, re
 		d.Notes = &req.Notes
 	}
 
-	if err := s.repo.Create(ctx, d); err != nil {
+	createdDiagnosis, err := s.repo.Create(ctx, d)
+	if err != nil {
 		return nil, appErrors.ErrInternal("Failed to create diagnosis")
 	}
 
-	return d, nil
+	return createdDiagnosis, nil
 }
 
 func (s *service) GetEncounterDiagnoses(ctx context.Context, encounterID uuid.UUID) ([]*Diagnosis, *appErrors.AppError) {

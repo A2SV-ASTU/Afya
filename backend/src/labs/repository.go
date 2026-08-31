@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type Repository interface {
-	Create(ctx context.Context, l *LabResult) error
+	Create(ctx context.Context, l *LabResult) (*LabResult, error)
 	FindByEncounterID(ctx context.Context, encounterID uuid.UUID) ([]*LabResult, error)
 }
 
@@ -17,14 +19,19 @@ type postgresRepository struct {
 	db *sql.DB
 }
 
+// NewRepository creates a new repository. In tests, use sqlmock with *sql.DB.
 func NewRepository(db *sql.DB) Repository {
 	return &postgresRepository{db: db}
 }
 
-func (r *postgresRepository) Create(ctx context.Context, l *LabResult) error {
+func (r *postgresRepository) Create(ctx context.Context, l *LabResult) (*LabResult, error) {
+	if l.EncounterID == uuid.Nil || l.TestName == "" || l.Category == "" {
+		return nil, fmt.Errorf("invalid lab result: missing required fields")
+	}
+
 	measurementsJSON, err := json.Marshal(l.Measurements)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("marshal lab measurements: %w", err)
 	}
 
 	query := `
@@ -32,6 +39,8 @@ func (r *postgresRepository) Create(ctx context.Context, l *LabResult) error {
 		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, created_at
 	`
+	var id uuid.UUID
+	var createdAt time.Time
 	err = r.db.QueryRowContext(
 		ctx,
 		query,
@@ -41,8 +50,15 @@ func (r *postgresRepository) Create(ctx context.Context, l *LabResult) error {
 		l.SummaryNotes,
 		measurementsJSON,
 		l.Flag,
-	).Scan(&l.ID, &l.CreatedAt)
-	return err
+	).Scan(&id, &createdAt)
+
+	if err != nil {
+		return nil, fmt.Errorf("insert lab_result: %w", err)
+	}
+
+	l.ID = id
+	l.CreatedAt = createdAt
+	return l, nil
 }
 
 func (r *postgresRepository) FindByEncounterID(ctx context.Context, encounterID uuid.UUID) ([]*LabResult, error) {
@@ -75,9 +91,12 @@ func (r *postgresRepository) FindByEncounterID(ctx context.Context, encounterID 
 			return nil, err
 		}
 
-		if err := json.Unmarshal(measurementsJSON, &l.Measurements); err != nil {
-			// If unmarshal fails, set an empty map to avoid panic
-			l.Measurements = make(map[string]interface{})
+		if measurementsJSON == nil {
+			l.Measurements = map[string]interface{}{}
+		} else {
+			if err := json.Unmarshal(measurementsJSON, &l.Measurements); err != nil {
+				return nil, fmt.Errorf("unmarshal measurements for lab_result id %v: %w", l.ID, err)
+			}
 		}
 
 		results = append(results, &l)

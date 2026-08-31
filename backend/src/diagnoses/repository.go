@@ -3,12 +3,14 @@ package diagnoses
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type Repository interface {
-	Create(ctx context.Context, d *Diagnosis) error
+	Create(ctx context.Context, d *Diagnosis) (*Diagnosis, error)
 	FindByEncounterID(ctx context.Context, encounterID uuid.UUID) ([]*Diagnosis, error)
 }
 
@@ -16,16 +18,23 @@ type postgresRepository struct {
 	db *sql.DB
 }
 
+// NewRepository creates a new repository. In tests, use sqlmock with *sql.DB.
 func NewRepository(db *sql.DB) Repository {
 	return &postgresRepository{db: db}
 }
 
-func (r *postgresRepository) Create(ctx context.Context, d *Diagnosis) error {
+func (r *postgresRepository) Create(ctx context.Context, d *Diagnosis) (*Diagnosis, error) {
+	if d.EncounterID == uuid.Nil || d.DiagnosisText == "" || d.DiagnosisType == "" {
+		return nil, fmt.Errorf("invalid diagnosis: missing required fields")
+	}
+
 	query := `
 		INSERT INTO diagnoses (encounter_id, diagnosis_text, icd_code, diagnosis_type, notes)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id, diagnosed_at
 	`
+	var id uuid.UUID
+	var diagnosedAt time.Time
 	err := r.db.QueryRowContext(
 		ctx,
 		query,
@@ -34,8 +43,15 @@ func (r *postgresRepository) Create(ctx context.Context, d *Diagnosis) error {
 		d.ICDCode,
 		d.DiagnosisType,
 		d.Notes,
-	).Scan(&d.ID, &d.DiagnosedAt)
-	return err
+	).Scan(&id, &diagnosedAt)
+
+	if err != nil {
+		return nil, fmt.Errorf("insert diagnosis: %w", err)
+	}
+
+	d.ID = id
+	d.DiagnosedAt = diagnosedAt
+	return d, nil
 }
 
 func (r *postgresRepository) FindByEncounterID(ctx context.Context, encounterID uuid.UUID) ([]*Diagnosis, error) {

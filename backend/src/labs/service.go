@@ -64,11 +64,12 @@ func (s *service) CreateLabResult(ctx context.Context, encounterID uuid.UUID, re
 		l.Flag = &req.Flag
 	}
 
-	if err := s.repo.Create(ctx, l); err != nil {
+	createdLab, err := s.repo.Create(ctx, l)
+	if err != nil {
 		return nil, appErrors.ErrInternal("Failed to create lab result")
 	}
 
-	return l, nil
+	return createdLab, nil
 }
 
 func (s *service) GetEncounterLabResults(ctx context.Context, encounterID uuid.UUID) ([]*LabResult, *appErrors.AppError) {
