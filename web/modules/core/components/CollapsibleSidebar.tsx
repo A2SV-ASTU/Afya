@@ -13,6 +13,7 @@ import {
 import { useStore } from '@/lib/store';
 import { Navigation } from './Navigation';
 import { cn } from '../lib/utils';
+import { LogoutButton } from '@/components/auth/LogoutButton';
 
 export function CollapsibleSidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -127,6 +128,9 @@ export function CollapsibleSidebar() {
             </p>
           </div>
         )}
+        <div className="flex items-center justify-center">
+          <LogoutButton showConfirmation={true} />
+        </div>
 
         <div className="flex items-center justify-center">
           {!collapsed && (

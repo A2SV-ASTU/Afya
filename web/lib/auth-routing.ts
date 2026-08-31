@@ -2,9 +2,7 @@ import { UserRole } from '@/types/database';
 
 const AUTH_PATHS = new Set([
   '/login',
-  '/register',
   '/forgot-password',
-  '/reset-password',
   '/accept-invite',
 ]);
 

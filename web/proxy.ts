@@ -65,9 +65,7 @@ export const config = {
     '/clinic/:path*',
     '/doctor/:path*',
     '/login',
-    '/register',
     '/accept-invite',
     '/forgot-password',
-    '/reset-password',
   ],
 };
