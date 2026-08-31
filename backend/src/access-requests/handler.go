@@ -3,6 +3,7 @@ package accessrequests
 import (
 	"net/http"
 
+	"afyamind-backend/src/config"
 	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/shared/response"
@@ -13,10 +14,11 @@ import (
 
 type Handler struct {
 	svc Service
+	cfg *config.Config
 }
 
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Service, cfg *config.Config) *Handler {
+	return &Handler{svc: svc, cfg: cfg}
 }
 
 // LookupPatient godoc
@@ -87,7 +89,7 @@ func (h *Handler) CreateRequest(c *gin.Context) {
 		return
 	}
 
-	ar, err := h.svc.CreateRequest(c.Request.Context(), clinicID, callerID, req)
+	ar, err := h.svc.CreateRequest(c.Request.Context(), clinicID, callerID, req, h.cfg.APIBaseURL)
 	if err != nil {
 		if err.Error() == "patient_not_found" {
 			response.RespondAppError(c, appErrors.ErrNotFound("patient"))
@@ -100,103 +102,6 @@ func (h *Handler) CreateRequest(c *gin.Context) {
 	response.JSON(c, http.StatusCreated, ar)
 }
 
-// ApproveRequest godoc
-//
-//	@Summary		Approve access request
-//	@Description	Patient approves a pending access request from a clinic.
-//	@Tags			AccessRequests
-//	@Produce		json
-//	@Security		BearerAuth
-//	@Param			id	path		string								true	"Access Request ID"
-//	@Success		200	{object}	response.MessageEnvelope			"Access request approved"
-//	@Failure		400	{object}	response.ErrorEnvelope				"Validation/ID error"
-//	@Failure		401	{object}	response.ErrorEnvelope				"Not authenticated"
-//	@Failure		403	{object}	response.ErrorEnvelope				"Forbidden — not target patient"
-//	@Failure		409	{object}	response.ErrorEnvelope				"Request not pending"
-//	@Failure		410	{object}	response.ErrorEnvelope				"Request expired"
-//	@Router			/access-requests/{id}/approve [post]
-func (h *Handler) ApproveRequest(c *gin.Context) {
-	requestIDStr := c.Param("id")
-	requestID, err := uuid.Parse(requestIDStr)
-	if err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request ID"))
-		return
-	}
-
-	callerID, ok := middleware.GetUserID(c)
-	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthenticated())
-		return
-	}
-
-	if err := h.svc.ApproveRequest(c.Request.Context(), callerID, requestID); err != nil {
-		if err.Error() == "not_target_patient" {
-			response.RespondAppError(c, appErrors.ErrForbiddenRole())
-			return
-		}
-		if err.Error() == "request_not_pending" {
-			response.RespondAppError(c, appErrors.ErrConflict(err.Error()))
-			return
-		}
-		if err.Error() == "request_expired" {
-			response.RespondAppError(c, appErrors.ErrExpired(err.Error()))
-			return
-		}
-		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
-		return
-	}
-
-	response.JSON(c, http.StatusOK, gin.H{"status": "approved"})
-}
-
-// DenyRequest godoc
-//
-//	@Summary		Deny access request
-//	@Description	Patient denies a pending access request from a clinic.
-//	@Tags			AccessRequests
-//	@Produce		json
-//	@Security		BearerAuth
-//	@Param			id	path		string								true	"Access Request ID"
-//	@Success		200	{object}	response.MessageEnvelope			"Access request denied"
-//	@Failure		400	{object}	response.ErrorEnvelope				"Validation/ID error"
-//	@Failure		401	{object}	response.ErrorEnvelope				"Not authenticated"
-//	@Failure		403	{object}	response.ErrorEnvelope				"Forbidden — not target patient"
-//	@Failure		409	{object}	response.ErrorEnvelope				"Request not pending"
-//	@Failure		410	{object}	response.ErrorEnvelope				"Request expired"
-//	@Router			/access-requests/{id}/deny [post]
-func (h *Handler) DenyRequest(c *gin.Context) {
-	requestIDStr := c.Param("id")
-	requestID, err := uuid.Parse(requestIDStr)
-	if err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request ID"))
-		return
-	}
-
-	callerID, ok := middleware.GetUserID(c)
-	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthenticated())
-		return
-	}
-
-	if err := h.svc.DenyRequest(c.Request.Context(), callerID, requestID); err != nil {
-		if err.Error() == "not_target_patient" {
-			response.RespondAppError(c, appErrors.ErrForbiddenRole())
-			return
-		}
-		if err.Error() == "request_not_pending" {
-			response.RespondAppError(c, appErrors.ErrConflict(err.Error()))
-			return
-		}
-		if err.Error() == "request_expired" {
-			response.RespondAppError(c, appErrors.ErrExpired(err.Error()))
-			return
-		}
-		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
-		return
-	}
-
-	response.JSON(c, http.StatusOK, gin.H{"status": "denied"})
-}
 
 // RevokeRequest godoc
 //
