@@ -2,11 +2,10 @@
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-if (!BASE_URL) {
-  throw new Error('NEXT_PUBLIC_API_URL is not set. Check web/.env.development');
-}
-
 async function request(method: string, path: string, body?: unknown) {
+  if (!BASE_URL) {
+    throw new Error('NEXT_PUBLIC_API_URL is not set. Check web/.env.development');
+  }
   const res = await fetch(`${BASE_URL}${path}`, {
     method,
     credentials: 'include',
