@@ -49,7 +49,7 @@
 //	@tag.description	Chief complaints and examinations recorded during encounters
 //
 //	@tag.name			Prescriptions
-//	@tag.description	(Coming soon) Prescription management
+//	@tag.description	Prescription management
 //
 //	@tag.name			Labs
 //	@tag.description	(Coming soon) Laboratory test orders and results
@@ -58,7 +58,7 @@
 //	@tag.description	(Coming soon) Diagnosis records
 //
 //	@tag.name			Vitals
-//	@tag.description	(Coming soon) Patient vital signs
+//	@tag.description	Patient vital signs
 //
 //	@tag.name			MagicLinks
 //	@tag.description	Browser-rendered HTML pages for password reset, doctor invitations, and patient access request approvals — no API integration needed
@@ -82,10 +82,12 @@ import (
 	"afyamind-backend/src/encounters"
 	"afyamind-backend/src/invitations"
 	"afyamind-backend/src/magiclink"
+	"afyamind-backend/src/prescriptions"
 	sharedAuth "afyamind-backend/src/shared/auth"
 	"afyamind-backend/src/shared/email"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/users"
+	"afyamind-backend/src/vitals"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -134,6 +136,8 @@ func main() {
 	apptRepo := appointments.NewRepository(db)
 	encRepo := encounters.NewRepository(db)
 	evalRepo := clinicalevaluations.NewRepository(db)
+	vitalsRepo := vitals.NewRepository(db)
+	rxRepo := prescriptions.NewRepository(db)
 
 	// 4. Initialize Email Sender (optional — logs warning if SMTP not configured)
 	var emailSender *email.Sender
@@ -153,6 +157,8 @@ func main() {
 	apptService := appointments.NewService(apptRepo, arRepo)
 	encService := encounters.NewService(encRepo, userRepo)
 	evalService := clinicalevaluations.NewService(evalRepo, encRepo)
+	vitalsService := vitals.NewService(vitalsRepo)
+	rxService := prescriptions.NewService(db, rxRepo)
 
 	// 6. Initialize Handlers
 	userHandler := users.NewHandler(userService)
@@ -163,6 +169,8 @@ func main() {
 	apptHandler := appointments.NewHandler(apptService)
 	encHandler := encounters.NewHandler(encService)
 	evalHandler := clinicalevaluations.NewHandler(evalService)
+	vitalsHandler := vitals.NewHandler(vitalsService)
+	rxHandler := prescriptions.NewHandler(rxService)
 	magicHandler := magiclink.NewHandler(arService, authService, cfg)
 
 	// 6b. Start background expiration jobs
@@ -206,6 +214,8 @@ func main() {
 		appointments.RegisterRoutes(apiV1, apptHandler, cfg.JWTSecret)
 		encounters.RegisterRoutes(apiV1, encHandler, db, cfg.JWTSecret)
 		clinicalevaluations.RegisterRoutes(apiV1, evalHandler, db, cfg.JWTSecret)
+		vitals.RegisterRoutes(apiV1, vitalsHandler, cfg.JWTSecret)
+		prescriptions.RegisterRoutes(apiV1, rxHandler, cfg.JWTSecret)
 		magiclink.RegisterRoutes(apiV1, magicHandler)
 	}
 
@@ -219,6 +229,8 @@ func main() {
 		appointments.RegisterRoutes(v1, apptHandler, cfg.JWTSecret)
 		encounters.RegisterRoutes(v1, encHandler, db, cfg.JWTSecret)
 		clinicalevaluations.RegisterRoutes(v1, evalHandler, db, cfg.JWTSecret)
+		vitals.RegisterRoutes(v1, vitalsHandler, cfg.JWTSecret)
+		prescriptions.RegisterRoutes(v1, rxHandler, cfg.JWTSecret)
 		magiclink.RegisterRoutes(v1, magicHandler)
 	}
 
