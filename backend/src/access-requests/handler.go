@@ -3,6 +3,7 @@ package accessrequests
 import (
 	"net/http"
 
+	"afyamind-backend/src/config"
 	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/shared/response"
@@ -13,12 +14,26 @@ import (
 
 type Handler struct {
 	svc Service
+	cfg *config.Config
 }
 
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Service, cfg *config.Config) *Handler {
+	return &Handler{svc: svc, cfg: cfg}
 }
 
+// LookupPatient godoc
+//
+//	@Summary		Lookup a patient by email
+//	@Description	Looks up a patient by their exact email. Accessible by clinic admins.
+//	@Tags			AccessRequests
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			email	query		string							true	"Patient Email Address"
+//	@Success		200		{object}	accessrequests.PatientLookupResponse	"Patient found"
+//	@Failure		400		{object}	response.ErrorEnvelope			"Missing email query parameter"
+//	@Failure		401		{object}	response.ErrorEnvelope			"Not authenticated"
+//	@Failure		404		{object}	response.ErrorEnvelope			"Patient not found"
+//	@Router			/patients/lookup [get]
 func (h *Handler) LookupPatient(c *gin.Context) {
 	email := c.Query("email")
 	if email == "" {
@@ -39,6 +54,21 @@ func (h *Handler) LookupPatient(c *gin.Context) {
 	response.JSON(c, http.StatusOK, patient)
 }
 
+// CreateRequest godoc
+//
+//	@Summary		Create access request for a patient
+//	@Description	Initiates a request for a clinic/doctor to view patient health records.
+//	@Tags			AccessRequests
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			clinicId	path		string									true	"Clinic ID"
+//	@Param			body		body		accessrequests.CreateAccessRequestRequest	true	"Request details"
+//	@Success		201			{object}	accessrequests.AccessRequest			"Access request created"
+//	@Failure		400			{object}	response.ErrorEnvelope					"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope					"Not authenticated"
+//	@Failure		404			{object}	response.ErrorEnvelope					"Patient not found"
+//	@Router			/clinics/{clinicId}/access-requests [post]
 func (h *Handler) CreateRequest(c *gin.Context) {
 	clinicIDStr := c.Param("clinicId")
 	clinicID, err := uuid.Parse(clinicIDStr)
@@ -59,7 +89,7 @@ func (h *Handler) CreateRequest(c *gin.Context) {
 		return
 	}
 
-	ar, err := h.svc.CreateRequest(c.Request.Context(), clinicID, callerID, req)
+	ar, err := h.svc.CreateRequest(c.Request.Context(), clinicID, callerID, req, h.cfg.APIBaseURL)
 	if err != nil {
 		if err.Error() == "patient_not_found" {
 			response.RespondAppError(c, appErrors.ErrNotFound("patient"))
@@ -72,74 +102,22 @@ func (h *Handler) CreateRequest(c *gin.Context) {
 	response.JSON(c, http.StatusCreated, ar)
 }
 
-func (h *Handler) ApproveRequest(c *gin.Context) {
-	requestIDStr := c.Param("id")
-	requestID, err := uuid.Parse(requestIDStr)
-	if err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request ID"))
-		return
-	}
 
-	callerID, ok := middleware.GetUserID(c)
-	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthenticated())
-		return
-	}
-
-	if err := h.svc.ApproveRequest(c.Request.Context(), callerID, requestID); err != nil {
-		if err.Error() == "not_target_patient" {
-			response.RespondAppError(c, appErrors.ErrForbiddenRole())
-			return
-		}
-		if err.Error() == "request_not_pending" {
-			response.RespondAppError(c, appErrors.ErrConflict(err.Error()))
-			return
-		}
-		if err.Error() == "request_expired" {
-			response.RespondAppError(c, appErrors.ErrExpired(err.Error()))
-			return
-		}
-		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
-		return
-	}
-
-	response.JSON(c, http.StatusOK, gin.H{"status": "approved"})
-}
-
-func (h *Handler) DenyRequest(c *gin.Context) {
-	requestIDStr := c.Param("id")
-	requestID, err := uuid.Parse(requestIDStr)
-	if err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request ID"))
-		return
-	}
-
-	callerID, ok := middleware.GetUserID(c)
-	if !ok {
-		response.RespondAppError(c, appErrors.ErrUnauthenticated())
-		return
-	}
-
-	if err := h.svc.DenyRequest(c.Request.Context(), callerID, requestID); err != nil {
-		if err.Error() == "not_target_patient" {
-			response.RespondAppError(c, appErrors.ErrForbiddenRole())
-			return
-		}
-		if err.Error() == "request_not_pending" {
-			response.RespondAppError(c, appErrors.ErrConflict(err.Error()))
-			return
-		}
-		if err.Error() == "request_expired" {
-			response.RespondAppError(c, appErrors.ErrExpired(err.Error()))
-			return
-		}
-		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
-		return
-	}
-
-	response.JSON(c, http.StatusOK, gin.H{"status": "denied"})
-}
-
+// RevokeRequest godoc
+//
+//	@Summary		Revoke approved access request
+//	@Description	Clinic admin revokes a previously approved access request.
+//	@Tags			AccessRequests
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			clinicId	path		string								true	"Clinic ID"
+//	@Param			id			path		string								true	"Access Request ID"
+//	@Success		200			{object}	response.MessageEnvelope			"Access request revoked"
+//	@Failure		400			{object}	response.ErrorEnvelope				"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Failure		403			{object}	response.ErrorEnvelope				"Forbidden — unauthorized for clinic"
+//	@Failure		409			{object}	response.ErrorEnvelope				"Request not currently active/approved"
+//	@Router			/clinics/{clinicId}/access-requests/{id}/revoke [post]
 func (h *Handler) RevokeRequest(c *gin.Context) {
 	requestIDStr := c.Param("id")
 	requestID, err := uuid.Parse(requestIDStr)
@@ -181,6 +159,20 @@ func (h *Handler) RevokeRequest(c *gin.Context) {
 	response.JSON(c, http.StatusOK, gin.H{"status": "revoked_at set"})
 }
 
+// ListRequests godoc
+//
+//	@Summary		List access requests for a clinic
+//	@Description	Lists access requests. Filterable by status (pending, approved, denied, expired).
+//	@Tags			AccessRequests
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			clinicId	path		string								true	"Clinic ID"
+//	@Param			status		query		string								false	"Filter by status"
+//	@Success		200			{object}	response.DataEnvelope{data=[]accessrequests.AccessRequest}	"List of requests"
+//	@Failure		400			{object}	response.ErrorEnvelope				"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Failure		403			{object}	response.ErrorEnvelope				"Forbidden — unauthorized for clinic"
+//	@Router			/clinics/{clinicId}/access-requests [get]
 func (h *Handler) ListRequests(c *gin.Context) {
 	clinicIDStr := c.Param("clinicId")
 	clinicID, err := uuid.Parse(clinicIDStr)

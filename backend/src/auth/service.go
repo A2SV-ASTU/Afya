@@ -229,18 +229,22 @@ func (s *service) ForgotPassword(ctx context.Context, emailAddress string) *appE
 	}
 
 	if s.sender != nil {
+		resetURL := fmt.Sprintf("%s/api/v1/magic/reset-password?token=%s", s.cfg.APIBaseURL, rawToken)
+
 		subject := "Reset Your Afya Password"
 		body := fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0fdf4; margin: 0; padding: 40px 0; }
         .container { max-width: 550px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(34, 197, 94, 0.1); border: 1px solid #dcfce7; }
         .header { padding: 40px 30px; text-align: center; background-color: #22c55e; color: #ffffff; }
         .header h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.5px; }
         .content { padding: 40px 30px; color: #374151; line-height: 1.8; font-size: 16px; }
-        .token-box { background-color: #f0fdf4; border-left: 4px solid #22c55e; border-radius: 0 8px 8px 0; padding: 25px; margin: 30px 0; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
-        .token-box span { font-family: monospace; font-size: 18px; letter-spacing: 1px; color: #047857; background: #e0f2fe; padding: 4px 10px; border-radius: 4px; word-break: break-all; font-weight: bold; }
+        .btn-group { text-align: center; margin: 30px 0; }
+        .btn { display: inline-block; padding: 14px 48px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 16px; background-color: #22c55e; color: #ffffff !important; }
         .footer { padding: 25px; text-align: center; font-size: 13px; color: #9ca3af; background-color: #f9fafb; border-top: 1px solid #f3f4f6; }
     </style>
 </head>
@@ -252,18 +256,18 @@ func (s *service) ForgotPassword(ctx context.Context, emailAddress string) *appE
         <div class="content">
             <p>Hello %s,</p>
             <p>We received a request to reset the password for your Afya account.</p>
-            <p>Please use the following secure token to reset your password:</p>
-            <div class="token-box">
-                <span>%s</span>
+            <p>Click the button below to set a new password:</p>
+            <div class="btn-group">
+                <a href="%s" class="btn">Reset Password</a>
             </div>
-            <p><strong>Note:</strong> This token will expire in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
+            <p><strong>Note:</strong> This link will expire in 1 hour. If you did not request a password reset, you can safely ignore this email.</p>
         </div>
         <div class="footer">
             <p>&copy; 2026 Afya. All rights reserved.</p>
         </div>
     </div>
 </body>
-</html>`, user.FirstName, rawToken)
+</html>`, user.FirstName, resetURL)
 
 		go func(e, sub, b string) {
 			_ = s.sender.Send(e, sub, b)

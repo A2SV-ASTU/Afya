@@ -18,7 +18,17 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
-// GetMe handles GET /users/me
+// GetMe godoc
+//
+//	@Summary		Get current user profile
+//	@Description	Returns the full profile of the authenticated user.
+//	@Tags			Users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	response.DataEnvelope{data=users.UserResponse}	"User profile"
+//	@Failure		401	{object}	response.ErrorEnvelope							"Not authenticated"
+//	@Failure		404	{object}	response.ErrorEnvelope							"User not found"
+//	@Router			/users/me [get]
 func (h *Handler) GetMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -37,7 +47,19 @@ func (h *Handler) GetMe(c *gin.Context) {
 	})
 }
 
-// UpdateMe handles PATCH /users/me
+// UpdateMe godoc
+//
+//	@Summary		Update current user profile
+//	@Description	Partially updates the authenticated user's profile. All fields are optional.
+//	@Tags			Users
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body	body		users.UpdateProfileRequest						true	"Fields to update (all optional)"
+//	@Success		200		{object}	response.DataEnvelope{data=users.UserResponse}	"Updated profile"
+//	@Failure		400		{object}	response.ErrorEnvelope							"Validation error"
+//	@Failure		401		{object}	response.ErrorEnvelope							"Not authenticated"
+//	@Router			/users/me [patch]
 func (h *Handler) UpdateMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -62,7 +84,20 @@ func (h *Handler) UpdateMe(c *gin.Context) {
 	})
 }
 
-// ChangePassword handles PUT /users/me/password
+// ChangePassword godoc
+//
+//	@Summary		Change account password
+//	@Description	Updates the authenticated user's password after verifying the current one.
+//	@Description	Accessible via both PUT and PATCH on /users/me/password.
+//	@Tags			Users
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body	body		users.ChangePasswordRequest	true	"Current and new password"
+//	@Success		200		{object}	response.MessageEnvelope	"Password updated"
+//	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401		{object}	response.ErrorEnvelope		"Not authenticated or wrong current password"
+//	@Router			/users/me/password [put]
 func (h *Handler) ChangePassword(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
@@ -88,7 +123,17 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 	})
 }
 
-// DeleteMe handles DELETE /users/me
+// DeleteMe godoc
+//
+//	@Summary		Delete current user account
+//	@Description	Permanently deletes the authenticated user's account. This action is irreversible.
+//	@Tags			Users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	response.MessageEnvelope	"Account deleted"
+//	@Failure		401	{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		500	{object}	response.ErrorEnvelope		"Internal error"
+//	@Router			/users/me [delete]
 func (h *Handler) DeleteMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
