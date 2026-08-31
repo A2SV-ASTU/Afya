@@ -27,7 +27,7 @@ export default function NewEncounterPage() {
   const router = useRouter();
   const { currentUser, clinics, patients, encounters, createEncounter } = useStore();
 
-  const activeClinic = clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0];
+  const activeClinic = clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0];
 
   // Patients who granted active access to this clinic
   const authorizedPatients = patients.filter((p) =>

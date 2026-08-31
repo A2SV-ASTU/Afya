@@ -1,76 +1,132 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/types/database';
-import { UserRole } from '@/types/roles';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { User, UserRole } from '@/types/database';
+import { authApi, extractUser, LoginPayload, RegisterPayload } from '@/lib/api/auth';
+import { isAuthPath } from '@/lib/auth-routing';
 
 export interface AuthContextType {
-  currentUser: User;
+  currentUser: User | null;
   currentRole: UserRole;
   setCurrentRole: (role: UserRole) => void;
   isAuthenticated: boolean;
+  isReady: boolean;
   token: string | null;
-  login: (email: string, role: UserRole) => void;
-  logout: () => void;
-  updateUser: (data: Partial<User>) => void;
+  login: (credentials: LoginPayload) => Promise<User>;
+  register: (payload: RegisterPayload) => Promise<User>;
+  logout: (options?: { skipRemote?: boolean }) => Promise<void>;
+  updateUser: (data: Parameters<typeof authApi.updateProfile>[0]) => Promise<void>;
 }
 
-const DEFAULT_SUPER_ADMIN: User = {
-  id: 'usr-admin-01',
-  email: 'superadmin@health.go.ke',
-  first_name: 'MOH Governance',
-  last_name: 'SuperAdmin',
-  role: 'super_admin',
-  phone: '+254 20 2717077',
-  created_at: '2025-01-01T00:00:00Z',
-};
+function setCookie(name: string, value: string, maxAgeSeconds = 86400) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${maxAgeSeconds}; SameSite=Lax`;
+}
+
+function deleteCookie(name: string) {
+  if (typeof document === 'undefined') return;
+  document.cookie = `${name}=; path=/; max-age=0; SameSite=Lax`;
+}
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentRole, setCurrentRoleState] = useState<UserRole>('super_admin');
-  const [currentUser, setCurrentUser] = useState<User>(DEFAULT_SUPER_ADMIN);
-  const [token, setToken] = useState<string | null>('simulated_afyamind_jwt_token');
+  const router = useRouter();
+  const pathname = usePathname();
+  const [token, setToken] = useState<string | null>(null);
+  const [currentRole, setCurrentRoleState] = useState<UserRole>('patient');
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
-  // Sync role changes to cookie for Next.js Middleware route evaluation
-  const setCurrentRole = (role: UserRole) => {
-    setCurrentRoleState(role);
-    if (typeof document !== 'undefined') {
-      document.cookie = `afyamind_role=${role}; path=/; max-age=86400; SameSite=Lax`;
-    }
-  };
-
-  useEffect(() => {
-    // Check initial cookie or storage
-    if (typeof document !== 'undefined') {
-      const syncRoleFromCookie = () => {
-        const match = document.cookie.match(new RegExp('(^| )afyamind_role=([^;]+)'));
-        if (match && match[2]) {
-          setCurrentRoleState(match[2] as UserRole);
-        } else {
-          document.cookie = `afyamind_role=super_admin; path=/; max-age=86400; SameSite=Lax`;
-        }
-      };
-      syncRoleFromCookie();
-    }
+  const applyUser = useCallback((user: User) => {
+    setCurrentUser(user);
+    setCurrentRoleState(user.role);
+    setCookie('afyamind_role', user.role);
+    setToken('session');
+    setIsAuthenticated(true);
   }, []);
 
-  const login = (email: string, role: UserRole) => {
-    setCurrentRole(role);
-    setCurrentUser((prev) => ({
-      ...prev,
-      email,
-      role,
-    }));
-    setToken('simulated_afyamind_jwt_token');
-  };
-
-  const logout = () => {
+  const clearSession = useCallback(() => {
     setToken(null);
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    deleteCookie('afyamind_role');
+  }, []);
+
+  const logout = useCallback(
+    async (options?: { skipRemote?: boolean }) => {
+      if (!options?.skipRemote) {
+        try {
+          await authApi.logout();
+        } catch {
+          // Local session is cleared even if the API call fails (expired session).
+        }
+      }
+      clearSession();
+      if (!isAuthPath(pathname)) {
+        router.push('/login');
+      }
+    },
+    [clearSession, pathname, router]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    authApi
+      .getCurrentUser()
+      .then((res) => {
+        if (cancelled) return;
+        applyUser(res.data);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        clearSession();
+      })
+      .finally(() => {
+        if (!cancelled) setIsReady(true);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyUser, clearSession]);
+
+  useEffect(() => {
+    const onExpired = () => {
+      clearSession();
+      if (!isAuthPath(pathname)) {
+        router.push('/login');
+      }
+    };
+    window.addEventListener('afyamind:session-expired', onExpired);
+    return () => window.removeEventListener('afyamind:session-expired', onExpired);
+  }, [clearSession, pathname, router]);
+
+  const setCurrentRole = (role: UserRole) => {
+    setCurrentRoleState(role);
+    setCookie('afyamind_role', role);
   };
 
-  const updateUser = (data: Partial<User>) => {
-    setCurrentUser((prev) => ({ ...prev, ...data }));
+  const login = async (credentials: LoginPayload): Promise<User> => {
+    const res = await authApi.login(credentials);
+    const user = extractUser(res.data);
+    applyUser(user);
+    return user;
+  };
+
+  const register = async (payload: RegisterPayload): Promise<User> => {
+    const res = await authApi.register(payload);
+    const user = extractUser(res.data);
+    applyUser(user);
+    return user;
+  };
+
+  const updateUser = async (data: Parameters<typeof authApi.updateProfile>[0]) => {
+    const res = await authApi.updateProfile(data);
+    applyUser(res.data);
   };
 
   return (
@@ -79,9 +135,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         currentUser,
         currentRole,
         setCurrentRole,
-        isAuthenticated: !!token,
+        isAuthenticated,
+        isReady,
         token,
         login,
+        register,
         logout,
         updateUser,
       }}

@@ -19,7 +19,7 @@ export function PatientsList() {
   const { currentUser, clinics, patients, navigateTo } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
 
-  const activeClinic = clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0];
+  const activeClinic = clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0];
 
   // Scoped strictly to patients whose clinic has active approved access
   const authorizedPatients = patients.filter((p) =>
