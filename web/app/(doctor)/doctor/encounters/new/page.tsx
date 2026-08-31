@@ -30,9 +30,9 @@ export default function NewEncounterPage() {
   const activeClinic = clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0];
 
   // Patients who granted active access to this clinic
-  const authorizedPatients = patients.filter((p) =>
-    p.active_grant_clinic_ids.includes(activeClinic.id)
-  );
+  const authorizedPatients = activeClinic
+    ? patients.filter((p) => p.active_grant_clinic_ids.includes(activeClinic.id))
+    : [];
 
   // Filter out patients who currently have an active/open encounter
   const availablePatients = authorizedPatients.filter(
