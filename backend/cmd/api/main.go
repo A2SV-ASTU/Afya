@@ -58,7 +58,7 @@
 //	@tag.description	(Coming soon) Diagnosis records
 //
 //	@tag.name			Vitals
-//	@tag.description	(Coming soon) Patient vital signs
+//	@tag.description	Patient vital signs
 //
 //	@tag.name			MagicLinks
 //	@tag.description	Browser-rendered HTML pages for password reset, doctor invitations, and patient access request approvals — no API integration needed
@@ -82,6 +82,7 @@ import (
 	"afyamind-backend/src/encounters"
 	"afyamind-backend/src/invitations"
 	"afyamind-backend/src/magiclink"
+	"afyamind-backend/src/prescriptions"
 	sharedAuth "afyamind-backend/src/shared/auth"
 	"afyamind-backend/src/shared/email"
 	"afyamind-backend/src/shared/middleware"
@@ -168,6 +169,8 @@ func main() {
 	apptHandler := appointments.NewHandler(apptService)
 	encHandler := encounters.NewHandler(encService)
 	evalHandler := clinicalevaluations.NewHandler(evalService)
+	vitalsHandler := vitals.NewHandler(vitalsService)
+	rxHandler := prescriptions.NewHandler(rxService)
 	magicHandler := magiclink.NewHandler(arService, authService, cfg)
 
 	// 6b. Start background expiration jobs
@@ -211,6 +214,8 @@ func main() {
 		appointments.RegisterRoutes(apiV1, apptHandler, cfg.JWTSecret)
 		encounters.RegisterRoutes(apiV1, encHandler, db, cfg.JWTSecret)
 		clinicalevaluations.RegisterRoutes(apiV1, evalHandler, db, cfg.JWTSecret)
+		vitals.RegisterRoutes(apiV1, vitalsHandler, cfg.JWTSecret)
+		prescriptions.RegisterRoutes(apiV1, rxHandler, cfg.JWTSecret)
 		magiclink.RegisterRoutes(apiV1, magicHandler)
 	}
 
@@ -224,6 +229,8 @@ func main() {
 		appointments.RegisterRoutes(v1, apptHandler, cfg.JWTSecret)
 		encounters.RegisterRoutes(v1, encHandler, db, cfg.JWTSecret)
 		clinicalevaluations.RegisterRoutes(v1, evalHandler, db, cfg.JWTSecret)
+		vitals.RegisterRoutes(v1, vitalsHandler, cfg.JWTSecret)
+		prescriptions.RegisterRoutes(v1, rxHandler, cfg.JWTSecret)
 		magiclink.RegisterRoutes(v1, magicHandler)
 	}
 
