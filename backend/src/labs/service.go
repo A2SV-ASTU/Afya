@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 
 	appErrors "afyamind-backend/src/shared/errors"
 	"github.com/google/uuid"
@@ -33,6 +34,7 @@ func (s *service) checkEncounterStatus(ctx context.Context, encounterID uuid.UUI
 		if errors.Is(err, sql.ErrNoRows) {
 			return appErrors.ErrNotFound("Encounter not found")
 		}
+		log.Printf("ERROR: checkEncounterStatus failed for encounter %s: %v", encounterID, err)
 		return appErrors.ErrInternal("Database error checking encounter status")
 	}
 
@@ -66,6 +68,7 @@ func (s *service) CreateLabResult(ctx context.Context, encounterID uuid.UUID, re
 
 	createdLab, err := s.repo.Create(ctx, l)
 	if err != nil {
+		log.Printf("ERROR: CreateLabResult failed for encounter %s: %v", encounterID, err)
 		return nil, appErrors.ErrInternal("Failed to create lab result")
 	}
 
@@ -77,6 +80,7 @@ func (s *service) GetEncounterLabResults(ctx context.Context, encounterID uuid.U
 	var exists bool
 	err := s.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM encounters WHERE id = $1)", encounterID).Scan(&exists)
 	if err != nil {
+		log.Printf("ERROR: GetEncounterLabResults encounter check failed for %s: %v", encounterID, err)
 		return nil, appErrors.ErrInternal("Database error checking encounter")
 	}
 	if !exists {
@@ -85,8 +89,10 @@ func (s *service) GetEncounterLabResults(ctx context.Context, encounterID uuid.U
 
 	results, err := s.repo.FindByEncounterID(ctx, encounterID)
 	if err != nil {
+		log.Printf("ERROR: FindByEncounterID failed for encounter %s: %v", encounterID, err)
 		return nil, appErrors.ErrInternal("Failed to fetch lab results")
 	}
 
 	return results, nil
 }
+
