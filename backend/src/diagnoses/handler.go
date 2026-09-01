@@ -25,17 +25,20 @@ func NewHandler(service Service) *Handler {
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			encounterId	path		string						true	"Encounter ID"
-//	@Param			body		body		diagnoses.CreateDiagnosisRequest	true	"Diagnosis details"
-//	@Success		201			{object}	diagnoses.Diagnosis			"Diagnosis created successfully"
-//	@Failure		400			{object}	response.ErrorEnvelope		"Validation error"
-//	@Failure		401			{object}	response.ErrorEnvelope		"Not authenticated"
-//	@Failure		403			{object}	response.ErrorEnvelope		"Forbidden"
-//	@Failure		404			{object}	response.ErrorEnvelope		"Encounter not found"
-//	@Failure		409			{object}	response.ErrorEnvelope		"Encounter is closed"
-//	@Router			/encounters/{encounterId}/diagnoses [post]
+//	@Param			id		path		string								true	"Encounter ID"
+//	@Param			body	body		diagnoses.CreateDiagnosisRequest	true	"Diagnosis details"
+//	@Success		201		{object}	diagnoses.Diagnosis					"Diagnosis created successfully"
+//	@Failure		400		{object}	response.ErrorEnvelope				"Validation error"
+//	@Failure		401		{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Failure		403		{object}	response.ErrorEnvelope				"Forbidden"
+//	@Failure		404		{object}	response.ErrorEnvelope				"Encounter not found"
+//	@Failure		409		{object}	response.ErrorEnvelope				"Encounter is closed"
+//	@Router			/encounters/{id}/diagnoses [post]
 func (h *Handler) CreateDiagnosis(c *gin.Context) {
-	encounterIDStr := c.Param("encounterId")
+	encounterIDStr := c.Param("id")
+	if encounterIDStr == "" {
+		encounterIDStr = c.Param("encounterId")
+	}
 	encounterID, err := uuid.Parse(encounterIDStr)
 	if err != nil {
 		response.RespondAppError(c, appErrors.ErrValidationError("Invalid encounter ID format"))
@@ -64,15 +67,18 @@ func (h *Handler) CreateDiagnosis(c *gin.Context) {
 //	@Tags			Diagnoses
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			encounterId	path		string						true	"Encounter ID"
-//	@Success		200			{array}		diagnoses.Diagnosis			"List of diagnoses"
-//	@Failure		400			{object}	response.ErrorEnvelope		"Validation error"
-//	@Failure		401			{object}	response.ErrorEnvelope		"Not authenticated"
-//	@Failure		403			{object}	response.ErrorEnvelope		"Forbidden"
-//	@Failure		404			{object}	response.ErrorEnvelope		"Encounter not found"
-//	@Router			/encounters/{encounterId}/diagnoses [get]
+//	@Param			id		path		string						true	"Encounter ID"
+//	@Success		200		{array}		diagnoses.Diagnosis			"List of diagnoses"
+//	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401		{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403		{object}	response.ErrorEnvelope		"Forbidden"
+//	@Failure		404		{object}	response.ErrorEnvelope		"Encounter not found"
+//	@Router			/encounters/{id}/diagnoses [get]
 func (h *Handler) GetDiagnoses(c *gin.Context) {
-	encounterIDStr := c.Param("encounterId")
+	encounterIDStr := c.Param("id")
+	if encounterIDStr == "" {
+		encounterIDStr = c.Param("encounterId")
+	}
 	encounterID, err := uuid.Parse(encounterIDStr)
 	if err != nil {
 		response.RespondAppError(c, appErrors.ErrValidationError("Invalid encounter ID format"))
