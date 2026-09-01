@@ -1,6 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from '@/modules/core/context/AuthContext';
+import { LoginPayload } from '@/lib/api/auth';
 import {
   Clinic,
   DoctorInvitation,
@@ -23,9 +25,11 @@ import {
 } from '@/types/database';
 
 interface StoreContextType {
-  // Current user & navigation state
-  currentUser: User;
+  currentUser: User | null;
   currentRole: UserRole;
+  isAuthReady: boolean;
+  login: (credentials: LoginPayload) => Promise<User>;
+  logout: () => Promise<void>;
   setCurrentRole: (role: UserRole) => void;
   activeClinic: Clinic;
   activeView: string;
@@ -33,7 +37,6 @@ interface StoreContextType {
   viewParams: Record<string, unknown>;
   navigateTo: (view: string, params?: Record<string, unknown>) => void;
 
-  // Clinics (Admin actions)
   clinics: Clinic[];
   createClinic: (clinicData: {
     name: string;
@@ -45,21 +48,22 @@ interface StoreContextType {
   }) => Clinic;
   deactivateClinic: (clinicId: string) => void;
 
-  // Doctors & Invitations (Clinic actions)
   doctors: User[];
   invitations: DoctorInvitation[];
   inviteDoctor: (email: string, specialization: string, clinicId?: string) => DoctorInvitation;
   resendInvite: (invitationId: string) => void;
-  acceptInvite: (token: string, doctorData: {
-    first_name: string;
-    last_name: string;
-    password?: string;
-    specialization?: string;
-    license_number?: string;
-  }) => { success: boolean; error?: string };
+  acceptInvite: (
+    token: string,
+    doctorData: {
+      first_name: string;
+      last_name: string;
+      password?: string;
+      specialization?: string;
+      license_number?: string;
+    }
+  ) => { success: boolean; error?: string };
   deactivateDoctor: (doctorId: string) => void;
 
-  // Patient Lookup & Access Requests (Clinic actions)
   patients: Patient[];
   lookupPatientExact: (query: string) => Patient | null;
   accessRequests: AccessRequest[];
@@ -68,57 +72,56 @@ interface StoreContextType {
   denyAccessRequest: (requestId: string) => void;
   revokeAccessRequest: (requestId: string) => void;
 
-  // Clinic profile
   updateClinicProfile: (clinicId: string, data: { name: string; phone: string; address: string }) => void;
 
-  // Encounters & Clinical Workspace (Doctor actions)
   encounters: Encounter[];
   createEncounter: (patientId: string, type: EncounterType, notes?: string) => Encounter;
   closeEncounter: (encounterId: string) => void;
   addVitals: (encounterId: string, vitals: Partial<VitalSign>) => VitalSign;
-  addLabResult: (encounterId: string, lab: {
-    test_name: string;
-    category: LabCategory;
-    summary_notes: string;
-    measurements: string;
-    flag: LabFlag;
-  }) => LabResult;
-  addDiagnosis: (encounterId: string, diagnosis: {
-    diagnosis_text: string;
-    icd_code?: string;
-    diagnosis_type: DiagnosisType;
-    notes?: string;
-  }) => Diagnosis;
-  addPrescription: (encounterId: string, item: {
-    medication_name: string;
-    dose: string;
-    route: string;
-    frequency: string;
-    duration: string;
-    instructions?: string;
-  }) => Prescription;
+  addLabResult: (
+    encounterId: string,
+    lab: {
+      test_name: string;
+      category: LabCategory;
+      summary_notes: string;
+      measurements: string;
+      flag: LabFlag;
+    }
+  ) => LabResult;
+  addDiagnosis: (
+    encounterId: string,
+    diagnosis: {
+      diagnosis_text: string;
+      icd_code?: string;
+      diagnosis_type: DiagnosisType;
+      notes?: string;
+    }
+  ) => Diagnosis;
+  addPrescription: (
+    encounterId: string,
+    item: {
+      medication_name: string;
+      dose: string;
+      route: string;
+      frequency: string;
+      duration: string;
+      instructions?: string;
+    }
+  ) => Prescription;
   deactivatePrescriptionItem: (itemId: string) => void;
-  addEncounterAppointment: (encounterId: string, appointmentData: {
-    scheduled_at: string;
-    notes?: string;
-  }) => Appointment;
+  addEncounterAppointment: (
+    encounterId: string,
+    appointmentData: {
+      scheduled_at: string;
+      notes?: string;
+    }
+  ) => Appointment;
 
-  // Appointments (Standalone follow-ups)
   appointments: Appointment[];
   updateAppointmentStatus: (appointmentId: string, status: AppointmentStatus) => void;
 
-  // Reset demo data helper
   resetToDefaultData: () => void;
 }
-
-const DEFAULT_SUPER_ADMIN: User = {
-  id: 'usr_admin_1',
-  email: 'admin@afyamind.org',
-  first_name: 'AfyaMind',
-  last_name: 'SuperAdmin',
-  role: 'super_admin',
-  created_at: '2025-01-01T00:00:00Z',
-};
 
 const DEFAULT_CLINICS: Clinic[] = [
   {
@@ -352,7 +355,7 @@ const DEFAULT_ACCESS_REQUESTS: AccessRequest[] = [
     reason: 'Urgent cardiology evaluation and prescription renewal.',
     status: 'pending',
     created_at: new Date(Date.now() - 90 * 1000).toISOString(),
-    expires_at: new Date(Date.now() + 210 * 1000).toISOString(), // ~3.5 mins left
+    expires_at: new Date(Date.now() + 210 * 1000).toISOString(),
   },
 ];
 
@@ -447,148 +450,6 @@ const DEFAULT_ENCOUNTERS: Encounter[] = [
       created_at: '2026-08-26T23:59:00Z',
     },
   },
-  {
-    id: 'enc_sarah_past',
-    patient_id: 'pat_sarah_kamau',
-    patient_name: 'Sarah Nekesa Kamau',
-    clinic_id: 'cln_horizon',
-    clinic_name: 'Afya Horizon Health Center',
-    opened_by_doctor_id: 'doc_angela',
-    opened_by_doctor_name: 'Dr. Angela Mwangi',
-    type: 'outpatient',
-    status: 'closed',
-    notes: 'Initial clinical assessment for elevated blood pressure symptoms.',
-    started_at: '2026-02-10T14:30:00Z',
-    closed_at: '2026-02-10T15:15:00Z',
-    vitals: [
-      {
-        id: 'vit_sarah_past',
-        encounter_id: 'enc_sarah_past',
-        patient_id: 'pat_sarah_kamau',
-        systolic_bp: 138,
-        diastolic_bp: 88,
-        pulse: 78,
-        spo2: 97,
-        temperature: 36.6,
-        blood_sugar: 5.8,
-        respiratory_rate: 16,
-        weight: 71,
-        source: 'clinic',
-        notes: 'Mildly elevated BP upon presentation.',
-        recorded_at: '2026-02-10T14:35:00Z',
-      },
-    ],
-    labs: [
-      {
-        id: 'lab_sarah_past',
-        encounter_id: 'enc_sarah_past',
-        test_name: 'Full Blood Count (FBC)',
-        category: 'Hematology',
-        summary_notes: 'Normal WBC and platelet distribution.',
-        measurements: 'Hb: 13.2 g/dL, WBC: 6.4 x10^9/L, Platelets: 240 x10^9/L',
-        flag: 'normal',
-        created_at: '2026-02-10T14:45:00Z',
-      },
-    ],
-    diagnoses: [
-      {
-        id: 'diag_sarah_past',
-        encounter_id: 'enc_sarah_past',
-        diagnosis_text: 'Stage 1 Essential Hypertension',
-        icd_code: 'I10',
-        diagnosis_type: 'final',
-        notes: 'Initiated first-line CCB monotherapy.',
-        created_at: '2026-02-10T14:50:00Z',
-      },
-    ],
-    prescriptions: [
-      {
-        id: 'rx_sarah_past',
-        encounter_id: 'enc_sarah_past',
-        notes: 'Initial 30-day course.',
-        prescribed_at: '2026-02-10T14:55:00Z',
-        items: [
-          {
-            id: 'rxi_sarah_past',
-            prescription_id: 'rx_sarah_past',
-            medication_name: 'Amlodipine Besylate',
-            dose: '5 mg',
-            route: 'Oral (PO)',
-            frequency: 'Once daily (OD - Morning)',
-            duration: '30 days',
-            instructions: 'Take every morning with breakfast.',
-            status: 'completed',
-            started_at: '2026-02-10T14:55:00Z',
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: 'enc_john_recent',
-    patient_id: 'pat_john_mutua',
-    patient_name: 'John Kiprono Mutua',
-    clinic_id: 'cln_horizon',
-    clinic_name: 'Afya Horizon Health Center',
-    opened_by_doctor_id: 'doc_david',
-    opened_by_doctor_name: 'Dr. David Ochieng',
-    type: 'outpatient',
-    status: 'closed',
-    notes: 'Seasonal allergic rhinitis and mild asthma exacerbation check.',
-    started_at: '2026-08-18T14:30:00Z',
-    closed_at: '2026-08-18T15:10:00Z',
-    vitals: [
-      {
-        id: 'vit_john_1',
-        encounter_id: 'enc_john_recent',
-        patient_id: 'pat_john_mutua',
-        systolic_bp: 120,
-        diastolic_bp: 76,
-        pulse: 68,
-        spo2: 99,
-        temperature: 36.5,
-        blood_sugar: 5.2,
-        respiratory_rate: 14,
-        weight: 78,
-        source: 'clinic',
-        notes: 'Clear chest on auscultation.',
-        recorded_at: '2026-08-18T14:35:00Z',
-      },
-    ],
-    labs: [],
-    diagnoses: [
-      {
-        id: 'diag_john_1',
-        encounter_id: 'enc_john_recent',
-        diagnosis_text: 'Allergic Rhinitis, Unspecified',
-        icd_code: 'J30.9',
-        diagnosis_type: 'final',
-        notes: 'Prescribed antihistamine and nasal spray.',
-        created_at: '2026-08-18T14:40:00Z',
-      },
-    ],
-    prescriptions: [
-      {
-        id: 'rx_john_1',
-        encounter_id: 'enc_john_recent',
-        prescribed_at: '2026-08-18T14:45:00Z',
-        items: [
-          {
-            id: 'rxi_john_1',
-            prescription_id: 'rx_john_1',
-            medication_name: 'Cetirizine Hydrochloride',
-            dose: '10 mg',
-            route: 'Oral (PO)',
-            frequency: 'Once daily (OD - Evening)',
-            duration: '14 days',
-            instructions: 'Take at night before bed.',
-            status: 'active',
-            started_at: '2026-08-18T14:45:00Z',
-          },
-        ],
-      },
-    ],
-  },
 ];
 
 const DEFAULT_APPOINTMENTS: Appointment[] = [
@@ -606,40 +467,22 @@ const DEFAULT_APPOINTMENTS: Appointment[] = [
     source_encounter_id: 'enc_sarah_recent',
     created_at: '2026-08-26T23:59:00Z',
   },
-  {
-    id: 'apt_john_past',
-    clinic_id: 'cln_horizon',
-    clinic_name: 'Afya Horizon Health Center',
-    doctor_id: 'doc_david',
-    doctor_name: 'Dr. David Ochieng',
-    patient_id: 'pat_john_mutua',
-    patient_name: 'John Kiprono Mutua',
-    scheduled_at: '2026-08-18T14:30:00Z',
-    status: 'attended',
-    notes: 'Chest check & seasonal allergy follow up',
-    source_encounter_id: 'enc_john_recent',
-    created_at: '2026-08-10T09:00:00Z',
-  },
 ];
 
 const StoreContext = createContext<StoreContextType | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  // Navigation & Role initialized deterministically to prevent hydration mismatch
-  const [currentRole, setCurrentRoleState] = useState<UserRole>('clinic_admin');
+  const {
+    currentUser,
+    currentRole,
+    isReady: isAuthReady,
+    login: authLogin,
+    logout: authLogout,
+    setCurrentRole: setAuthRole,
+  } = useAuth();
+
   const [activeView, setActiveView] = useState<string>('clinic-dashboard');
   const [viewParams, setViewParams] = useState<Record<string, unknown>>({});
-
-  // Core entities
-  const [currentUser, setCurrentUser] = useState<User>({
-    id: 'usr_clinic_admin_horizon',
-    email: 'admin@afyahorizon.co.ke',
-    first_name: 'Grace',
-    last_name: 'Wambui',
-    role: 'clinic_admin',
-    clinic_id: 'cln_horizon',
-    created_at: '2025-01-15T09:00:00Z',
-  });
 
   const [clinics, setClinics] = useState<Clinic[]>(DEFAULT_CLINICS);
   const [doctors, setDoctors] = useState<User[]>(DEFAULT_DOCTORS);
@@ -649,31 +492,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [encounters, setEncounters] = useState<Encounter[]>(DEFAULT_ENCOUNTERS);
   const [appointments, setAppointments] = useState<Appointment[]>(DEFAULT_APPOINTMENTS);
 
-  // Rehydrate client-side saved state after mounting to avoid Next.js SSR hydration mismatches
   useEffect(() => {
     const rehydrate = () => {
       try {
         const saved = localStorage.getItem('afyamind_store_v2');
         if (saved) {
           const p = JSON.parse(saved);
-          if (p.currentRole) {
-            setCurrentRoleState(p.currentRole);
-            if (p.currentRole === 'super_admin') {
-              setCurrentUser(DEFAULT_SUPER_ADMIN);
-            } else if (p.currentRole === 'doctor') {
-              setCurrentUser(DEFAULT_DOCTORS[0]);
-            } else if (p.currentRole === 'clinic_admin') {
-              setCurrentUser({
-                id: 'usr_clinic_admin_horizon',
-                email: 'admin@afyahorizon.co.ke',
-                first_name: 'Grace',
-                last_name: 'Wambui',
-                role: 'clinic_admin',
-                clinic_id: 'cln_horizon',
-                created_at: '2025-01-15T09:00:00Z',
-              });
-            }
-          }
           if (p.activeView) setActiveView(p.activeView);
           if (p.viewParams) setViewParams(p.viewParams);
           if (p.clinics) setClinics(p.clinics);
@@ -689,7 +513,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     rehydrate();
   }, []);
 
-  // Save changes to LocalStorage
   const persistState = (overrides: Partial<Record<string, unknown>> = {}) => {
     try {
       const dataToSave = {
@@ -700,44 +523,31 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         accessRequests,
         encounters,
         appointments,
-        currentRole,
         activeView,
         viewParams,
         ...overrides,
       };
       localStorage.setItem('afyamind_store_v2', JSON.stringify(dataToSave));
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
-  // Sync role switch with default views & user identities
+  const login = async (credentials: LoginPayload): Promise<User> => {
+    return authLogin(credentials);
+  };
+
+  const logout = async () => {
+    await authLogout();
+  };
+
   const setCurrentRole = (role: UserRole) => {
-    setCurrentRoleState(role);
-    if (role === 'super_admin') {
-      setCurrentUser(DEFAULT_SUPER_ADMIN);
-      setActiveView('admin-dashboard');
-      setViewParams({});
-      persistState({ currentRole: 'super_admin', activeView: 'admin-dashboard', viewParams: {} });
-    } else if (role === 'clinic_admin') {
-      setCurrentUser({
-        id: 'usr_clinic_admin_horizon',
-        email: 'admin@afyahorizon.co.ke',
-        first_name: 'Grace',
-        last_name: 'Wambui',
-        role: 'clinic_admin',
-        clinic_id: 'cln_horizon',
-        created_at: '2025-01-15T09:00:00Z',
-      });
-      setActiveView('clinic-dashboard');
-      setViewParams({});
-      persistState({ currentRole: 'clinic_admin', activeView: 'clinic-dashboard', viewParams: {} });
-    } else if (role === 'doctor') {
-      setCurrentUser(DEFAULT_DOCTORS[0]); // Dr. Angela Mwangi
-      setActiveView('doctor-dashboard');
-      setViewParams({});
-      persistState({ currentRole: 'doctor', activeView: 'doctor-dashboard', viewParams: {} });
-    }
+    setAuthRole(role);
+    let defaultView = 'clinic-dashboard';
+    if (role === 'super_admin') defaultView = 'admin-dashboard';
+    if (role === 'doctor') defaultView = 'doctor-dashboard';
+
+    setActiveView(defaultView);
+    setViewParams({});
+    persistState({ activeView: defaultView, viewParams: {} });
   };
 
   const navigateTo = (view: string, params: Record<string, unknown> = {}) => {
@@ -746,7 +556,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     persistState({ activeView: view, viewParams: params });
   };
 
-  // Admin Actions
   const createClinic = (clinicData: {
     name: string;
     email: string;
@@ -783,7 +592,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     persistState({ clinics: updated });
   };
 
-  // Clinic Actions - Doctors & Invitations
   const inviteDoctor = (email: string, specialization: string, clinicId = 'cln_horizon'): DoctorInvitation => {
     const currentClinic = clinics.find((c) => c.id === clinicId) || clinics[0];
     const newInvitation: DoctorInvitation = {
@@ -830,20 +638,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   ): { success: boolean; error?: string } => {
     const invite = invitations.find((inv) => inv.token === token);
-    if (!invite) {
-      return { success: false, error: 'Invalid invite token. Please check your link.' };
-    }
-    const isExpired = new Date(invite.expires_at).getTime() < Date.now() || invite.status === 'expired';
-    if (isExpired) {
-      return { success: false, error: 'This invite has expired — ask your clinic to send a new one.' };
+    if (!invite) return { success: false, error: 'Invalid invite token.' };
+    if (new Date(invite.expires_at).getTime() < Date.now() || invite.status === 'expired') {
+      return { success: false, error: 'This invite has expired.' };
     }
     if (invite.status === 'accepted') {
       return { success: false, error: 'This invite has already been accepted.' };
     }
 
-    const newDoctorId = `doc_${Date.now().toString(36)}`;
     const newDoctor: User = {
-      id: newDoctorId,
+      id: `doc_${Date.now().toString(36)}`,
       email: invite.email,
       first_name: doctorData.first_name,
       last_name: doctorData.last_name,
@@ -867,11 +671,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setDoctors(updatedDoctors);
     setInvitations(updatedInvitations);
     setClinics(updatedClinics);
-    persistState({
-      doctors: updatedDoctors,
-      invitations: updatedInvitations,
-      clinics: updatedClinics,
-    });
+    persistState({ doctors: updatedDoctors, invitations: updatedInvitations, clinics: updatedClinics });
     return { success: true };
   };
 
@@ -885,23 +685,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     persistState({ doctors: updated });
   };
 
-  // Patient Lookup & Access Requests
   const lookupPatientExact = (query: string): Patient | null => {
     const clean = query.trim().toLowerCase();
     if (!clean) return null;
-    const found = patients.find(
-      (p) =>
-        p.email.toLowerCase() === clean ||
-        p.phone.replace(/[\s-]/g, '') === clean.replace(/[\s-]/g, '') ||
-        `${p.first_name} ${p.last_name}`.toLowerCase() === clean
+    return (
+      patients.find(
+        (p) =>
+          p.email.toLowerCase() === clean ||
+          p.phone.replace(/[\s-]/g, '') === clean.replace(/[\s-]/g, '') ||
+          `${p.first_name} ${p.last_name}`.toLowerCase() === clean
+      ) || null
     );
-    return found || null;
   };
 
   const createAccessRequest = (patientId: string, reason: string, doctorId: string): AccessRequest => {
-    const patient = patients.find((p) => p.id === patientId)!;
+    const patient = patients.find((p) => p.id === patientId);
+    if (!patient) throw new Error(`Patient with ID "${patientId}" not found.`);
+
     const doctor = doctors.find((d) => d.id === doctorId) || doctors[0];
-    const currentClinic = clinics.find((c) => c.id === doctor.clinic_id) || clinics[0];
+    const currentClinic = clinics.find((c) => c.id === doctor?.clinic_id) || clinics[0];
 
     const newRequest: AccessRequest = {
       id: `req_${Date.now().toString(36)}`,
@@ -910,12 +712,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       patient_email: patient.email,
       clinic_id: currentClinic.id,
       clinic_name: currentClinic.name,
-      submitted_by_doctor_id: doctor.id,
-      submitted_by_doctor_name: `Dr. ${doctor.first_name} ${doctor.last_name}`,
+      submitted_by_doctor_id: doctor?.id || 'doc_unknown',
+      submitted_by_doctor_name: doctor ? `Dr. ${doctor.first_name} ${doctor.last_name}` : 'Attending Physician',
       reason,
       status: 'pending',
       created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(), // 5 minutes!
+      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
     };
 
     const updated = [newRequest, ...accessRequests];
@@ -931,30 +733,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const updatedRequests = accessRequests.map((r) =>
       r.id === requestId ? { ...r, status: 'approved' as const } : r
     );
-
     const updatedPatients = patients.map((p) => {
       if (p.id === req.patient_id) {
-        const grants = Array.from(new Set([...p.active_grant_clinic_ids, req.clinic_id]));
-        return { ...p, active_grant_clinic_ids: grants };
+        return { ...p, active_grant_clinic_ids: Array.from(new Set([...p.active_grant_clinic_ids, req.clinic_id])) };
       }
       return p;
     });
-
     const updatedClinics = clinics.map((c) => {
-      if (c.id === req.clinic_id) {
-        return { ...c, active_grants_count: c.active_grants_count + 1 };
-      }
+      if (c.id === req.clinic_id) return { ...c, active_grants_count: c.active_grants_count + 1 };
       return c;
     });
 
     setAccessRequests(updatedRequests);
     setPatients(updatedPatients);
     setClinics(updatedClinics);
-    persistState({
-      accessRequests: updatedRequests,
-      patients: updatedPatients,
-      clinics: updatedClinics,
-    });
+    persistState({ accessRequests: updatedRequests, patients: updatedPatients, clinics: updatedClinics });
   };
 
   const denyAccessRequest = (requestId: string) => {
@@ -972,7 +765,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const updatedRequests = accessRequests.map((r) =>
       r.id === requestId ? { ...r, status: 'revoked' as const } : r
     );
-
     const updatedPatients = patients.map((p) => {
       if (p.id === req.patient_id) {
         return {
@@ -985,10 +777,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     setAccessRequests(updatedRequests);
     setPatients(updatedPatients);
-    persistState({
-      accessRequests: updatedRequests,
-      patients: updatedPatients,
-    });
+    persistState({ accessRequests: updatedRequests, patients: updatedPatients });
   };
 
   const updateClinicProfile = (clinicId: string, data: { name: string; phone: string; address: string }) => {
@@ -999,11 +788,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     persistState({ clinics: updated });
   };
 
-  // Encounters & Clinical Workspace
   const createEncounter = (patientId: string, type: EncounterType, notes = ''): Encounter => {
-    const patient = patients.find((p) => p.id === patientId)!;
-    const currentDoc = currentUser.role === 'doctor' ? currentUser : doctors[0];
-    const clinic = clinics.find((c) => c.id === currentDoc.clinic_id) || clinics[0];
+    const patient = patients.find((p) => p.id === patientId);
+    if (!patient) throw new Error(`Patient with ID "${patientId}" not found.`);
+
+    const currentDoc = (currentUser && currentUser.role === 'doctor') ? currentUser : doctors[0];
+    const clinic = clinics.find((c) => c.id === currentDoc?.clinic_id) || clinics[0];
 
     const newEncounter: Encounter = {
       id: `enc_${Date.now().toString(36)}`,
@@ -1011,8 +801,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       patient_name: `${patient.first_name} ${patient.last_name}`,
       clinic_id: clinic.id,
       clinic_name: clinic.name,
-      opened_by_doctor_id: currentDoc.id,
-      opened_by_doctor_name: `Dr. ${currentDoc.first_name} ${currentDoc.last_name}`,
+      opened_by_doctor_id: currentDoc?.id || 'doc_unknown',
+      opened_by_doctor_name: currentDoc ? `Dr. ${currentDoc.first_name} ${currentDoc.last_name}` : 'Attending Physician',
       type,
       status: 'open',
       notes,
@@ -1030,25 +820,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     setEncounters(updatedEncounters);
     setPatients(updatedPatients);
-    persistState({
-      encounters: updatedEncounters,
-      patients: updatedPatients,
-    });
+    persistState({ encounters: updatedEncounters, patients: updatedPatients });
     return newEncounter;
   };
 
   const closeEncounter = (encounterId: string) => {
     const updated = encounters.map((enc) =>
-      enc.id === encounterId
-        ? { ...enc, status: 'closed' as const, closed_at: new Date().toISOString() }
-        : enc
+      enc.id === encounterId ? { ...enc, status: 'closed' as const, closed_at: new Date().toISOString() } : enc
     );
     setEncounters(updated);
     persistState({ encounters: updated });
   };
 
   const addVitals = (encounterId: string, vitalsData: Partial<VitalSign>): VitalSign => {
-    const encounter = encounters.find((e) => e.id === encounterId)!;
+    const encounter = encounters.find((e) => e.id === encounterId);
+    if (!encounter) throw new Error(`Encounter with ID "${encounterId}" not found.`);
+
     const newVital: VitalSign = {
       id: `vit_${Date.now().toString(36)}`,
       encounter_id: encounterId,
@@ -1163,9 +950,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updated = encounters.map((enc) =>
-      enc.id === encounterId
-        ? { ...enc, prescriptions: [newPrescription, ...enc.prescriptions] }
-        : enc
+      enc.id === encounterId ? { ...enc, prescriptions: [newPrescription, ...enc.prescriptions] } : enc
     );
     setEncounters(updated);
     persistState({ encounters: updated });
@@ -1191,16 +976,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       notes?: string;
     }
   ): Appointment => {
-    const encounter = encounters.find((e) => e.id === encounterId)!;
-    const currentDoc = currentUser.role === 'doctor' ? currentUser : doctors[0];
-    const clinic = clinics.find((c) => c.id === currentDoc.clinic_id) || clinics[0];
+    const encounter = encounters.find((e) => e.id === encounterId);
+    if (!encounter) throw new Error(`Encounter with ID "${encounterId}" not found.`);
+
+    const currentDoc = (currentUser && currentUser.role === 'doctor') ? currentUser : doctors[0];
+    const clinic = clinics.find((c) => c.id === currentDoc?.clinic_id) || clinics[0];
 
     const newApt: Appointment = {
       id: `apt_${Date.now().toString(36)}`,
       clinic_id: clinic.id,
       clinic_name: clinic.name,
-      doctor_id: currentDoc.id,
-      doctor_name: `Dr. ${currentDoc.first_name} ${currentDoc.last_name}`,
+      doctor_id: currentDoc?.id || 'doc_unknown',
+      doctor_name: currentDoc ? `Dr. ${currentDoc.first_name} ${currentDoc.last_name}` : 'Attending Physician',
       patient_id: encounter.patient_id,
       patient_name: encounter.patient_name,
       scheduled_at: appointmentData.scheduled_at,
@@ -1217,10 +1004,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     setEncounters(updatedEncounters);
     setAppointments(updatedAppointments);
-    persistState({
-      encounters: updatedEncounters,
-      appointments: updatedAppointments,
-    });
+    persistState({ encounters: updatedEncounters, appointments: updatedAppointments });
     return newApt;
   };
 
@@ -1238,23 +1022,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setAccessRequests(DEFAULT_ACCESS_REQUESTS);
     setEncounters(DEFAULT_ENCOUNTERS);
     setAppointments(DEFAULT_APPOINTMENTS);
-    setCurrentRoleState('clinic_admin');
-    setCurrentUser({
-      id: 'usr_clinic_admin_horizon',
-      email: 'admin@afyahorizon.co.ke',
-      first_name: 'Grace',
-      last_name: 'Wambui',
-      role: 'clinic_admin',
-      clinic_id: 'cln_horizon',
-      created_at: '2025-01-15T09:00:00Z',
-    });
+    setAuthRole('clinic_admin');
     setActiveView('clinic-dashboard');
     setViewParams({});
     try {
       localStorage.removeItem('afyamind_store_v2');
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   return (
@@ -1262,8 +1035,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       value={{
         currentUser,
         currentRole,
+        isAuthReady,
+        login,
+        logout,
         setCurrentRole,
-        activeClinic: clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0],
+        activeClinic: clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0],
         activeView,
         setActiveView,
         viewParams,

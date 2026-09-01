@@ -56,7 +56,19 @@ func clearCookies(c *gin.Context, cfg *config.Config) {
 	c.SetCookie("refresh_token", "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
 }
 
-// Signup handles POST /auth/signup or /auth/register
+// Signup godoc
+//
+//	@Summary		Register a new patient account
+//	@Description	Creates a new patient account and sets HttpOnly JWT cookies (access_token + refresh_token).
+//	@Description	Also aliased at POST /auth/signup.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.SignupRequest						true	"Patient registration payload"
+//	@Success		201		{object}	response.DataEnvelope{data=users.UserResponse}	"Account created"
+//	@Failure		400		{object}	response.ErrorEnvelope					"Validation error"
+//	@Failure		409		{object}	response.ErrorEnvelope					"Email or phone already in use"
+//	@Router			/auth/register [post]
 func (h *Handler) Signup(c *gin.Context) {
 	var req SignupRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -76,7 +88,19 @@ func (h *Handler) Signup(c *gin.Context) {
 	})
 }
 
-// Login handles POST /auth/login
+// Login godoc
+//
+//	@Summary		Authenticate a user
+//	@Description	Validates credentials and sets HttpOnly JWT cookies (access_token + refresh_token).
+//	@Description	Provide either email or phone, together with password.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.LoginRequest						true	"Login credentials"
+//	@Success		200		{object}	response.DataEnvelope{data=users.UserResponse}	"Login successful"
+//	@Failure		400		{object}	response.ErrorEnvelope					"Validation error"
+//	@Failure		401		{object}	response.ErrorEnvelope					"Invalid credentials"
+//	@Router			/auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -98,7 +122,18 @@ func (h *Handler) Login(c *gin.Context) {
 	})
 }
 
-// Refresh handles POST /auth/refresh
+// Refresh godoc
+//
+//	@Summary		Refresh the access token
+//	@Description	Issues a new access_token cookie. Reads the refresh token from the HttpOnly cookie by default.
+//	@Description	Optionally accepts a JSON body with refresh_token for non-cookie clients.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.RefreshRequest			false	"Optional: refresh token in JSON body"
+//	@Success		200		{object}	response.MessageEnvelope	"Token refreshed"
+//	@Failure		401		{object}	response.ErrorEnvelope		"Missing or invalid refresh token"
+//	@Router			/auth/refresh [post]
 func (h *Handler) Refresh(c *gin.Context) {
 	var refreshToken string
 	var req RefreshRequest
@@ -143,7 +178,16 @@ func (h *Handler) Refresh(c *gin.Context) {
 	})
 }
 
-// Logout handles POST /auth/logout
+// Logout godoc
+//
+//	@Summary		Log out the current user
+//	@Description	Clears the access_token and refresh_token HttpOnly cookies.
+//	@Tags			Auth
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	response.MessageEnvelope	"Logged out"
+//	@Failure		401	{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Router			/auth/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
 	clearCookies(c, h.cfg)
 	response.JSON(c, http.StatusOK, gin.H{
@@ -153,7 +197,17 @@ func (h *Handler) Logout(c *gin.Context) {
 	})
 }
 
-// ForgotPassword handles POST /auth/forgot-password
+// ForgotPassword godoc
+//
+//	@Summary		Request password reset link
+//	@Description	If the email matches an account, sends a password reset link to it. Returns success regardless to prevent user enumeration.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.ForgotPasswordRequest	true	"Email for password reset request"
+//	@Success		200		{object}	response.MessageEnvelope	"Request processed successfully"
+//	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
+//	@Router			/auth/forgot-password [post]
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -171,43 +225,51 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 	})
 }
 
-// ResetPassword handles POST /auth/reset-password
+// ResetPassword godoc
+//
+//	@Summary		Reset user password
+//	@Description	Sets a new password using a reset token provided via request body, cookie, or query parameter.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.ResetPasswordRequest	true	"New password and optional reset token"
+//	@Success		200		{object}	response.MessageEnvelope	"Password has been reset successfully"
+//	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
+//	@Router			/auth/reset-password [post]
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request payload"))
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request body"))
 		return
 	}
 
-
-
-	token := req.Token
-	if token == "" {
+	resetToken := req.Token
+	if resetToken == "" {
 		if cookieToken, err := c.Cookie("reset_token"); err == nil && cookieToken != "" {
-			token = cookieToken
+			resetToken = cookieToken
 		}
 	}
+	if resetToken == "" {
+		resetToken = c.Query("token")
+	}
 
-	if token == "" {
+	if resetToken == "" {
 		response.RespondAppError(c, appErrors.ErrValidationError("Reset token is required"))
 		return
 	}
 
-	appErr := h.service.ResetPassword(c.Request.Context(), token, req.Password)
-  
-	if appErr != nil {
+	if appErr := h.service.ResetPassword(c.Request.Context(), resetToken, req.Password); appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
 
-
-	// Clear reset_token cookie after successful reset
-	c.SetSameSite(http.SameSiteStrictMode)
+	// Clear reset_token cookie if present
 	c.SetCookie("reset_token", "", -1, "/", h.cfg.CookieDomain, h.cfg.CookieSecure, true)
 
 	response.JSON(c, http.StatusOK, gin.H{
 		"data": gin.H{
-			"message": "Password has been successfully reset. You can now log in.",
+			"message": "Password has been reset successfully",
 		},
 	})
 }
+

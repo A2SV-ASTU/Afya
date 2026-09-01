@@ -10,7 +10,6 @@ import {
   Activity,
   ArrowRight,
   ShieldCheck,
-  Clock,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { StatCard } from '@/modules/core/ui/StatCard';
@@ -28,13 +27,13 @@ export default function DoctorDashboardPage() {
   } = useStore();
 
   const openEncounters = encounters.filter(
-    (e) => e.opened_by_doctor_id === currentUser.id && e.status === 'open'
+    (e) => e.opened_by_doctor_id === currentUser?.id && e.status === 'open'
   );
   const scheduledAppointments = appointments.filter(
-    (a) => a.doctor_id === currentUser.id && a.status === 'scheduled'
+    (a) => a.doctor_id === currentUser?.id && a.status === 'scheduled'
   );
   const doctorEncounters = encounters.filter(
-    (e) => e.opened_by_doctor_id === currentUser.id
+    (e) => e.opened_by_doctor_id === currentUser?.id
   );
 
   return (
@@ -48,14 +47,14 @@ export default function DoctorDashboardPage() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900">
-                Dr. {currentUser.first_name} {currentUser.last_name}
+                Dr. {currentUser?.first_name} {currentUser?.last_name}
               </h1>
               <span className="px-2.5 py-0.5 bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9] rounded-full text-xs font-semibold">
                 KMPDC Registered
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              {currentUser.specialization || 'Attending Physician'} • Facility: {activeClinic.name}
+              {currentUser?.specialization || 'Attending Physician'} • Facility: {activeClinic.name}
             </p>
           </div>
         </div>

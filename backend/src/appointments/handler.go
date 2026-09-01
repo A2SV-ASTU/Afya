@@ -18,6 +18,19 @@ func NewHandler(service Service) *Handler {
 	return &Handler{service: service}
 }
 
+// CreateAppointment godoc
+//
+//	@Summary		Create a new appointment
+//	@Description	Schedules a consultation between a patient and the doctor. Enforces access guard permissions.
+//	@Tags			Appointments
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			body	body		appointments.CreateAppointmentRequest	true	"Appointment details"
+//	@Success		201		{object}	response.DataEnvelope{data=appointments.Appointment}	"Appointment scheduled"
+//	@Failure		400		{object}	response.ErrorEnvelope					"Validation error"
+//	@Failure		401		{object}	response.ErrorEnvelope					"Not authenticated"
+//	@Router			/appointments [post]
 func (h *Handler) CreateAppointment(c *gin.Context) {
 	user, err := auth.GetUser(c)
 	if err != nil {
@@ -40,6 +53,19 @@ func (h *Handler) CreateAppointment(c *gin.Context) {
 	response.JSON(c, http.StatusCreated, gin.H{"appointment": appt})
 }
 
+// GetPatientAppointments godoc
+//
+//	@Summary		Get appointments for a patient
+//	@Description	Retrieves all scheduled/past appointments for a specific patient. Filterable by status.
+//	@Tags			Appointments
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			patientId	path		string								true	"Patient UUID"
+//	@Param			status		query		string								false	"Filter by appointment status (scheduled, attended, cancelled)"
+//	@Success		200			{object}	response.DataEnvelope{data=[]appointments.Appointment}	"List of appointments"
+//	@Failure		400			{object}	response.ErrorEnvelope				"Validation/ID error"
+//	@Failure		401			{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Router			/patients/{patientId}/appointments [get]
 func (h *Handler) GetPatientAppointments(c *gin.Context) {
 	user, err := auth.GetUser(c)
 	if err != nil {
