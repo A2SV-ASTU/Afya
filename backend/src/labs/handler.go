@@ -25,17 +25,20 @@ func NewHandler(service Service) *Handler {
 //	@Accept			json
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			encounterId	path		string						true	"Encounter ID"
-//	@Param			body		body		labs.CreateLabResultRequest	true	"Lab Result details"
-//	@Success		201			{object}	labs.LabResult				"Lab Result created successfully"
-//	@Failure		400			{object}	response.ErrorEnvelope		"Validation error"
-//	@Failure		401			{object}	response.ErrorEnvelope		"Not authenticated"
-//	@Failure		403			{object}	response.ErrorEnvelope		"Forbidden"
-//	@Failure		404			{object}	response.ErrorEnvelope		"Encounter not found"
-//	@Failure		409			{object}	response.ErrorEnvelope		"Encounter is closed"
-//	@Router			/encounters/{encounterId}/labs [post]
+//	@Param			id		path		string						true	"Encounter ID"
+//	@Param			body	body		labs.CreateLabResultRequest	true	"Lab Result details"
+//	@Success		201		{object}	labs.LabResult				"Lab Result created successfully"
+//	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401		{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403		{object}	response.ErrorEnvelope		"Forbidden"
+//	@Failure		404		{object}	response.ErrorEnvelope		"Encounter not found"
+//	@Failure		409		{object}	response.ErrorEnvelope		"Encounter is closed"
+//	@Router			/encounters/{id}/labs [post]
 func (h *Handler) CreateLabResult(c *gin.Context) {
-	encounterIDStr := c.Param("encounterId")
+	encounterIDStr := c.Param("id")
+	if encounterIDStr == "" {
+		encounterIDStr = c.Param("encounterId")
+	}
 	encounterID, err := uuid.Parse(encounterIDStr)
 	if err != nil {
 		response.RespondAppError(c, appErrors.ErrValidationError("Invalid encounter ID format"))
@@ -64,15 +67,18 @@ func (h *Handler) CreateLabResult(c *gin.Context) {
 //	@Tags			Labs
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			encounterId	path		string						true	"Encounter ID"
-//	@Success		200			{array}		labs.LabResult				"List of lab results"
-//	@Failure		400			{object}	response.ErrorEnvelope		"Validation error"
-//	@Failure		401			{object}	response.ErrorEnvelope		"Not authenticated"
-//	@Failure		403			{object}	response.ErrorEnvelope		"Forbidden"
-//	@Failure		404			{object}	response.ErrorEnvelope		"Encounter not found"
-//	@Router			/encounters/{encounterId}/labs [get]
+//	@Param			id		path		string						true	"Encounter ID"
+//	@Success		200		{array}		labs.LabResult				"List of lab results"
+//	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401		{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403		{object}	response.ErrorEnvelope		"Forbidden"
+//	@Failure		404		{object}	response.ErrorEnvelope		"Encounter not found"
+//	@Router			/encounters/{id}/labs [get]
 func (h *Handler) GetLabResults(c *gin.Context) {
-	encounterIDStr := c.Param("encounterId")
+	encounterIDStr := c.Param("id")
+	if encounterIDStr == "" {
+		encounterIDStr = c.Param("encounterId")
+	}
 	encounterID, err := uuid.Parse(encounterIDStr)
 	if err != nil {
 		response.RespondAppError(c, appErrors.ErrValidationError("Invalid encounter ID format"))

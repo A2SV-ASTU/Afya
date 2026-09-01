@@ -1928,180 +1928,6 @@ paths:
       summary: Invite a doctor to the clinic
       tags:
       - Invitations
-  /encounters/{encounterId}/diagnoses:
-    get:
-      description: Retrieves all diagnoses for a specific encounter.
-      parameters:
-      - description: Encounter ID
-        in: path
-        name: encounterId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of diagnoses
-          schema:
-            items:
-              $ref: '#/definitions/diagnoses.Diagnosis'
-            type: array
-        "400":
-          description: Validation error
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "404":
-          description: Encounter not found
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Get diagnoses
-      tags:
-      - Diagnoses
-    post:
-      consumes:
-      - application/json
-      description: Adds a new diagnosis to a specific encounter.
-      parameters:
-      - description: Encounter ID
-        in: path
-        name: encounterId
-        required: true
-        type: string
-      - description: Diagnosis details
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/diagnoses.CreateDiagnosisRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Diagnosis created successfully
-          schema:
-            $ref: '#/definitions/diagnoses.Diagnosis'
-        "400":
-          description: Validation error
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "404":
-          description: Encounter not found
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "409":
-          description: Encounter is closed
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Add a diagnosis
-      tags:
-      - Diagnoses
-  /encounters/{encounterId}/labs:
-    get:
-      description: Retrieves all lab results for a specific encounter.
-      parameters:
-      - description: Encounter ID
-        in: path
-        name: encounterId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: List of lab results
-          schema:
-            items:
-              $ref: '#/definitions/labs.LabResult'
-            type: array
-        "400":
-          description: Validation error
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "404":
-          description: Encounter not found
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Get lab results
-      tags:
-      - Labs
-    post:
-      consumes:
-      - application/json
-      description: Adds a new lab result to a specific encounter.
-      parameters:
-      - description: Encounter ID
-        in: path
-        name: encounterId
-        required: true
-        type: string
-      - description: Lab Result details
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/labs.CreateLabResultRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Lab Result created successfully
-          schema:
-            $ref: '#/definitions/labs.LabResult'
-        "400":
-          description: Validation error
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "401":
-          description: Not authenticated
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "404":
-          description: Encounter not found
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-        "409":
-          description: Encounter is closed
-          schema:
-            $ref: '#/definitions/response.ErrorEnvelope'
-      security:
-      - BearerAuth: []
-      summary: Add a lab result
-      tags:
-      - Labs
   /encounters/{id}:
     get:
       description: Returns full details of an encounter including vitals, lab results,
@@ -2229,6 +2055,180 @@ paths:
       summary: Close an open encounter
       tags:
       - Encounters
+  /encounters/{id}/diagnoses:
+    get:
+      description: Retrieves all diagnoses for a specific encounter.
+      parameters:
+      - description: Encounter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of diagnoses
+          schema:
+            items:
+              $ref: '#/definitions/diagnoses.Diagnosis'
+            type: array
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Encounter not found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Get diagnoses
+      tags:
+      - Diagnoses
+    post:
+      consumes:
+      - application/json
+      description: Adds a new diagnosis to a specific encounter.
+      parameters:
+      - description: Encounter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Diagnosis details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/diagnoses.CreateDiagnosisRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Diagnosis created successfully
+          schema:
+            $ref: '#/definitions/diagnoses.Diagnosis'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Encounter not found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "409":
+          description: Encounter is closed
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Add a diagnosis
+      tags:
+      - Diagnoses
+  /encounters/{id}/labs:
+    get:
+      description: Retrieves all lab results for a specific encounter.
+      parameters:
+      - description: Encounter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of lab results
+          schema:
+            items:
+              $ref: '#/definitions/labs.LabResult'
+            type: array
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Encounter not found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Get lab results
+      tags:
+      - Labs
+    post:
+      consumes:
+      - application/json
+      description: Adds a new lab result to a specific encounter.
+      parameters:
+      - description: Encounter ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Lab Result details
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/labs.CreateLabResultRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Lab Result created successfully
+          schema:
+            $ref: '#/definitions/labs.LabResult'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "404":
+          description: Encounter not found
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+        "409":
+          description: Encounter is closed
+          schema:
+            $ref: '#/definitions/response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Add a lab result
+      tags:
+      - Labs
   /encounters/{id}/medical-history:
     get:
       description: Returns a summary of the patient's medical history from the vantage
