@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../domain/entities/vital_sign_entity.dart';
+import '../bloc/vitals_sync_bloc.dart';
+import '../bloc/vitals_sync_event.dart';
 
 // ==========================================
 // 3.1 LOG ACTION MODAL (LogActionSheet)
@@ -44,7 +47,11 @@ class _LogActionSheetState extends State<LogActionSheet> {
 
   void _markAsTaken() async {
     // 1. Instant local record (Hive/SQLite stub)
-    // await LocalStorage.saveDoseLog(widget.prescriptionId, 'TAKEN', DateTime.now());
+    // await LocalStorage.saveDoseLog(
+    //   widget.prescriptionId,
+    //   'TAKEN',
+    //   DateTime.now(),
+    // );
 
     // 2. Course Completion Trigger
     if (widget.isFinalDose) {
@@ -53,9 +60,13 @@ class _LogActionSheetState extends State<LogActionSheet> {
     }
 
     if (!mounted) return;
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Dose recorded successfully')),
+      const SnackBar(
+        content: Text('Dose recorded successfully'),
+      ),
     );
+
     Navigator.of(context).pop(true);
   }
 
@@ -67,16 +78,27 @@ class _LogActionSheetState extends State<LogActionSheet> {
     });
 
     // Reschedule native local notification (T + 10 mins)
-    // await LocalNotificationService.reschedule(widget.prescriptionId, minutes: 10 * _snoozeCount);
+    // await LocalNotificationService.reschedule(
+    //   widget.prescriptionId,
+    //   minutes: 10 * _snoozeCount,
+    // );
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Snoozed for 10 minutes (Snooze $_snoozeCount/2)')),
+      SnackBar(
+        content: Text(
+          'Snoozed for 10 minutes '
+          '(Snooze $_snoozeCount/2)',
+        ),
+      ),
     );
+
     Navigator.of(context).pop();
   }
 
   void _openSkipReasonDialog() {
-    final TextEditingController reasonController = TextEditingController();
+    final TextEditingController reasonController =
+        TextEditingController();
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -95,17 +117,29 @@ class _LogActionSheetState extends State<LogActionSheet> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF006837)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF006837),
+            ),
             onPressed: () {
-              if (reasonController.text.trim().isEmpty) return;
+              if (reasonController.text.trim().isEmpty) {
+                return;
+              }
+
               // Local store skipped status + reason
+
               Navigator.of(ctx).pop();
               Navigator.of(context).pop(true);
+
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Dose skipped and recorded')),
+                const SnackBar(
+                  content: Text('Dose skipped and recorded'),
+                ),
               );
             },
-            child: const Text('Confirm Skip', style: TextStyle(color: Colors.white)),
+            child: const Text(
+              'Confirm Skip',
+              style: TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -125,29 +159,51 @@ class _LogActionSheetState extends State<LogActionSheet> {
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(24),
+        ),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment:CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment:
+                MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 widget.medicationName,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               Text(
                 widget.scheduledTime,
-                style: const TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('${widget.dosage} • ${widget.route}', style: const TextStyle(fontSize: 16, color: Colors.black87)),
+          Text(
+            '${widget.dosage} • ${widget.route}',
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(widget.instructions, style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+          Text(
+            widget.instructions,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey.shade600,
+            ),
+          ),
           const SizedBox(height: 24),
           SizedBox(
             width: double.infinity,
@@ -155,10 +211,20 @@ class _LogActionSheetState extends State<LogActionSheet> {
               onPressed: _markAsTaken,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF006837),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
-              child: const Text('Mark as Taken', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Mark as Taken',
+                style: TextStyle(
+                  fontSize: 16,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -166,14 +232,25 @@ class _LogActionSheetState extends State<LogActionSheet> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: maxSnoozeReached ? null : _snoozeDose,
+                  onPressed:
+                      maxSnoozeReached ? null : _snoozeDose,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(12),
+                    ),
                   ),
                   child: Text(
-                    maxSnoozeReached ? 'Max Snoozes Reached' : 'Snooze (10 min)',
-                    style: TextStyle(color: maxSnoozeReached ? Colors.grey : Colors.black87),
+                    maxSnoozeReached
+                        ? 'Max Snoozes Reached'
+                        : 'Snooze (10 min)',
+                    style: TextStyle(
+                      color: maxSnoozeReached
+                          ? Colors.grey
+                          : Colors.black87,
+                    ),
                   ),
                 ),
               ),
@@ -182,15 +259,26 @@ class _LogActionSheetState extends State<LogActionSheet> {
                 child: OutlinedButton(
                   onPressed: _openSkipReasonDialog,
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(color: Colors.red),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 14),
+                    side: const BorderSide(
+                      color: Colors.red,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text('Skip Dose', style: TextStyle(color: Colors.red)),
+                  child: const Text(
+                    'Skip Dose',
+                    style: TextStyle(
+                      color: Colors.red,
+                    ),
+                  ),
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -198,27 +286,40 @@ class _LogActionSheetState extends State<LogActionSheet> {
 }
 
 // ==========================================
-// 3.2 VITAL SIGN INPUT MODAL (VitalSignInputDialog)
+// 3.2 VITAL SIGN INPUT MODAL
+// (VitalSignInputDialog)
 // ==========================================
 class VitalSignInputDialog extends StatefulWidget {
-  const VitalSignInputDialog({super.key});
+  const VitalSignInputDialog({
+    super.key,
+  });
 
   @override
-  State<VitalSignInputDialog> createState() => _VitalSignInputDialogState();
+  State<VitalSignInputDialog> createState() =>
+      _VitalSignInputDialogState();
 }
 
-class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
+class _VitalSignInputDialogState
+    extends State<VitalSignInputDialog> {
   final Uuid _uuid = const Uuid();
   final _formKey = GlobalKey<FormState>();
 
-  final _systolicController = TextEditingController(text: '120');
-  final _diastolicController = TextEditingController(text: '80');
-  final _pulseController = TextEditingController(text: '72');
-  final _spo2Controller = TextEditingController(text: '98');
-  final _tempController = TextEditingController(text: '98.6');
-  final _respController = TextEditingController(text: '16');
-  final _sugarController = TextEditingController(text: '100');
-  final _weightController = TextEditingController(text: '150');
+  final _systolicController =
+      TextEditingController(text: '120');
+  final _diastolicController =
+      TextEditingController(text: '80');
+  final _pulseController =
+      TextEditingController(text: '72');
+  final _spo2Controller =
+      TextEditingController(text: '98');
+  final _tempController =
+      TextEditingController(text: '98.6');
+  final _respController =
+      TextEditingController(text: '16');
+  final _sugarController =
+      TextEditingController(text: '100');
+  final _weightController =
+      TextEditingController(text: '150');
 
   @override
   void dispose() {
@@ -233,45 +334,74 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
     super.dispose();
   }
 
+  // ==========================================
+  // SAVE VITALS
+  // ==========================================
   void _saveReadings() {
-  if (!_formKey.currentState!.validate()) {
-    return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final vital = VitalSignEntity(
+      clientId: _uuid.v4(),
+      systolicBp:
+          double.tryParse(_systolicController.text),
+      diastolicBp:
+          double.tryParse(_diastolicController.text),
+      pulse:
+          int.tryParse(_pulseController.text),
+      temperature:
+          double.tryParse(_tempController.text),
+      spo2:
+          double.tryParse(_spo2Controller.text),
+      bloodSugar:
+          double.tryParse(_sugarController.text),
+      weight:
+          double.tryParse(_weightController.text),
+      source: 'Manual Entry',
+      recordedAt: DateTime.now(),
+      synced: false,
+    );
+
+    debugPrint('=================================');
+    debugPrint('Saving vital through VitalsSyncBloc');
+    debugPrint('Client ID: ${vital.clientId}');
+    debugPrint(
+      'Blood Pressure: '
+      '${vital.systolicBp}/${vital.diastolicBp}',
+    );
+    debugPrint('Pulse: ${vital.pulse}');
+    debugPrint('Temperature: ${vital.temperature}');
+    debugPrint('SpO2: ${vital.spo2}');
+    debugPrint('Blood Sugar: ${vital.bloodSugar}');
+    debugPrint('Weight: ${vital.weight}');
+    debugPrint('Source: ${vital.source}');
+    debugPrint('Recorded At: ${vital.recordedAt}');
+    debugPrint('Synced: ${vital.synced}');
+    debugPrint('=================================');
+
+    // ==========================================
+    // CONNECT UI → BLOC
+    // ==========================================
+    context.read<VitalsSyncBloc>().add(
+          SaveVitalEvent(vital),
+        );
+
+    // Return the vital to the caller as well.
+    // The BLoC is responsible for persistence/sync.
+    Navigator.of(context).pop(vital);
   }
-
-  final vital = VitalSignEntity(
-    clientId: _uuid.v4(),
-    systolicBp: double.tryParse(_systolicController.text),
-    diastolicBp: double.tryParse(_diastolicController.text),
-    pulse: int.tryParse(_pulseController.text),
-    temperature: double.tryParse(_tempController.text),
-    spo2: double.tryParse(_spo2Controller.text),
-    bloodSugar: double.tryParse(_sugarController.text),
-    weight: double.tryParse(_weightController.text),
-    source: 'Manual Entry',
-    recordedAt: DateTime.now(),
-    synced: false,
-  );
-
-  debugPrint('Vital created:');
-  debugPrint('Client ID: ${vital.clientId}');
-  debugPrint('Blood Pressure: ${vital.systolicBp}/${vital.diastolicBp}');
-  debugPrint('Pulse: ${vital.pulse}');
-  debugPrint('Temperature: ${vital.temperature}');
-  debugPrint('SpO2: ${vital.spo2}');
-  debugPrint('Blood Sugar: ${vital.bloodSugar}');
-  debugPrint('Weight: ${vital.weight}');
-  debugPrint('Source: ${vital.source}');
-  debugPrint('Recorded At: ${vital.recordedAt}');
-  debugPrint('Synced: ${vital.synced}');
-
-  Navigator.of(context).pop(vital);
-}
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+      ),
+      insetPadding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: 24,
+      ),
       backgroundColor: Colors.white,
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -281,15 +411,24 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment:
+                    MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
                     'Log Your Vitals',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.black87),
-                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.black87,
+                    ),
+                    onPressed: () =>
+                        Navigator.of(context).pop(),
                   ),
                 ],
               ),
@@ -302,12 +441,16 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
                       _buildDualVitalInput(
                         icon: Icons.favorite_border,
                         leftTitle: 'Systolic',
-                        leftController: _systolicController,
+                        leftController:
+                            _systolicController,
                         rightTitle: 'Diastolic',
-                        rightController: _diastolicController,
+                        rightController:
+                            _diastolicController,
                         unit: 'mmHg',
                       ),
                       const SizedBox(height: 12),
+
+                      // Pulse
                       _buildSingleVitalInput(
                         icon: Icons.show_chart,
                         title: 'Pulse',
@@ -315,6 +458,8 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
                         unit: 'bpm',
                       ),
                       const SizedBox(height: 12),
+
+                      // SpO2
                       _buildSingleVitalInput(
                         icon: Icons.air,
                         title: 'SpO2',
@@ -323,6 +468,8 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
                         maxValue: 100,
                       ),
                       const SizedBox(height: 12),
+
+                      // Temperature
                       _buildSingleVitalInput(
                         icon: Icons.thermostat,
                         title: 'Temperature',
@@ -331,20 +478,28 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
                         isDecimal: true,
                       ),
                       const SizedBox(height: 12),
+
+                      // Respiration
                       _buildSingleVitalInput(
-                        icon: Icons.personal_injury_outlined,
+                        icon:
+                            Icons.personal_injury_outlined,
                         title: 'Respiration',
                         controller: _respController,
                         unit: 'bpm',
                       ),
                       const SizedBox(height: 12),
+
+                      // Blood Sugar
                       _buildSingleVitalInput(
-                        icon: Icons.water_drop_outlined,
+                        icon:
+                            Icons.water_drop_outlined,
                         title: 'Blood Sugar',
                         controller: _sugarController,
                         unit: 'mg/dL',
                       ),
                       const SizedBox(height: 12),
+
+                      // Weight
                       _buildSingleVitalInput(
                         icon: Icons.scale_outlined,
                         title: 'Weight',
@@ -358,26 +513,44 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
               ),
               const SizedBox(height: 20),
               Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisAlignment:
+                    MainAxisAlignment.end,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () =>
+                        Navigator.of(context).pop(),
                     child: const Text(
                       'Cancel',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
                     onPressed: _saveReadings,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF006837),
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      backgroundColor:
+                          const Color(0xFF006837),
+                      padding:
+                          const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text(
                       'Save Reading',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
@@ -407,40 +580,89 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: const Color(0xFF1F5F5B), size: 28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius:
+                  BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF1F5F5B),
+              size: 28,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 TextFormField(
                   controller: controller,
-                  keyboardType: TextInputType.numberWithOptions(decimal: isDecimal),
+                  keyboardType:
+                      TextInputType.numberWithOptions(
+                    decimal: isDecimal,
+                  ),
                   inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(isDecimal ? r'^\d*\.?\d*' : r'^\d*')),
+                    FilteringTextInputFormatter.allow(
+                      RegExp(
+                        isDecimal
+                            ? r'^\d*\.?\d*'
+                            : r'^\d*',
+                      ),
+                    ),
                   ],
                   validator: (val) {
-                    if (val == null || val.isEmpty) return 'Required';
-                    final numVal = double.tryParse(val);
-                    if (numVal == null) return 'Invalid';
-                    if (maxValue != null && numVal > maxValue) return 'Max $maxValue';
+                    if (val == null || val.isEmpty) {
+                      return 'Required';
+                    }
+
+                    final numVal =
+                        double.tryParse(val);
+
+                    if (numVal == null) {
+                      return 'Invalid';
+                    }
+
+                    if (maxValue != null &&
+                        numVal > maxValue) {
+                      return 'Max $maxValue';
+                    }
+
                     return null;
                   },
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 18, fontWeight: FontWeight.w600),
-                  decoration: const InputDecoration(
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration:
+                      const InputDecoration(
                     isDense: true,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding:
+                        EdgeInsets.zero,
                     border: InputBorder.none,
                   ),
                 ),
               ],
             ),
           ),
-          Text(unit, style: const TextStyle(color: Colors.black54, fontSize: 14)),
+          Text(
+            unit,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -465,46 +687,118 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
         children: [
           Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: const Color(0xFF1F5F5B), size: 28),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius:
+                  BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF1F5F5B),
+              size: 28,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
-                Text(leftTitle, style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text(
+                  leftTitle,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 TextFormField(
                   controller: leftController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (v) => v == null || v.isEmpty ? 'Req' : null,
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 18, fontWeight: FontWeight.w600),
-                  decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero, border: InputBorder.none),
+                  keyboardType:
+                      TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter
+                        .digitsOnly,
+                  ],
+                  validator: (v) =>
+                      v == null || v.isEmpty
+                          ? 'Req'
+                          : null,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration:
+                      const InputDecoration(
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.zero,
+                    border: InputBorder.none,
+                  ),
                 ),
               ],
             ),
           ),
-          Container(height: 36, width: 1, color: Colors.black12, margin: const EdgeInsets.symmetric(horizontal: 12)),
+          Container(
+            height: 36,
+            width: 1,
+            color: Colors.black12,
+            margin:
+                const EdgeInsets.symmetric(
+              horizontal: 12,
+            ),
+          ),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  CrossAxisAlignment.start,
               children: [
-                Text(rightTitle, style: const TextStyle(color: Colors.black87, fontSize: 14, fontWeight: FontWeight.w500)),
+                Text(
+                  rightTitle,
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 TextFormField(
                   controller: rightController,
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  validator: (v) => v == null || v.isEmpty ? 'Req' : null,
-                  style: TextStyle(color: Colors.grey.shade700, fontSize: 18, fontWeight: FontWeight.w600),
-                  decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.zero, border: InputBorder.none),
+                  keyboardType:
+                      TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter
+                        .digitsOnly,
+                  ],
+                  validator: (v) =>
+                      v == null || v.isEmpty
+                          ? 'Req'
+                          : null,
+                  style: TextStyle(
+                    color: Colors.grey.shade700,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration:
+                      const InputDecoration(
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.zero,
+                    border: InputBorder.none,
+                  ),
                 ),
               ],
             ),
           ),
-          Text(unit, style: const TextStyle(color: Colors.black54, fontSize: 14)),
+          Text(
+            unit,
+            style: const TextStyle(
+              color: Colors.black54,
+              fontSize: 14,
+            ),
+          ),
           const SizedBox(width: 8),
         ],
       ),
@@ -515,7 +809,8 @@ class _VitalSignInputDialogState extends State<VitalSignInputDialog> {
 // ==========================================
 // 3.3 PRESCRIPTION DETAIL SCREEN
 // ==========================================
-class PrescriptionDetailScreen extends StatelessWidget {
+class PrescriptionDetailScreen
+    extends StatelessWidget {
   final String medicationName;
   final String dose;
   final String route;
@@ -523,7 +818,7 @@ class PrescriptionDetailScreen extends StatelessWidget {
   final String duration;
   final String instructions;
   final String prescribingDoctor;
-  final String status; // 'active', 'completed', 'deactivated'
+  final String status;
 
   const PrescriptionDetailScreen({
     super.key,
@@ -552,35 +847,54 @@ class PrescriptionDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Prescription Details'),
+        title:
+            const Text('Prescription Details'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () =>
+              Navigator.of(context).pop(),
         ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment:
+              CrossAxisAlignment.start,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment:
+                  MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Text(
                     medicationName,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor().withOpacity(0.15),
-                    borderRadius: BorderRadius.circular(20),
+                    color: _getStatusColor()
+                        .withOpacity(0.15),
+                    borderRadius:
+                        BorderRadius.circular(20),
                   ),
                   child: Text(
                     status.toUpperCase(),
-                    style: TextStyle(color: _getStatusColor(), fontWeight: FontWeight.bold, fontSize: 12),
+                    style: TextStyle(
+                      color:
+                          _getStatusColor(),
+                      fontWeight:
+                          FontWeight.bold,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
@@ -588,26 +902,43 @@ class PrescriptionDetailScreen extends StatelessWidget {
             const SizedBox(height: 24),
             _buildDetailRow('Dose', dose),
             _buildDetailRow('Route', route),
-            _buildDetailRow('Frequency', frequency),
-            _buildDetailRow('Duration', duration),
-            _buildDetailRow('Prescribing Doctor', prescribingDoctor),
-            _buildDetailRow('Instructions', instructions),
+            _buildDetailRow(
+                'Frequency', frequency),
+            _buildDetailRow(
+                'Duration', duration),
+            _buildDetailRow(
+                'Prescribing Doctor',
+                prescribingDoctor),
+            _buildDetailRow(
+                'Instructions',
+                instructions),
             const SizedBox(height: 24),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding:
+                  const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.amber.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.shade300),
+                borderRadius:
+                    BorderRadius.circular(12),
+                border: Border.all(
+                  color:
+                      Colors.amber.shade300,
+                ),
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.amber),
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.amber,
+                  ),
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       'Prescription modifications are made exclusively by your doctor.',
-                      style: TextStyle(fontSize: 13, color: Colors.black87),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
                 ],
@@ -619,15 +950,33 @@ class PrescriptionDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(String title, String value) {
+  Widget _buildDetailRow(
+    String title,
+    String value,
+  ) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding:
+          const EdgeInsets.only(bottom: 16),
       child: Column(
-        crossAxisAlignment:CrossAxisAlignment.start,
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.grey,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 16, color: Colors.black87)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              color: Colors.black87,
+            ),
+          ),
         ],
       ),
     );
