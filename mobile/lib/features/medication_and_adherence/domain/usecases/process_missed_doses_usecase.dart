@@ -12,12 +12,23 @@ class ProcessMissedDosesUseCase {
   final MedicationLocalDataSource _localDataSource;
   final LocalAlarmScheduler _alarmScheduler;
   final Duration missedThreshold;
+  static const defaultMissedThreshold = Duration(minutes: 30);
 
   const ProcessMissedDosesUseCase(
     this._localDataSource,
     this._alarmScheduler, {
-    this.missedThreshold = const Duration(minutes: 30),
+    this.missedThreshold = defaultMissedThreshold,
   });
+
+  @factoryMethod
+  factory ProcessMissedDosesUseCase.create(
+    MedicationLocalDataSource localDataSource,
+    LocalAlarmScheduler alarmScheduler,
+  ) =>
+      ProcessMissedDosesUseCase(
+        localDataSource,
+        alarmScheduler,
+      );
 
   Future<Either<Failure, List<LocalDoseRecordEntity>>> call({
     DateTime? now,

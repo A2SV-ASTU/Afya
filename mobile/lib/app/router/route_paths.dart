@@ -8,6 +8,8 @@ class RoutePaths {
   // Shell Tabs
   static const String dashboard = '/dashboard';
   static const String history = '/history';
+  static const String chat = '/chat';
+  static const String access = '/access';
   static const String profile = '/profile';
 
   // Deep Link Route
