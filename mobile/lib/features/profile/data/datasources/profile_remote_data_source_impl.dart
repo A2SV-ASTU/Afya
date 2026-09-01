@@ -1,5 +1,6 @@
 import 'package:injectable/injectable.dart';
 
+import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/profile_model.dart';
 import 'profile_remote_data_source.dart';
@@ -12,7 +13,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<ProfileModel> getProfile() async {
-    final response = await apiClient.dio.get('/users/me');
+    final response = await apiClient.dio.get(ApiEndpoints.userMe);
 
     return ProfileModel.fromJson(response.data);
   }
@@ -26,7 +27,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     DateTime? dateOfBirth,
   }) async {
     final response = await apiClient.dio.patch(
-      '/users/me',
+      ApiEndpoints.userMe,
       data: {
         'first_name': firstName,
         'last_name': lastName,
@@ -45,7 +46,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     required String newPassword,
   }) async {
     await apiClient.dio.patch(
-      '/users/me/password',
+      ApiEndpoints.userPassword,
       data: {
         'old_password': oldPassword,
         'new_password': newPassword,
@@ -60,6 +61,6 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
 
   @override
   Future<void> logout() async {
-    await apiClient.dio.post('/auth/logout');
+    await apiClient.dio.post(ApiEndpoints.logout);
   }
 }

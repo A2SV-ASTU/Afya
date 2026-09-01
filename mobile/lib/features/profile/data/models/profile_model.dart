@@ -23,22 +23,22 @@ Map<String,dynamic> json){
 
 return ProfileModel(
 
-id:json['id'],
+id:json['id'] as String,
 
 firstName:
-json['first_name'],
+json['first_name'] as String,
 
 lastName:
-json['last_name'],
+json['last_name'] as String,
 
 email:
-json['email'],
+json['email'] as String,
 
 phone:
-json['phone'],
+json['phone'] as String,
 
 gender:
-json['gender'],
+json['gender'] as String,
 
 dateOfBirth:
 json['date_of_birth'] != null

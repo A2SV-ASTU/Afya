@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../core/di/injection_container.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
 import '../../features/auth/presentation/screens/sign_up_screen.dart';
@@ -139,7 +140,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: RoutePaths.profile,
-                builder: (context, state) => const ProfilePlaceholderScreen(),
+                builder: (context, state) => const ProfileScreen(),
               ),
             ],
           ),

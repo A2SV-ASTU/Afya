@@ -12,85 +12,9 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<ProfileBloc>(
-      future: sl.getAsync<ProfileBloc>(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF2FAF5),
-            body: Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF136043),
-              ),
-            ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Scaffold(
-            backgroundColor: const Color(0xFFF2FAF5),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 56,
-                      color: Color(0xFFC82D2D),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Unable to open profile',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      snapshot.error.toString(),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        // Rebuilds the FutureBuilder.
-                        (context as Element).markNeedsBuild();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF136043),
-                        foregroundColor: Colors.white,
-                      ),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData) {
-          return const Scaffold(
-            backgroundColor: Color(0xFFF2FAF5),
-            body: Center(
-              child: Text('Unable to initialize profile.'),
-            ),
-          );
-        }
-
-        final profileBloc = snapshot.data!;
-
-        return BlocProvider<ProfileBloc>.value(
-          value: profileBloc,
-          child: const _ProfileView(),
-        );
-      },
+    return BlocProvider(
+      create: (_) => sl<ProfileBloc>()..add(LoadProfile()),
+      child: const _ProfileView(),
     );
   }
 }
@@ -131,12 +55,6 @@ class _ProfileViewState extends State<_ProfileView> {
   @override
   void initState() {
     super.initState();
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<ProfileBloc>().add(LoadProfile());
-      }
-    });
   }
 
   @override
@@ -657,8 +575,6 @@ class _ProfileViewState extends State<_ProfileView> {
             );
           },
         ),
-        bottomNavigationBar:
-            _buildBottomNavigationBar(),
       ),
     );
   }
@@ -1365,102 +1281,4 @@ class _ProfileViewState extends State<_ProfileView> {
       ),
     );
   }
-
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(
-        vertical: 8,
-        horizontal: 12,
-      ),
-      child: Row(
-        mainAxisAlignment:
-            MainAxisAlignment.spaceAround,
-        children: [
-          _buildNavItem(
-            Icons.home_outlined,
-            'Home',
-            false,
-          ),
-          _buildNavItem(
-            Icons.history,
-            'History',
-            false,
-          ),
-          _buildNavItem(
-            Icons.chat_bubble_outline,
-            'Chat',
-            false,
-          ),
-          _buildNavItem(
-            Icons.key_outlined,
-            'Access',
-            false,
-          ),
-          _buildNavItem(
-            Icons.person,
-            'Profile',
-            true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    IconData icon,
-    String label,
-    bool selected,
-  ) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 8,
-        ),
-        decoration: selected
-            ? BoxDecoration(
-                color: highlightGreen,
-                borderRadius:
-                    BorderRadius.circular(24),
-              )
-            : null,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: selected
-                  ? primaryGreen
-                  : textMuted,
-              size: 22,
-            ),
-
-            const SizedBox(height: 2),
-
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: selected
-                    ? FontWeight.bold
-                    : FontWeight.w500,
-                color: selected
-                    ? primaryGreen
-                    : textMuted,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
-
