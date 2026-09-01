@@ -30,7 +30,7 @@ export function AccessRequestsList() {
   const [statusFilter, setStatusFilter] = useState<'all' | AccessRequestStatus>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const clinicRequests = accessRequests.filter((r) => r.clinic_id === currentUser.clinic_id);
+  const clinicRequests = accessRequests.filter((r) => r.clinic_id === currentUser?.clinic_id);
 
   const filteredRequests = clinicRequests.filter((req) => {
     const matchesSearch =

@@ -50,4 +50,5 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 		patientPortalGroup.GET("/grants", handler.ListPatientGrants)
 		patientPortalGroup.POST("/grants/:clinicId/revoke", handler.RevokePatientGrant)
 	}
+
 }

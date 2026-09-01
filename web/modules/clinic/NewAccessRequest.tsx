@@ -31,7 +31,7 @@ export function NewAccessRequest() {
   const patient = patients.find((p) => p.id === patientId) || patients[0];
 
   const activeDoctors = doctors.filter(
-    (d) => d.clinic_id === currentUser.clinic_id && d.doctor_status === 'active'
+    (d) => d.clinic_id === currentUser?.clinic_id && d.doctor_status === 'active'
   );
 
   const [submittingDoctorId, setSubmittingDoctorId] = useState(

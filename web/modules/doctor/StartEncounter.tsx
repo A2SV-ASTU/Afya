@@ -34,7 +34,7 @@ export function StartEncounter() {
     navigateTo,
   } = useStore();
 
-  const activeClinic = clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0];
+  const activeClinic = clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0];
 
   // Patients who granted active access to this clinic
   const authorizedPatients = patients.filter((p) =>
@@ -434,10 +434,10 @@ export function StartEncounter() {
             <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-0.5">
               <span className="text-slate-400 text-[10px] font-semibold uppercase block">Attending Physician</span>
               <p className="font-bold text-slate-900">
-                Dr. {currentUser.first_name} {currentUser.last_name}
+                Dr. {currentUser?.first_name} {currentUser?.last_name}
               </p>
               <span className="text-[10px] text-slate-500 font-mono">
-                License: {currentUser.license_number || 'KMPDC-56421'}
+                License: {currentUser?.license_number || 'KMPDC-56421'}
               </span>
             </div>
 

@@ -49,7 +49,7 @@
 //	@tag.description	Chief complaints and examinations recorded during encounters
 //
 //	@tag.name			Prescriptions
-//	@tag.description	(Coming soon) Prescription management
+//	@tag.description	Prescription management
 //
 //	@tag.name			Labs
 //	@tag.description	(Coming soon) Laboratory test orders and results
@@ -58,7 +58,10 @@
 //	@tag.description	(Coming soon) Diagnosis records
 //
 //	@tag.name			Vitals
-//	@tag.description	(Coming soon) Patient vital signs
+//	@tag.description	Patient vital signs
+//
+//	@tag.name			MagicLinks
+//	@tag.description	Browser-rendered HTML pages for password reset, doctor invitations, and patient access request approvals — no API integration needed
 package main
 
 import (
@@ -76,12 +79,17 @@ import (
 	"afyamind-backend/src/clinics"
 	"afyamind-backend/src/config"
 	"afyamind-backend/src/database"
+	"afyamind-backend/src/diagnoses"
 	"afyamind-backend/src/encounters"
 	"afyamind-backend/src/invitations"
+	"afyamind-backend/src/labs"
+	"afyamind-backend/src/magiclink"
+	"afyamind-backend/src/prescriptions"
 	sharedAuth "afyamind-backend/src/shared/auth"
 	"afyamind-backend/src/shared/email"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/users"
+	"afyamind-backend/src/vitals"
 
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -128,8 +136,12 @@ func main() {
 	clinicRepo := clinics.NewRepository(db)
 	arRepo := accessrequests.NewRepository(db)
 	apptRepo := appointments.NewRepository(db)
+	diagRepo := diagnoses.NewRepository(db)
 	encRepo := encounters.NewRepository(db)
 	evalRepo := clinicalevaluations.NewRepository(db)
+	labsRepo := labs.NewRepository(db)
+	vitalsRepo := vitals.NewRepository(db)
+	rxRepo := prescriptions.NewRepository(db)
 
 	// 4. Initialize Email Sender (optional — logs warning if SMTP not configured)
 	var emailSender *email.Sender
@@ -143,22 +155,31 @@ func main() {
 	// 5. Initialize Services
 	userService := users.NewService(userRepo)
 	authService := auth.NewService(authRepo, cfg, emailSender)
-	invService := invitations.NewService(db, invRepo, emailSender)
+	invService := invitations.NewService(db, invRepo, emailSender, cfg)
 	clinicService := clinics.NewService(db, clinicRepo, emailSender)
 	arService := accessrequests.NewService(db, arRepo, userRepo, emailSender)
 	apptService := appointments.NewService(apptRepo, arRepo)
+	diagService := diagnoses.NewService(db, diagRepo)
 	encService := encounters.NewService(encRepo, userRepo)
 	evalService := clinicalevaluations.NewService(evalRepo, encRepo)
+	labsService := labs.NewService(db, labsRepo)
+	vitalsService := vitals.NewService(vitalsRepo)
+	rxService := prescriptions.NewService(db, rxRepo)
 
 	// 6. Initialize Handlers
 	userHandler := users.NewHandler(userService)
 	authHandler := auth.NewHandler(authService, cfg)
-	invHandler := invitations.NewHandler(invService)
+	invHandler := invitations.NewHandler(invService, cfg)
 	clinicHandler := clinics.NewHandler(clinicService)
-	arHandler := accessrequests.NewHandler(arService)
+	arHandler := accessrequests.NewHandler(arService, cfg)
 	apptHandler := appointments.NewHandler(apptService)
+	diagHandler := diagnoses.NewHandler(diagService)
 	encHandler := encounters.NewHandler(encService)
 	evalHandler := clinicalevaluations.NewHandler(evalService)
+	labsHandler := labs.NewHandler(labsService)
+	vitalsHandler := vitals.NewHandler(vitalsService)
+	rxHandler := prescriptions.NewHandler(rxService)
+	magicHandler := magiclink.NewHandler(arService, authService, cfg)
 
 	// 6b. Start background expiration jobs
 	appCtx := context.Background()
@@ -199,8 +220,13 @@ func main() {
 		clinics.RegisterRoutes(apiV1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(apiV1, arHandler, cfg.JWTSecret)
 		appointments.RegisterRoutes(apiV1, apptHandler, cfg.JWTSecret)
+		diagnoses.RegisterRoutes(apiV1, diagHandler, db, cfg.JWTSecret)
 		encounters.RegisterRoutes(apiV1, encHandler, db, cfg.JWTSecret)
 		clinicalevaluations.RegisterRoutes(apiV1, evalHandler, db, cfg.JWTSecret)
+		labs.RegisterRoutes(apiV1, labsHandler, db, cfg.JWTSecret)
+		vitals.RegisterRoutes(apiV1, vitalsHandler, cfg.JWTSecret)
+		prescriptions.RegisterRoutes(apiV1, rxHandler, cfg.JWTSecret)
+		magiclink.RegisterRoutes(apiV1, magicHandler)
 	}
 
 	v1 := router.Group("/v1")
@@ -211,8 +237,13 @@ func main() {
 		clinics.RegisterRoutes(v1, clinicHandler, cfg.JWTSecret)
 		accessrequests.RegisterRoutes(v1, arHandler, cfg.JWTSecret)
 		appointments.RegisterRoutes(v1, apptHandler, cfg.JWTSecret)
+		diagnoses.RegisterRoutes(v1, diagHandler, db, cfg.JWTSecret)
 		encounters.RegisterRoutes(v1, encHandler, db, cfg.JWTSecret)
 		clinicalevaluations.RegisterRoutes(v1, evalHandler, db, cfg.JWTSecret)
+		labs.RegisterRoutes(v1, labsHandler, db, cfg.JWTSecret)
+		vitals.RegisterRoutes(v1, vitalsHandler, cfg.JWTSecret)
+		prescriptions.RegisterRoutes(v1, rxHandler, cfg.JWTSecret)
+		magiclink.RegisterRoutes(v1, magicHandler)
 	}
 
 	// 8. Start HTTP Server

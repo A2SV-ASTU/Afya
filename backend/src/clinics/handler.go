@@ -3,10 +3,9 @@ package clinics
 import (
 	"net/http"
 
+	sharedAuth "afyamind-backend/src/shared/auth"
 	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/response"
-
-	sharedAuth "afyamind-backend/src/shared/auth"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"

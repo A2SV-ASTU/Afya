@@ -16,6 +16,7 @@ var ErrRequestNotFound = errors.New("access request not found")
 type Repository interface {
 	Create(ctx context.Context, req *AccessRequest) error
 	FindByID(ctx context.Context, id uuid.UUID) (*AccessRequest, error)
+	FindByTokenHash(ctx context.Context, tokenHash string) (*AccessRequest, error)
 	ListByClinicID(ctx context.Context, clinicID uuid.UUID, status string) ([]*AccessRequest, error)
 	ListPendingByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
 	ListActiveGrantsByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
@@ -34,10 +35,11 @@ func NewRepository(db database.DBTX) Repository {
 	return &repository{db: db}
 }
 
-const reqColumns = `id, patient_id, requesting_clinic_id, reason, submitted_by_doctor_id, status, expires_at, revoked_at, created_at, updated_at`
+const reqColumns = `id, patient_id, requesting_clinic_id, reason, submitted_by_doctor_id, status, expires_at, revoked_at, created_at, updated_at, token_hash`
 
 func scanAccessRequest(row *sql.Row) (*AccessRequest, error) {
 	var ar AccessRequest
+	var tokenHash sql.NullString
 	err := row.Scan(
 		&ar.ID,
 		&ar.PatientID,
@@ -49,6 +51,7 @@ func scanAccessRequest(row *sql.Row) (*AccessRequest, error) {
 		&ar.RevokedAt,
 		&ar.CreatedAt,
 		&ar.UpdatedAt,
+		&tokenHash,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -56,24 +59,36 @@ func scanAccessRequest(row *sql.Row) (*AccessRequest, error) {
 		}
 		return nil, err
 	}
+	if tokenHash.Valid {
+		ar.TokenHash = tokenHash.String
+	}
 	return &ar, nil
 }
 
 func (r *repository) Create(ctx context.Context, req *AccessRequest) error {
 	query := `
-		INSERT INTO access_requests (patient_id, requesting_clinic_id, reason, submitted_by_doctor_id, status, expires_at, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+		INSERT INTO access_requests (patient_id, requesting_clinic_id, reason, submitted_by_doctor_id, status, expires_at, token_hash, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
 		RETURNING id, created_at, updated_at
 	`
+	var tokenHashParam interface{}
+	if req.TokenHash != "" {
+		tokenHashParam = req.TokenHash
+	}
 	err := r.db.QueryRowContext(
 		ctx, query,
-		req.PatientID, req.RequestingClinicID, req.Reason, req.SubmittedByDoctorID, req.Status, req.ExpiresAt,
+		req.PatientID, req.RequestingClinicID, req.Reason, req.SubmittedByDoctorID, req.Status, req.ExpiresAt, tokenHashParam,
 	).Scan(&req.ID, &req.CreatedAt, &req.UpdatedAt)
 
 	if err != nil {
 		return fmt.Errorf("failed to create access request: %w", err)
 	}
 	return nil
+}
+
+func (r *repository) FindByTokenHash(ctx context.Context, tokenHash string) (*AccessRequest, error) {
+	query := fmt.Sprintf(`SELECT %s FROM access_requests WHERE token_hash = $1`, reqColumns)
+	return scanAccessRequest(r.db.QueryRowContext(ctx, query, tokenHash))
 }
 
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*AccessRequest, error) {
@@ -101,11 +116,15 @@ func (r *repository) ListByClinicID(ctx context.Context, clinicID uuid.UUID, sta
 	var reqs []*AccessRequest
 	for rows.Next() {
 		var ar AccessRequest
+		var tokenHash sql.NullString
 		if err := rows.Scan(
 			&ar.ID, &ar.PatientID, &ar.RequestingClinicID, &ar.Reason, &ar.SubmittedByDoctorID,
-			&ar.Status, &ar.ExpiresAt, &ar.RevokedAt, &ar.CreatedAt, &ar.UpdatedAt,
+			&ar.Status, &ar.ExpiresAt, &ar.RevokedAt, &ar.CreatedAt, &ar.UpdatedAt, &tokenHash,
 		); err != nil {
 			return nil, err
+		}
+		if tokenHash.Valid {
+			ar.TokenHash = tokenHash.String
 		}
 		reqs = append(reqs, &ar)
 	}

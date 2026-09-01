@@ -31,7 +31,7 @@ export function DoctorsList() {
     navigateTo,
   } = useStore();
 
-  const activeClinic = clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0];
+  const activeClinic = clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0];
   const clinicDoctors = doctors.filter((d) => d.clinic_id === activeClinic.id);
   const clinicInvitations = invitations.filter((inv) => inv.clinic_id === activeClinic.id);
 
@@ -172,7 +172,7 @@ export function DoctorsList() {
                       <p className="text-[11px] text-slate-400">{doc.email}</p>
                     </td>
                     <td className="py-4 px-5">
-                      <StatusBadge variant={doc.doctor_status}>{doc.doctor_status}</StatusBadge>
+                      <StatusBadge variant={doc.doctor_status || 'active'}>{doc.doctor_status}</StatusBadge>
                     </td>
                     <td className="py-4 px-5 font-mono text-[11px] text-slate-500">
                       {new Date(doc.created_at).toLocaleDateString('en-GB', {

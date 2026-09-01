@@ -38,6 +38,7 @@ type(track): short present-tense summary
 | `backend` | Go API (`/backend`) |
 | `mobile` | Flutter app (`/mobile`) |
 | `docs` | Markdown docs, ADRs (`/docs`) |
+| `api` | API specifications, contracts, Swagger (`/docs`, `/backend/docs`) |
 | `content` | Static copy, resources, translations |
 | `ci` | GitHub Actions, pre-commit, tooling config |
 

@@ -227,49 +227,49 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 
 // ResetPassword godoc
 //
-//	@Summary		Reset password using token
-//	@Description	Resets the password if the token is valid and unexpired. Clears reset token cookie.
+//	@Summary		Reset user password
+//	@Description	Sets a new password using a reset token provided via request body, cookie, or query parameter.
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			body	body		auth.ResetPasswordRequest	true	"Token and new password"
-//	@Success		200		{object}	response.MessageEnvelope	"Password reset successfully"
+//	@Param			body	body		auth.ResetPasswordRequest	true	"New password and optional reset token"
+//	@Success		200		{object}	response.MessageEnvelope	"Password has been reset successfully"
 //	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
-//	@Failure		401		{object}	response.ErrorEnvelope		"Invalid or expired token"
 //	@Router			/auth/reset-password [post]
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request payload"))
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request body"))
 		return
 	}
 
-	token := req.Token
-	if token == "" {
+	resetToken := req.Token
+	if resetToken == "" {
 		if cookieToken, err := c.Cookie("reset_token"); err == nil && cookieToken != "" {
-			token = cookieToken
+			resetToken = cookieToken
 		}
 	}
+	if resetToken == "" {
+		resetToken = c.Query("token")
+	}
 
-	if token == "" {
+	if resetToken == "" {
 		response.RespondAppError(c, appErrors.ErrValidationError("Reset token is required"))
 		return
 	}
 
-	appErr := h.service.ResetPassword(c.Request.Context(), token, req.Password)
-
-	if appErr != nil {
+	if appErr := h.service.ResetPassword(c.Request.Context(), resetToken, req.Password); appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
 
-	// Clear reset_token cookie after successful reset
-	c.SetSameSite(http.SameSiteStrictMode)
+	// Clear reset_token cookie if present
 	c.SetCookie("reset_token", "", -1, "/", h.cfg.CookieDomain, h.cfg.CookieSecure, true)
 
 	response.JSON(c, http.StatusOK, gin.H{
 		"data": gin.H{
-			"message": "Password has been successfully reset. You can now log in.",
+			"message": "Password has been reset successfully",
 		},
 	})
 }
+
