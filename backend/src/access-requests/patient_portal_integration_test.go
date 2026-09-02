@@ -362,7 +362,9 @@ func TestPatientPortal_HTTPIntegration(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		var resp map[string][]AccessRequest
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to unmarshal response: %v", err)
+		}
 
 		for _, ar := range resp["access_requests"] {
 			if ar.ID == expiredRequestID {
@@ -379,7 +381,9 @@ func TestPatientPortal_HTTPIntegration(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		var resp map[string][]AccessRequest
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to unmarshal response: %v", err)
+		}
 
 		for _, ar := range resp["access_requests"] {
 			if ar.ID == approvedRequestID || ar.ID == otherApprovedID {
@@ -458,7 +462,9 @@ func TestPatientPortal_HTTPIntegration(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		var resp map[string][]AccessRequest
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to unmarshal response: %v", err)
+		}
 
 		for _, g := range resp["grants"] {
 			if g.ID == deniedRequestID {
@@ -475,7 +481,9 @@ func TestPatientPortal_HTTPIntegration(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		var resp map[string][]AccessRequest
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to unmarshal response: %v", err)
+		}
 
 		for _, g := range resp["grants"] {
 			if g.ID == pendingRequestID {
@@ -607,7 +615,9 @@ func TestPatientPortal_HTTPIntegration(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		var resp map[string][]AccessRequest
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to unmarshal response: %v", err)
+		}
 
 		for _, g := range resp["grants"] {
 			if g.ID == approvedRequestID {
