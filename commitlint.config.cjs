@@ -16,7 +16,7 @@ module.exports = {
     'scope-enum': [
       2,
       'always',
-      ['backend', 'web', 'mobile', 'content', 'docs', 'ci'],
+      ['backend', 'web', 'mobile', 'content', 'docs', 'ci', 'api'],
     ],
     'scope-case': [2, 'always', 'lower-case'],
     'scope-empty': [2, 'never'], // scope cannot be omitted

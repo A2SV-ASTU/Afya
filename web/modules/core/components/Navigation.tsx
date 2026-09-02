@@ -43,7 +43,7 @@ export function Navigation({ onItemClick, collapsed = false }: NavigationProps) 
     (r) => r.clinic_id === activeClinic.id && r.status === 'approved'
   );
   const scheduledAppointments = appointments.filter(
-    (a) => a.doctor_id === currentUser.id && a.status === 'scheduled'
+    (a) => currentUser && a.doctor_id === currentUser.id && a.status === 'scheduled'
   );
 
   const adminNav: NavItem[] = [

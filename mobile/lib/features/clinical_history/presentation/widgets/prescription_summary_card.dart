@@ -4,7 +4,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/afya_card.dart';
-import '../../../../core/widgets/afya_status_badge.dart';
 import '../../domain/entities/encounter_detail_entity.dart';
 
 class PrescriptionSummaryCard extends StatelessWidget {
@@ -15,41 +14,14 @@ class PrescriptionSummaryCard extends StatelessWidget {
     required this.prescription,
   });
 
-  BadgeType _mapStatusToBadgeType(EncounterPrescriptionStatus status) {
-    switch (status) {
-      case EncounterPrescriptionStatus.active:
-        return BadgeType.active;
-      case EncounterPrescriptionStatus.completed:
-        return BadgeType.completed;
-      case EncounterPrescriptionStatus.deactivated:
-        return BadgeType.deactivated;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AfyaCard(
+      padding: const EdgeInsets.all(AppDimensions.space20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.medication_outlined,
-                color: AppColors.primary,
-                size: 20,
-              ),
-              const SizedBox(width: AppDimensions.space8),
-              Text(
-                'Prescription Record',
-                style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ],
-          ),
           if (prescription.notes != null && prescription.notes!.isNotEmpty) ...[
-            const SizedBox(height: AppDimensions.space8),
             Text(
               'Doctor\'s Note: ${prescription.notes}',
               style: AppTypography.caption.copyWith(
@@ -57,94 +29,58 @@ class PrescriptionSummaryCard extends StatelessWidget {
                 fontStyle: FontStyle.italic,
               ),
             ),
+            const SizedBox(height: AppDimensions.space12),
           ],
-          const Divider(height: AppDimensions.space24),
           ...prescription.items.map((item) {
             return Padding(
               padding: const EdgeInsets.only(bottom: AppDimensions.space12),
-              child: Container(
-                padding: const EdgeInsets.all(AppDimensions.space12),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius:
-                      BorderRadius.circular(AppDimensions.radiusSmall),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFC8ECE8),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.medication_outlined,
+                      color: AppColors.primaryDark,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: AppDimensions.space12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            item.medicationName,
-                            style: AppTypography.titleMedium.copyWith(
-                              fontSize: 15,
-                            ),
+                        Text(
+                          '${item.medicationName} ${item.dose}',
+                          style: AppTypography.titleMedium.copyWith(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textPrimary,
                           ),
                         ),
-                        AfyaStatusBadge(
-                          label: item.status.name,
-                          type: _mapStatusToBadgeType(item.status),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.instructions != null &&
+                                  item.instructions!.isNotEmpty
+                              ? item.instructions!
+                              : '${item.frequency} for ${item.duration}',
+                          style: AppTypography.caption.copyWith(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: AppDimensions.space8),
-                    Row(
-                      children: [
-                        _buildDetailChip('Dose', item.dose),
-                        const SizedBox(width: AppDimensions.space8),
-                        _buildDetailChip('Route', item.route),
-                        const SizedBox(width: AppDimensions.space8),
-                        _buildDetailChip('Freq', item.frequency),
-                      ],
-                    ),
-                    const SizedBox(height: AppDimensions.space8),
-                    Text(
-                      'Duration: ${item.duration}',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (item.instructions != null &&
-                        item.instructions!.isNotEmpty) ...[
-                      const SizedBox(height: AppDimensions.space4),
-                      Text(
-                        'Instructions: ${item.instructions}',
-                        style: AppTypography.caption.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           }),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDetailChip(String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppDimensions.space8,
-        vertical: AppDimensions.space4,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusSmall),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Text(
-        '$label: $value',
-        style: AppTypography.caption.copyWith(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

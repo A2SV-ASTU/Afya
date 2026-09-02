@@ -27,7 +27,7 @@ void main() {
     await tester.pumpWidget(createWidgetUnderTest());
 
     expect(find.text('Complete Blood Count (CBC)'), findsOneWidget);
-    expect(find.text('ABNORMAL'), findsOneWidget);
+    expect(find.text('Abnormal'), findsOneWidget);
     expect(find.text('Hemoglobin'), findsOneWidget);
     expect(find.text('11.5 g/dL'), findsOneWidget);
     expect(find.text('Hemoglobin slightly low'), findsOneWidget);

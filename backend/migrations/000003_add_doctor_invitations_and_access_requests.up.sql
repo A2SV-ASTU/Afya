@@ -25,7 +25,13 @@ CREATE TABLE IF NOT EXISTS clinics (
 );
 
 -- Add foreign key constraint to users for clinic_id
-ALTER TABLE users ADD CONSTRAINT fk_users_clinic_id FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE SET NULL;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_users_clinic_id') THEN
+        ALTER TABLE users ADD CONSTRAINT fk_users_clinic_id FOREIGN KEY (clinic_id) REFERENCES clinics(id) ON DELETE SET NULL;
+    END IF;
+END $$;
+
 
 -- Drop old admin_invitations table
 DROP TABLE IF EXISTS admin_invitations;

@@ -7,11 +7,17 @@ export interface User {
   last_name: string;
   role: UserRole;
   phone?: string;
-  clinic_id?: string;
-  specialization?: string;
-  license_number?: string;
-  doctor_status?: 'active' | 'deactivated';
+  date_of_birth?: string;
+  sex?: string;
+  blood_type?: string | null;
+  emergency_contact_name?: string | null;
+  emergency_contact_phone?: string | null;
+  clinic_id?: string | null;
+  specialization?: string | null;
+  license_number?: string | null;
+  doctor_status?: 'active' | 'deactivated' | null;
   created_at: string;
+  updated_at?: string;
 }
 
 export type ClinicStatus = 'active' | 'deactivated';

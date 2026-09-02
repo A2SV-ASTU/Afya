@@ -1,10 +1,8 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
 import { Calendar, Clock, CheckCircle2, User, Building2, ArrowRight } from 'lucide-react';
 import { useStore } from '@/lib/store';
-import { Button } from '@/modules/core/ui/Button';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
 import { formatDateTime } from '@/modules/core/lib/utils';
 
