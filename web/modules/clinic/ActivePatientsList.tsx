@@ -24,7 +24,7 @@ export function ActivePatientsList() {
 
   // Filter patients with active grants for this clinic
   const activeGrantedPatients = patients.filter((p) =>
-    p.active_grant_clinic_ids.includes(currentUser.clinic_id || '')
+    p.active_grant_clinic_ids.includes(currentUser?.clinic_id || '')
   );
 
   const filteredPatients = activeGrantedPatients.filter((p) =>

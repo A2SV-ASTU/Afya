@@ -3,9 +3,11 @@ package invitations
 import (
 	"net/http"
 
+	"afyamind-backend/src/config"
 	appErrors "afyamind-backend/src/shared/errors"
 	"afyamind-backend/src/shared/middleware"
 	"afyamind-backend/src/shared/response"
+	"afyamind-backend/src/users"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -13,12 +15,28 @@ import (
 
 type Handler struct {
 	svc Service
+	cfg *config.Config
 }
 
-func NewHandler(svc Service) *Handler {
-	return &Handler{svc: svc}
+func NewHandler(svc Service, cfg *config.Config) *Handler {
+	return &Handler{svc: svc, cfg: cfg}
 }
 
+// CreateInvitation godoc
+//
+//	@Summary		Invite a doctor to the clinic
+//	@Description	Sends an invitation email to a doctor. Accessible by clinic admins.
+//	@Tags			Invitations
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			clinicId	path		string						true	"Clinic UUID"
+//	@Param			body		body		invitations.CreateInvitationRequest	true	"Email payload"
+//	@Success		201			{object}	response.MessageEnvelope	"Invitation created successfully"
+//	@Failure		400			{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403			{object}	response.ErrorEnvelope		"Unauthorized to invite"
+//	@Router			/clinics/{clinicId}/invitations [post]
 func (h *Handler) CreateInvitation(c *gin.Context) {
 	clinicIDStr := c.Param("clinicId")
 	clinicID, err := uuid.Parse(clinicIDStr)
@@ -39,7 +57,7 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 		return
 	}
 
-	if err := h.svc.CreateInvitation(c.Request.Context(), clinicID, callerID, req); err != nil {
+	if err := h.svc.CreateInvitation(c.Request.Context(), clinicID, callerID, req, h.cfg.APIBaseURL); err != nil {
 		if err.Error() == "unauthorized to invite for this clinic" {
 			response.RespondAppError(c, appErrors.ErrForbiddenRole())
 			return
@@ -51,6 +69,20 @@ func (h *Handler) CreateInvitation(c *gin.Context) {
 	response.JSON(c, http.StatusCreated, gin.H{"message": "Invitation created successfully"})
 }
 
+// AcceptInvitation godoc
+//
+//	@Summary		Accept invitation & complete signup
+//	@Description	Doctor accepts invitation and fills in profile to complete registration.
+//	@Tags			Invitations
+//	@Accept			json
+//	@Produce		json
+//	@Param			token	path		string								true	"Invitation Token"
+//	@Param			body	body		invitations.AcceptInvitationRequest	true	"Sign up details"
+//	@Success		200		{object}	users.UserResponse					"Doctor account created"
+//	@Failure		400		{object}	response.ErrorEnvelope				"Validation error"
+//	@Failure		410		{object}	response.ErrorEnvelope				"Invalid or expired token"
+//	@Failure		409		{object}	response.ErrorEnvelope				"Invitation already used or revoked"
+//	@Router			/invitations/{token}/accept [post]
 func (h *Handler) AcceptInvitation(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {
@@ -78,9 +110,5 @@ func (h *Handler) AcceptInvitation(c *gin.Context) {
 		return
 	}
 
-	// Ideally we would log the user in (issue a cookie), but without the full auth token generator,
-	// we just return the user as accepted. The prompt says "log the doctor in (issue cookie)"
-	// but the auth package is Dev A's. Let's assume we can just return the user for now.
-	// Or we might need to invoke token generation.
-	response.JSON(c, http.StatusOK, user)
+	response.JSON(c, http.StatusOK, users.ToUserResponse(user))
 }

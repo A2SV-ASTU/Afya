@@ -7,10 +7,10 @@ import { RoleProvider } from '@/modules/core/context/RoleProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <StoreProvider>
-      <AuthProvider>
+    <AuthProvider>
+      <StoreProvider>
         <RoleProvider>{children}</RoleProvider>
-      </AuthProvider>
-    </StoreProvider>
+      </StoreProvider>
+    </AuthProvider>
   );
 }

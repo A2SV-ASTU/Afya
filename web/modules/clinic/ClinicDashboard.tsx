@@ -30,7 +30,7 @@ export function ClinicDashboard() {
     navigateTo,
   } = useStore();
 
-  const activeClinic = clinics.find((c) => c.id === currentUser.clinic_id) || clinics[0];
+  const activeClinic = clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0];
 
   // Scoped metrics for this clinic
   const clinicDoctors = doctors.filter((d) => d.clinic_id === activeClinic.id);
@@ -49,7 +49,7 @@ export function ClinicDashboard() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-slate-900">Clinic Dashboard</h2>
-          <p className="text-sm text-slate-500">Welcome back, {currentUser.first_name} • {activeClinic.name}</p>
+          <p className="text-sm text-slate-500">Welcome back, {currentUser?.first_name} • {activeClinic.name}</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -233,7 +233,7 @@ export function ClinicDashboard() {
                     </p>
                     <p className="text-[11px] text-slate-500 truncate">{doc.specialization}</p>
                   </div>
-                  <StatusBadge variant={doc.doctor_status}>{doc.doctor_status}</StatusBadge>
+                  <StatusBadge variant={doc.doctor_status || 'active'}>{doc.doctor_status}</StatusBadge>
                 </div>
               ))}
             </div>

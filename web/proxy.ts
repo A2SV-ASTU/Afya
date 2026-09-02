@@ -1,64 +1,62 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { dashboardPathForRole, isAuthPath, isUserRole } from '@/lib/auth-routing';
 
-/**
- * Next.js Edge Middleware for Role-Based Route Protection (RBAC)
- * Handles route boundaries for (admin), (clinic), (doctor), (auth)
- */
-export function proxy(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-
-  // Read current active role from cookie or header (default to simulated super_admin / active session)
   const roleCookie = request.cookies.get('afyamind_role')?.value;
-  const userRole = roleCookie || 'super_admin';
+  const userRole = isUserRole(roleCookie) ? roleCookie : 'guest';
 
-  // Public & Asset Routes
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.startsWith('/favicon.ico') ||
-    pathname === '/403' ||
-    pathname === '/login' ||
-    pathname === '/accept-invite' ||
-    pathname === '/'
-  ) {
+  if (isAuthPath(pathname)) {
+    if (userRole !== 'guest') {
+      const dest = request.nextUrl.clone();
+      dest.pathname = dashboardPathForRole(userRole);
+      dest.search = '';
+      return NextResponse.redirect(dest);
+    }
     return NextResponse.next();
   }
 
-  // Admin Route Protection
-  if (pathname.startsWith('/admin')) {
-    if (userRole !== 'super_admin') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/403';
-      url.searchParams.set('required_role', 'super_admin');
-      url.searchParams.set('current_role', userRole);
-      return NextResponse.rewrite(url);
-    }
+  if (userRole === 'guest') {
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = '/login';
+    loginUrl.searchParams.set('from', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Clinic Route Protection
-  if (pathname.startsWith('/clinic')) {
-    if (userRole !== 'clinic_admin' && userRole !== 'super_admin') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/403';
-      url.searchParams.set('required_role', 'clinic_admin');
-      url.searchParams.set('current_role', userRole);
-      return NextResponse.rewrite(url);
-    }
+  if (pathname.startsWith('/admin') && userRole !== 'super_admin') {
+    return buildForbiddenRewrite(request, 'super_admin', userRole);
   }
 
-  // Doctor Route Protection
-  if (pathname.startsWith('/doctor')) {
-    if (userRole !== 'doctor' && userRole !== 'super_admin') {
-      const url = request.nextUrl.clone();
-      url.pathname = '/403';
-      url.searchParams.set('required_role', 'doctor');
-      url.searchParams.set('current_role', userRole);
-      return NextResponse.rewrite(url);
-    }
+  if (
+    pathname.startsWith('/clinic') &&
+    userRole !== 'clinic_admin' &&
+    userRole !== 'super_admin'
+  ) {
+    return buildForbiddenRewrite(request, 'clinic_admin', userRole);
+  }
+
+  if (
+    pathname.startsWith('/doctor') &&
+    userRole !== 'doctor' &&
+    userRole !== 'super_admin'
+  ) {
+    return buildForbiddenRewrite(request, 'doctor', userRole);
   }
 
   return NextResponse.next();
+}
+
+function buildForbiddenRewrite(
+  request: NextRequest,
+  requiredRole: string,
+  currentRole: string
+) {
+  const url = request.nextUrl.clone();
+  url.pathname = '/403';
+  url.searchParams.set('required_role', requiredRole);
+  url.searchParams.set('current_role', currentRole);
+  return NextResponse.rewrite(url);
 }
 
 export const config = {
@@ -68,5 +66,6 @@ export const config = {
     '/doctor/:path*',
     '/login',
     '/accept-invite',
+    '/forgot-password',
   ],
 };

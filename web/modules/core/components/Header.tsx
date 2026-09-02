@@ -10,6 +10,7 @@ import {
   Smartphone,
   RotateCcw,
   Menu,
+  LogOut,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { UserRole } from '@/types/roles';
@@ -27,6 +28,7 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
     currentUser,
     currentRole,
     setCurrentRole,
+    logout,
     activeClinic,
     accessRequests,
     resetToDefaultData,
@@ -197,6 +199,15 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
                 {currentUser?.first_name?.[0] || 'D'}
                 {currentUser?.last_name?.[0] || 'R'}
               </div>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-[11px] font-bold text-slate-600 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign out</span>
+              </button>
             </div>
           </div>
         </div>

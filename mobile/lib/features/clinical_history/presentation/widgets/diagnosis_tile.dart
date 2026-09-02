@@ -18,9 +18,10 @@ class DiagnosisTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isFinal = diagnosis.diagnosisType == DiagnosisType.finalDiagnosis;
-    final badgeLabel = isFinal ? 'FINAL' : 'PROVISIONAL';
+    final badgeLabel = isFinal ? 'Primary' : 'Secondary';
 
     return AfyaCard(
+      padding: const EdgeInsets.all(AppDimensions.space20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -32,6 +33,8 @@ class DiagnosisTile extends StatelessWidget {
                   diagnosis.diagnosisText,
                   style: AppTypography.titleMedium.copyWith(
                     fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
                   ),
                 ),
               ),
@@ -44,10 +47,10 @@ class DiagnosisTile extends StatelessWidget {
           if (diagnosis.icdCode != null && diagnosis.icdCode!.isNotEmpty) ...[
             const SizedBox(height: AppDimensions.space4),
             Text(
-              'ICD Code: ${diagnosis.icdCode}',
+              diagnosis.icdCode!,
               style: AppTypography.caption.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
