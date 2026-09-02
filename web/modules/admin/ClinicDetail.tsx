@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 
 export function ClinicDetail() {
-  const { clinics, viewParams, deactivateClinic, navigateTo } = useStore();
+  const { clinics, viewParams, deactivateClinic, activateClinic, navigateTo } = useStore();
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
 
   const clinicId = viewParams.clinicId || clinics[0]?.id;
@@ -191,7 +191,14 @@ export function ClinicDetail() {
       <ConfirmDialog
         isOpen={isDeactivateModalOpen}
         onClose={() => setIsDeactivateModalOpen(false)}
-        onConfirm={() => deactivateClinic(clinic.id)}
+        onConfirm={() => {
+          if (clinic.status === 'active') {
+            deactivateClinic(clinic.id);
+          } else {
+            activateClinic(clinic.id);
+          }
+          setIsDeactivateModalOpen(false);
+        }}
         title={isActive ? `Deactivate ${clinic.name}?` : `Reactivate ${clinic.name}?`}
         isDestructive={isActive}
         confirmText={isActive ? 'Yes, Deactivate Clinic' : 'Reactivate Clinic'}
