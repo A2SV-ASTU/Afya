@@ -111,6 +111,15 @@ func (m *mockRepository) Revoke(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (m *mockRepository) FindByTokenHash(ctx context.Context, tokenHash string) (*AccessRequest, error) {
+	for _, ar := range m.requests {
+		if ar.TokenHash == tokenHash {
+			return ar, nil
+		}
+	}
+	return nil, ErrRequestNotFound
+}
+
 func (m *mockRepository) FindActiveGrant(ctx context.Context, clinicID, patientID uuid.UUID) (*AccessRequest, error) {
 	for _, ar := range m.requests {
 		if ar.RequestingClinicID == clinicID && ar.PatientID == patientID &&
@@ -206,7 +215,7 @@ func TestPatientPortal_HTTPIntegration(t *testing.T) {
 	repo := newMockRepository()
 	userRepo := newMockUserRepo()
 	svc := NewService(nil, repo, userRepo, nil) // nil db and sender are fine since these endpoints don't use them
-	handler := NewHandler(svc)
+	handler := NewHandler(svc, nil) // nil config is fine since patient portal endpoints don't use cfg
 
 	patientID := uuid.New()
 	doctorID := uuid.New()
