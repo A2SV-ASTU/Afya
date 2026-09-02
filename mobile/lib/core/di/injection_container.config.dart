@@ -180,8 +180,6 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i666.SecureStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i469.RouteGuards>(
         () => _i469.RouteGuards(gh<_i666.SecureStorageService>()));
-    gh.lazySingleton<_i630.VitalsRemoteDataSource>(
-        () => _i267.VitalsRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i847.ProfileRemoteDataSource>(
         () => _i1036.ProfileRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i107.AuthRemoteDataSource>(
@@ -208,10 +206,6 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i894.MedicationLocalDataSource>(),
           gh<_i949.LocalAlarmScheduler>(),
         ));
-    gh.lazySingleton<_i84.VitalsRepository>(() => _i1029.VitalsRepositoryImpl(
-          local: gh<_i75.VitalsLocalDataSource>(),
-          remote: gh<_i630.VitalsRemoteDataSource>(),
-        ));
     gh.factory<_i550.ChangePasswordUseCase>(
         () => _i550.ChangePasswordUseCase(gh<_i894.ProfileRepository>()));
     gh.factory<_i761.DeactivateAccountUseCase>(
@@ -222,6 +216,11 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i17.LogoutUseCase(gh<_i894.ProfileRepository>()));
     gh.factory<_i829.UpdateDemographicsUseCase>(
         () => _i829.UpdateDemographicsUseCase(gh<_i894.ProfileRepository>()));
+    gh.lazySingleton<_i630.VitalsRemoteDataSource>(
+        () => _i267.VitalsRemoteDataSourceImpl(
+              gh<_i557.ApiClient>(),
+              gh<_i666.SecureStorageService>(),
+            ));
     gh.lazySingleton<_i787.AuthRepository>(() => _i153.AuthRepositoryImpl(
           remoteDataSource: gh<_i107.AuthRemoteDataSource>(),
           localDataSource: gh<_i852.AuthLocalDataSource>(),
@@ -264,19 +263,15 @@ extension GetItInjectableX on _i174.GetIt {
           loginWithPinUseCase: gh<_i519.LoginWithPinUseCase>(),
           setPinUseCase: gh<_i313.SetPinUseCase>(),
         ));
-    gh.lazySingleton<_i356.GetPendingVitalsUseCase>(
-        () => _i356.GetPendingVitalsUseCase(gh<_i84.VitalsRepository>()));
-    gh.lazySingleton<_i677.GetUnifiedVitalsHistoryUseCase>(() =>
-        _i677.GetUnifiedVitalsHistoryUseCase(gh<_i84.VitalsRepository>()));
-    gh.lazySingleton<_i1051.SaveHomeVitalOfflineUseCase>(
-        () => _i1051.SaveHomeVitalOfflineUseCase(gh<_i84.VitalsRepository>()));
-    gh.lazySingleton<_i404.SyncVitalsUseCase>(
-        () => _i404.SyncVitalsUseCase(gh<_i84.VitalsRepository>()));
     gh.lazySingleton<_i735.MedicationRepository>(
         () => _i106.MedicationRepositoryImpl(
               remoteDataSource: gh<_i1022.MedicationRemoteDataSource>(),
               localDataSource: gh<_i894.MedicationLocalDataSource>(),
             ));
+    gh.lazySingleton<_i84.VitalsRepository>(() => _i1029.VitalsRepositoryImpl(
+          local: gh<_i75.VitalsLocalDataSource>(),
+          remote: gh<_i630.VitalsRemoteDataSource>(),
+        ));
     gh.factory<_i469.ProfileBloc>(() => _i469.ProfileBloc(
           getProfile: gh<_i965.GetProfileUseCase>(),
           updateDemographics: gh<_i829.UpdateDemographicsUseCase>(),
@@ -294,12 +289,6 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i735.MedicationRepository>(),
               gh<_i492.GenerateDoseScheduleUseCase>(),
             ));
-    gh.factory<_i838.VitalsSyncBloc>(() => _i838.VitalsSyncBloc(
-          saveVital: gh<_i1051.SaveHomeVitalOfflineUseCase>(),
-          syncVitals: gh<_i404.SyncVitalsUseCase>(),
-          getHistory: gh<_i677.GetUnifiedVitalsHistoryUseCase>(),
-          getPendingVitals: gh<_i356.GetPendingVitalsUseCase>(),
-        ));
     gh.lazySingleton<_i240.GetLocalDoseRecordsUseCase>(() =>
         _i240.GetLocalDoseRecordsUseCase(gh<_i735.MedicationRepository>()));
     gh.lazySingleton<_i851.RecordDoseAdherenceUseCase>(() =>
@@ -309,6 +298,20 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i735.MedicationRepository>(),
               gh<_i854.CancelPrescriptionRemindersUseCase>(),
             ));
+    gh.lazySingleton<_i356.GetPendingVitalsUseCase>(
+        () => _i356.GetPendingVitalsUseCase(gh<_i84.VitalsRepository>()));
+    gh.lazySingleton<_i677.GetUnifiedVitalsHistoryUseCase>(() =>
+        _i677.GetUnifiedVitalsHistoryUseCase(gh<_i84.VitalsRepository>()));
+    gh.lazySingleton<_i1051.SaveHomeVitalOfflineUseCase>(
+        () => _i1051.SaveHomeVitalOfflineUseCase(gh<_i84.VitalsRepository>()));
+    gh.lazySingleton<_i404.SyncVitalsUseCase>(
+        () => _i404.SyncVitalsUseCase(gh<_i84.VitalsRepository>()));
+    gh.factory<_i838.VitalsSyncBloc>(() => _i838.VitalsSyncBloc(
+          saveVital: gh<_i1051.SaveHomeVitalOfflineUseCase>(),
+          syncVitals: gh<_i404.SyncVitalsUseCase>(),
+          getHistory: gh<_i677.GetUnifiedVitalsHistoryUseCase>(),
+          getPendingVitals: gh<_i356.GetPendingVitalsUseCase>(),
+        ));
     return this;
   }
 }

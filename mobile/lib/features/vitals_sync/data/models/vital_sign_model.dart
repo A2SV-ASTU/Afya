@@ -39,7 +39,7 @@ Map<String,dynamic> json
 return VitalSignModel(
 
 clientId:
-json["client_id"],
+json["client_id"] ?? json["id"],
 
 systolicBp:
 json["systolic_bp"],

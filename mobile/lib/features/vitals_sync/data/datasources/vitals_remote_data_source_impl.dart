@@ -8,13 +8,17 @@ import '../models/vital_sign_model.dart';
 import 'vitals_remote_data_source.dart';
 
 import '../../domain/entities/vitals_sync_batch_result_entity.dart';
-
+import '../../../../core/storage/secure_storage_service.dart';
 
 @LazySingleton(as: VitalsRemoteDataSource)
 class VitalsRemoteDataSourceImpl implements VitalsRemoteDataSource {
   final ApiClient apiClient;
+final SecureStorageService secureStorage;
 
-  VitalsRemoteDataSourceImpl(this.apiClient);
+VitalsRemoteDataSourceImpl(
+  this.apiClient,
+  this.secureStorage,
+);
 
 
 
@@ -159,39 +163,20 @@ data:{
 
 
 @override
-Future<List<VitalSignModel>>
-getHistory()
+Future<List<VitalSignModel>> getHistory() async {
+  final patientId = await secureStorage.getUserId();
 
-async {
+  if (patientId == null || patientId.isEmpty) {
+    throw Exception('User ID not found. Please log in again.');
+  }
 
+  final response = await apiClient.dio.get(
+    ApiEndpoints.patientVitals(patientId),
+  );
 
-final response =
-await apiClient.dio.get(
-
-ApiEndpoints.vitalsHistory
-
-);
-
-
-
-return (
-
-response.data as List
-
-)
-
-.map(
-
-(e)=>
-
-VitalSignModel.fromJson(e)
-
-)
-
-.toList();
-
-
-
+  return (response.data as List)
+      .map((e) => VitalSignModel.fromJson(e))
+      .toList();
 }
 
 
