@@ -4,7 +4,13 @@ import 'package:afyamind_mobile/core/di/injection_container.dart';
 import 'package:afyamind_mobile/features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../helpers/test_env.dart';
+
 void main() {
+  setUpAll(() {
+    loadTestEnv();
+  });
+
   tearDown(() async {
     await sl.reset();
   });
