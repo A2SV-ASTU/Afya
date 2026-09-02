@@ -1,9 +1,11 @@
 import 'package:fpdart/fpdart.dart';
+import 'package:injectable/injectable.dart';
 
 import '../../../../core/errors/failures.dart';
 import '../entities/appointment_entity.dart';
 import '../repositories/clinical_history_repository.dart';
 
+@lazySingleton
 class GetAppointmentsUseCase {
   final ClinicalHistoryRepository repository;
 

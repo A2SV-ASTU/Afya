@@ -45,6 +45,34 @@ class ProfilePlaceholderScreen extends StatelessWidget {
   }
 }
 
+class ChatPlaceholderScreen extends StatelessWidget {
+  const ChatPlaceholderScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Chat', style: AppTypography.titleMedium)),
+      body: const Center(
+        child: Text('Chat Screen (Placeholder)', style: AppTypography.bodyMedium),
+      ),
+    );
+  }
+}
+
+class AccessPlaceholderScreen extends StatelessWidget {
+  const AccessPlaceholderScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Access', style: AppTypography.titleMedium)),
+      body: const Center(
+        child: Text('Access Screen (Placeholder)', style: AppTypography.bodyMedium),
+      ),
+    );
+  }
+}
+
 class AccessDecisionPlaceholderScreen extends StatelessWidget {
   final String id;
 
