@@ -127,9 +127,9 @@ export async function apiClient<T>(
   return response.json();
 }
 
-apiClient.get = <T = any>(path: string) => apiClient<T>(path, { method: 'GET' });
-apiClient.post = <T = any>(path: string, body?: unknown) => apiClient<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
-apiClient.patch = <T = any>(path: string, body?: unknown) => apiClient<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
+apiClient.get = <T = unknown>(path: string) => apiClient<T>(path, { method: 'GET' });
+apiClient.post = <T = unknown>(path: string, body?: unknown) => apiClient<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
+apiClient.patch = <T = unknown>(path: string, body?: unknown) => apiClient<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
 
 export function getApiErrorMessage(err: unknown, fallback: string) {
   if (err instanceof ApiError) return err.message;
