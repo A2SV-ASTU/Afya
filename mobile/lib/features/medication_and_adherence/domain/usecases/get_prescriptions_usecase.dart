@@ -26,10 +26,11 @@ class GetPrescriptionsUseCase {
       forceRefresh: forceRefresh,
     );
 
-    return result.fold(
-      (failure) => Left(failure),
-      (prescriptions) async {
-        for (final rx in prescriptions) {
+    switch (result) {
+      case Left(:final value):
+        return Left(value);
+      case Right(:final value):
+        for (final rx in value) {
           if (rx.status == EncounterPrescriptionStatus.active) {
             await generateScheduleUseCase(
               prescription: rx,
@@ -37,9 +38,8 @@ class GetPrescriptionsUseCase {
             );
           }
         }
-        return Right(prescriptions);
-      },
-    );
+        return Right(value);
+    }
   }
 
   Future<Either<Failure, List<EncounterPrescriptionItemEntity>>> getCached() {

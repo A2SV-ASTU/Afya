@@ -15,6 +15,8 @@ import '../../features/clinical_history/presentation/screens/encounter_detail_sc
 import '../../features/clinical_history/presentation/screens/history_timeline_screen.dart';
 import '../../features/access_requests/presentation/screens/clinic_grants_screen.dart';
 import '../../features/access_requests/presentation/screens/pending_access_requests_screen.dart';
+import '../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
+import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../view/app_shell.dart';
 import '../view/placeholder_screens.dart';
 import 'route_paths.dart';
@@ -25,6 +27,10 @@ final GlobalKey<NavigatorState> _dashboardNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'dashboard');
 final GlobalKey<NavigatorState> _historyNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'history');
+final GlobalKey<NavigatorState> _chatNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'chat');
+final GlobalKey<NavigatorState> _accessNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'access');
 final GlobalKey<NavigatorState> _profileNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'profile');
 
@@ -93,7 +99,10 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: RoutePaths.dashboard,
-                builder: (context, state) => const DashboardPlaceholderScreen(),
+                builder: (context, state) => BlocProvider(
+                  create: (context) => sl<DashboardCubit>()..loadDashboard(),
+                  child: const DashboardScreen(),
+                ),
               ),
             ],
           ),
@@ -106,6 +115,24 @@ class AppRouter {
                   create: (context) => sl<HistoryTimelineBloc>(),
                   child: const HistoryTimelineScreen(patientId: 'me'),
                 ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _chatNavigatorKey,
+            routes: [
+              GoRoute(
+                path: RoutePaths.chat,
+                builder: (context, state) => const ChatPlaceholderScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _accessNavigatorKey,
+            routes: [
+              GoRoute(
+                path: RoutePaths.access,
+                builder: (context, state) => const AccessPlaceholderScreen(),
               ),
             ],
           ),

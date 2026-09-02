@@ -65,6 +65,8 @@ import '../../features/clinical_history/domain/repositories/clinical_history_rep
     as _i829;
 import '../../features/clinical_history/domain/usecases/get_appointments_usecase.dart'
     as _i702;
+import '../../features/clinical_history/domain/usecases/get_condensed_medical_history_usecase.dart'
+    as _i795;
 import '../../features/clinical_history/domain/usecases/get_encounter_detail_usecase.dart'
     as _i661;
 import '../../features/clinical_history/domain/usecases/get_encounters_timeline_usecase.dart'
@@ -75,6 +77,8 @@ import '../../features/clinical_history/presentation/cubit/appointments_cubit.da
     as _i584;
 import '../../features/clinical_history/presentation/cubit/encounter_detail_cubit.dart'
     as _i76;
+import '../../features/dashboard/presentation/cubit/dashboard_cubit.dart'
+    as _i24;
 import '../../features/medication_and_adherence/data/datasources/medication_local_data_source.dart'
     as _i894;
 import '../../features/medication_and_adherence/data/datasources/medication_remote_data_source.dart'
@@ -130,11 +134,7 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i229.NotificationService());
     gh.lazySingleton<_i605.LocalDatabaseService>(
         () => _i605.LocalDatabaseService());
-    gh.factory<_i460.HistoryTimelineBloc>(() => _i460.HistoryTimelineBloc(
-        getEncountersTimelineUseCase:
-            gh<_i401.GetEncountersTimelineUseCase>()));
-    gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
-        getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
+
     gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
         () => _i196.ClinicalHistoryLocalDataSourceImpl());
     gh.lazySingleton<_i894.MedicationLocalDataSource>(
@@ -148,8 +148,6 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i949.LocalAlarmScheduler(gh<_i229.NotificationService>()));
     gh.lazySingleton<_i557.ApiClient>(
         () => _i557.ApiClient(gh<_i916.CookieStorageService>()));
-    gh.factory<_i76.EncounterDetailCubit>(() => _i76.EncounterDetailCubit(
-        getEncounterDetailUseCase: gh<_i661.GetEncounterDetailUseCase>()));
     gh.lazySingleton<_i666.SecureStorageService>(
         () => _i666.SecureStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i469.RouteGuards>(
@@ -158,11 +156,6 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i107.AuthRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i718.AccessRequestRemoteDataSource>(
         () => _i718.AccessRequestRemoteDataSourceImpl(gh<_i557.ApiClient>()));
-    gh.lazySingleton<_i779.ProcessMissedDosesUseCase>(
-        () => _i779.ProcessMissedDosesUseCase(
-              gh<_i894.MedicationLocalDataSource>(),
-              gh<_i949.LocalAlarmScheduler>(),
-            ));
     gh.lazySingleton<_i854.CancelPrescriptionRemindersUseCase>(
         () => _i854.CancelPrescriptionRemindersUseCase(
               gh<_i894.MedicationLocalDataSource>(),
@@ -177,6 +170,11 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i894.MedicationLocalDataSource>(),
           gh<_i949.LocalAlarmScheduler>(),
         ));
+    gh.lazySingleton<_i779.ProcessMissedDosesUseCase>(
+        () => _i779.ProcessMissedDosesUseCase.create(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i949.LocalAlarmScheduler>(),
+            ));
     gh.lazySingleton<_i787.AuthRepository>(() => _i153.AuthRepositoryImpl(
           remoteDataSource: gh<_i107.AuthRemoteDataSource>(),
           localDataSource: gh<_i852.AuthLocalDataSource>(),
@@ -258,6 +256,16 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i735.MedicationRepository>(),
               gh<_i492.GenerateDoseScheduleUseCase>(),
             ));
+    gh.lazySingleton<_i702.GetAppointmentsUseCase>(() =>
+        _i702.GetAppointmentsUseCase(gh<_i829.ClinicalHistoryRepository>()));
+    gh.lazySingleton<_i795.GetCondensedMedicalHistoryUseCase>(() =>
+        _i795.GetCondensedMedicalHistoryUseCase(
+            gh<_i829.ClinicalHistoryRepository>()));
+    gh.lazySingleton<_i661.GetEncounterDetailUseCase>(() =>
+        _i661.GetEncounterDetailUseCase(gh<_i829.ClinicalHistoryRepository>()));
+    gh.lazySingleton<_i401.GetEncountersTimelineUseCase>(() =>
+        _i401.GetEncountersTimelineUseCase(
+            gh<_i829.ClinicalHistoryRepository>()));
     gh.lazySingleton<_i240.GetLocalDoseRecordsUseCase>(() =>
         _i240.GetLocalDoseRecordsUseCase(gh<_i735.MedicationRepository>()));
     gh.lazySingleton<_i851.RecordDoseAdherenceUseCase>(() =>
@@ -267,6 +275,22 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i735.MedicationRepository>(),
               gh<_i854.CancelPrescriptionRemindersUseCase>(),
             ));
+    gh.factory<_i24.DashboardCubit>(() => _i24.DashboardCubit(
+          getAuthSessionUseCase: gh<_i508.GetAuthSessionUseCase>(),
+          reconciliationService: gh<_i570.MedicationReconciliationService>(),
+          getLocalDoseRecordsUseCase: gh<_i240.GetLocalDoseRecordsUseCase>(),
+          recordDoseAdherenceUseCase: gh<_i851.RecordDoseAdherenceUseCase>(),
+          handleSnoozeUseCase: gh<_i46.HandleSnoozeUseCase>(),
+          getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>(),
+          getPrescriptionsUseCase: gh<_i453.GetPrescriptionsUseCase>(),
+        ));
+    gh.factory<_i76.EncounterDetailCubit>(() => _i76.EncounterDetailCubit(
+        getEncounterDetailUseCase: gh<_i661.GetEncounterDetailUseCase>()));
+    gh.factory<_i460.HistoryTimelineBloc>(() => _i460.HistoryTimelineBloc(
+        getEncountersTimelineUseCase:
+            gh<_i401.GetEncountersTimelineUseCase>()));
+    gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
+        getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
     return this;
   }
 }
