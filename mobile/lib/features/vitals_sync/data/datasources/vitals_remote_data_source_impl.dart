@@ -174,8 +174,16 @@ Future<List<VitalSignModel>> getHistory() async {
     ApiEndpoints.patientVitals(patientId),
   );
 
-  return (response.data as List)
-      .map((e) => VitalSignModel.fromJson(e))
+  final data = response.data as Map<String, dynamic>;
+
+  final vitalSigns = data['vital_signs'] as List<dynamic>? ?? [];
+
+  return vitalSigns
+      .map(
+        (e) => VitalSignModel.fromJson(
+          Map<String, dynamic>.from(e as Map),
+        ),
+      )
       .toList();
 }
 

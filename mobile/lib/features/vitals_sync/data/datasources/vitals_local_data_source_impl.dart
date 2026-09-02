@@ -18,6 +18,7 @@ class VitalsLocalDataSourceImpl implements VitalsLocalDataSource {
       vital.clientId,
       vital.toJson(),
     );
+    print('Hive saved vital ${vital.clientId}');
   }
 
   @override

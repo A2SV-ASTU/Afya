@@ -15,7 +15,7 @@ class VitalsHistoryScreen extends StatefulWidget {
 }
 
 class _VitalsHistoryScreenState extends State<VitalsHistoryScreen> {
-  int _selectedIndex = 1;
+  
 
   // Active filters
   String _selectedVitalType = 'All';
@@ -553,74 +553,7 @@ class _VitalsHistoryScreenState extends State<VitalsHistoryScreen> {
       // BOTTOM NAVIGATION
       // ==========================================================
 
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-
-        type: BottomNavigationBarType.fixed,
-
-        backgroundColor: Colors.white,
-
-        selectedItemColor:
-            const Color(0xFF0C6B44),
-
-        unselectedItemColor:
-            const Color(0xFF4A5568),
-
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
-          ),
-
-          BottomNavigationBarItem(
-            icon: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 8,
-              ),
-              decoration: BoxDecoration(
-                color: const Color(0xFFAAF2C7),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.history,
-                color: Color(0xFF0C6B44),
-              ),
-            ),
-            label: 'History',
-          ),
-
-          const BottomNavigationBarItem(
-            icon: Icon(
-              Icons.chat_bubble_outline,
-            ),
-            label: 'Chat',
-          ),
-
-          const BottomNavigationBarItem(
-            icon: Icon(
-              Icons.key_outlined,
-            ),
-            label: 'Access',
-          ),
-
-          const BottomNavigationBarItem(
-            icon: Icon(
-              Icons.person_outline,
-            ),
-            label: 'Profile',
-          ),
-        ],
-      ),
+      
     );
   }
 

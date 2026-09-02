@@ -154,9 +154,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i605.LocalDatabaseService>(
         () => _i605.LocalDatabaseService());
     gh.lazySingleton<_i979.Box<dynamic>>(() => vitalsModule.vitalsBox);
-    gh.factory<_i460.HistoryTimelineBloc>(() => _i460.HistoryTimelineBloc(
-        getEncountersTimelineUseCase:
-            gh<_i401.GetEncountersTimelineUseCase>()));
     gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
         getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
     gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
@@ -289,6 +286,9 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i735.MedicationRepository>(),
               gh<_i492.GenerateDoseScheduleUseCase>(),
             ));
+    gh.lazySingleton<_i401.GetEncountersTimelineUseCase>(() =>
+        _i401.GetEncountersTimelineUseCase(
+            gh<_i829.ClinicalHistoryRepository>()));
     gh.lazySingleton<_i240.GetLocalDoseRecordsUseCase>(() =>
         _i240.GetLocalDoseRecordsUseCase(gh<_i735.MedicationRepository>()));
     gh.lazySingleton<_i851.RecordDoseAdherenceUseCase>(() =>
@@ -306,6 +306,9 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i1051.SaveHomeVitalOfflineUseCase(gh<_i84.VitalsRepository>()));
     gh.lazySingleton<_i404.SyncVitalsUseCase>(
         () => _i404.SyncVitalsUseCase(gh<_i84.VitalsRepository>()));
+    gh.factory<_i460.HistoryTimelineBloc>(() => _i460.HistoryTimelineBloc(
+        getEncountersTimelineUseCase:
+            gh<_i401.GetEncountersTimelineUseCase>()));
     gh.factory<_i838.VitalsSyncBloc>(() => _i838.VitalsSyncBloc(
           saveVital: gh<_i1051.SaveHomeVitalOfflineUseCase>(),
           syncVitals: gh<_i404.SyncVitalsUseCase>(),
