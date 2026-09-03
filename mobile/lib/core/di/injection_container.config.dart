@@ -56,6 +56,8 @@ import '../../features/clinical_history/presentation/cubit/appointments_cubit.da
     as _i584;
 import '../../features/clinical_history/presentation/cubit/encounter_detail_cubit.dart'
     as _i76;
+import '../../features/dashboard/presentation/cubit/dashboard_cubit.dart'
+    as _i24;
 import '../../features/medication_and_adherence/data/datasources/medication_local_data_source.dart'
     as _i894;
 import '../../features/medication_and_adherence/data/datasources/medication_remote_data_source.dart'
@@ -154,8 +156,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i605.LocalDatabaseService>(
         () => _i605.LocalDatabaseService());
     gh.lazySingleton<_i979.Box<dynamic>>(() => vitalsModule.vitalsBox);
-    gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
-        getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
     gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
         () => _i196.ClinicalHistoryLocalDataSourceImpl());
     gh.lazySingleton<_i894.MedicationLocalDataSource>(
@@ -183,12 +183,6 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i107.AuthRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i894.ProfileRepository>(
         () => _i334.ProfileRepositoryImpl(gh<_i847.ProfileRemoteDataSource>()));
-    gh.lazySingleton<_i779.ProcessMissedDosesUseCase>(
-        () => _i779.ProcessMissedDosesUseCase(
-              gh<_i894.MedicationLocalDataSource>(),
-              gh<_i949.LocalAlarmScheduler>(),
-              missedThreshold: gh<Duration>(),
-            ));
     gh.lazySingleton<_i854.CancelPrescriptionRemindersUseCase>(
         () => _i854.CancelPrescriptionRemindersUseCase(
               gh<_i894.MedicationLocalDataSource>(),
@@ -203,6 +197,11 @@ extension GetItInjectableX on _i174.GetIt {
           gh<_i894.MedicationLocalDataSource>(),
           gh<_i949.LocalAlarmScheduler>(),
         ));
+    gh.lazySingleton<_i779.ProcessMissedDosesUseCase>(
+        () => _i779.ProcessMissedDosesUseCase.create(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i949.LocalAlarmScheduler>(),
+            ));
     gh.factory<_i550.ChangePasswordUseCase>(
         () => _i550.ChangePasswordUseCase(gh<_i894.ProfileRepository>()));
     gh.factory<_i761.DeactivateAccountUseCase>(
@@ -286,6 +285,8 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i735.MedicationRepository>(),
               gh<_i492.GenerateDoseScheduleUseCase>(),
             ));
+    gh.lazySingleton<_i702.GetAppointmentsUseCase>(() =>
+        _i702.GetAppointmentsUseCase(gh<_i829.ClinicalHistoryRepository>()));
     gh.lazySingleton<_i401.GetEncountersTimelineUseCase>(() =>
         _i401.GetEncountersTimelineUseCase(
             gh<_i829.ClinicalHistoryRepository>()));
@@ -298,6 +299,15 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i735.MedicationRepository>(),
               gh<_i854.CancelPrescriptionRemindersUseCase>(),
             ));
+    gh.factory<_i24.DashboardCubit>(() => _i24.DashboardCubit(
+          getAuthSessionUseCase: gh<_i508.GetAuthSessionUseCase>(),
+          reconciliationService: gh<_i570.MedicationReconciliationService>(),
+          getLocalDoseRecordsUseCase: gh<_i240.GetLocalDoseRecordsUseCase>(),
+          recordDoseAdherenceUseCase: gh<_i851.RecordDoseAdherenceUseCase>(),
+          handleSnoozeUseCase: gh<_i46.HandleSnoozeUseCase>(),
+          getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>(),
+          getPrescriptionsUseCase: gh<_i453.GetPrescriptionsUseCase>(),
+        ));
     gh.lazySingleton<_i356.GetPendingVitalsUseCase>(
         () => _i356.GetPendingVitalsUseCase(gh<_i84.VitalsRepository>()));
     gh.lazySingleton<_i677.GetUnifiedVitalsHistoryUseCase>(() =>
@@ -315,6 +325,8 @@ extension GetItInjectableX on _i174.GetIt {
           getHistory: gh<_i677.GetUnifiedVitalsHistoryUseCase>(),
           getPendingVitals: gh<_i356.GetPendingVitalsUseCase>(),
         ));
+    gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
+        getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
     return this;
   }
 }
