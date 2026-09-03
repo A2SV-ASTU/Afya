@@ -11,6 +11,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
+import 'package:hive/hive.dart' as _i979;
 import 'package:injectable/injectable.dart' as _i526;
 
 import '../../app/router/app_router.dart' as _i180;
@@ -45,8 +46,6 @@ import '../../features/clinical_history/domain/repositories/clinical_history_rep
     as _i829;
 import '../../features/clinical_history/domain/usecases/get_appointments_usecase.dart'
     as _i702;
-import '../../features/clinical_history/domain/usecases/get_condensed_medical_history_usecase.dart'
-    as _i795;
 import '../../features/clinical_history/domain/usecases/get_encounter_detail_usecase.dart'
     as _i661;
 import '../../features/clinical_history/domain/usecases/get_encounters_timeline_usecase.dart'
@@ -85,6 +84,47 @@ import '../../features/medication_and_adherence/domain/usecases/process_missed_d
     as _i779;
 import '../../features/medication_and_adherence/domain/usecases/record_dose_adherence_usecase.dart'
     as _i851;
+import '../../features/profile/data/datasources/profile_remote_data_source.dart'
+    as _i847;
+import '../../features/profile/data/datasources/profile_remote_data_source_impl.dart'
+    as _i1036;
+import '../../features/profile/data/repositories/profile_repository_impl.dart'
+    as _i334;
+import '../../features/profile/domain/repositories/profile_repository.dart'
+    as _i894;
+import '../../features/profile/domain/usecases/change_password_usecase.dart'
+    as _i550;
+import '../../features/profile/domain/usecases/deactivate_account_usecase.dart'
+    as _i761;
+import '../../features/profile/domain/usecases/get_profile_usecase.dart'
+    as _i965;
+import '../../features/profile/domain/usecases/logout_usecase.dart' as _i17;
+import '../../features/profile/domain/usecases/update_demographics_usecase.dart'
+    as _i829;
+import '../../features/profile/presentation/bloc/profile_bloc.dart' as _i469;
+import '../../features/vitals_sync/data/datasources/vitals_local_data_source.dart'
+    as _i75;
+import '../../features/vitals_sync/data/datasources/vitals_local_data_source_impl.dart'
+    as _i269;
+import '../../features/vitals_sync/data/datasources/vitals_remote_data_source.dart'
+    as _i630;
+import '../../features/vitals_sync/data/datasources/vitals_remote_data_source_impl.dart'
+    as _i267;
+import '../../features/vitals_sync/data/repositories/vitals_repository_impl.dart'
+    as _i1029;
+import '../../features/vitals_sync/domain/repositories/vitals_repository.dart'
+    as _i84;
+import '../../features/vitals_sync/domain/usecases/get_pending_vitals_usecase.dart'
+    as _i356;
+import '../../features/vitals_sync/domain/usecases/get_unified_vitals_history_usecase.dart'
+    as _i677;
+import '../../features/vitals_sync/domain/usecases/save_home_vital_offline_usecase.dart'
+    as _i1051;
+import '../../features/vitals_sync/domain/usecases/sync_vitals_usecase.dart'
+    as _i404;
+import '../../features/vitals_sync/presentation/bloc/vitals_sync_bloc.dart'
+    as _i838;
+import '../../features/vitals_sync/vitals_module.dart' as _i285;
 import '../network/api_client.dart' as _i557;
 import '../network/network_info.dart' as _i932;
 import '../notifications/local_alarm_scheduler.dart' as _i949;
@@ -107,6 +147,7 @@ extension GetItInjectableX on _i174.GetIt {
       environmentFilter,
     );
     final registerModule = _$RegisterModule();
+    final vitalsModule = _$VitalsModule();
     gh.lazySingleton<_i180.AppRouter>(() => _i180.AppRouter());
     gh.lazySingleton<_i558.FlutterSecureStorage>(
         () => registerModule.secureStorage);
@@ -114,6 +155,7 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i229.NotificationService());
     gh.lazySingleton<_i605.LocalDatabaseService>(
         () => _i605.LocalDatabaseService());
+    gh.lazySingleton<_i979.Box<dynamic>>(() => vitalsModule.vitalsBox);
     gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
         () => _i196.ClinicalHistoryLocalDataSourceImpl());
     gh.lazySingleton<_i894.MedicationLocalDataSource>(
@@ -127,12 +169,20 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i949.LocalAlarmScheduler(gh<_i229.NotificationService>()));
     gh.lazySingleton<_i557.ApiClient>(
         () => _i557.ApiClient(gh<_i916.CookieStorageService>()));
+    gh.factory<_i76.EncounterDetailCubit>(() => _i76.EncounterDetailCubit(
+        getEncounterDetailUseCase: gh<_i661.GetEncounterDetailUseCase>()));
+    gh.lazySingleton<_i75.VitalsLocalDataSource>(
+        () => _i269.VitalsLocalDataSourceImpl(gh<_i979.Box<dynamic>>()));
     gh.lazySingleton<_i666.SecureStorageService>(
         () => _i666.SecureStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i469.RouteGuards>(
         () => _i469.RouteGuards(gh<_i666.SecureStorageService>()));
+    gh.lazySingleton<_i847.ProfileRemoteDataSource>(
+        () => _i1036.ProfileRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i107.AuthRemoteDataSource>(
         () => _i107.AuthRemoteDataSourceImpl(gh<_i557.ApiClient>()));
+    gh.lazySingleton<_i894.ProfileRepository>(
+        () => _i334.ProfileRepositoryImpl(gh<_i847.ProfileRemoteDataSource>()));
     gh.lazySingleton<_i854.CancelPrescriptionRemindersUseCase>(
         () => _i854.CancelPrescriptionRemindersUseCase(
               gh<_i894.MedicationLocalDataSource>(),
@@ -151,6 +201,21 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i779.ProcessMissedDosesUseCase.create(
               gh<_i894.MedicationLocalDataSource>(),
               gh<_i949.LocalAlarmScheduler>(),
+            ));
+    gh.factory<_i550.ChangePasswordUseCase>(
+        () => _i550.ChangePasswordUseCase(gh<_i894.ProfileRepository>()));
+    gh.factory<_i761.DeactivateAccountUseCase>(
+        () => _i761.DeactivateAccountUseCase(gh<_i894.ProfileRepository>()));
+    gh.factory<_i965.GetProfileUseCase>(
+        () => _i965.GetProfileUseCase(gh<_i894.ProfileRepository>()));
+    gh.factory<_i17.LogoutUseCase>(
+        () => _i17.LogoutUseCase(gh<_i894.ProfileRepository>()));
+    gh.factory<_i829.UpdateDemographicsUseCase>(
+        () => _i829.UpdateDemographicsUseCase(gh<_i894.ProfileRepository>()));
+    gh.lazySingleton<_i630.VitalsRemoteDataSource>(
+        () => _i267.VitalsRemoteDataSourceImpl(
+              gh<_i557.ApiClient>(),
+              gh<_i666.SecureStorageService>(),
             ));
     gh.lazySingleton<_i787.AuthRepository>(() => _i153.AuthRepositoryImpl(
           remoteDataSource: gh<_i107.AuthRemoteDataSource>(),
@@ -199,6 +264,17 @@ extension GetItInjectableX on _i174.GetIt {
               remoteDataSource: gh<_i1022.MedicationRemoteDataSource>(),
               localDataSource: gh<_i894.MedicationLocalDataSource>(),
             ));
+    gh.lazySingleton<_i84.VitalsRepository>(() => _i1029.VitalsRepositoryImpl(
+          local: gh<_i75.VitalsLocalDataSource>(),
+          remote: gh<_i630.VitalsRemoteDataSource>(),
+        ));
+    gh.factory<_i469.ProfileBloc>(() => _i469.ProfileBloc(
+          getProfile: gh<_i965.GetProfileUseCase>(),
+          updateDemographics: gh<_i829.UpdateDemographicsUseCase>(),
+          changePassword: gh<_i550.ChangePasswordUseCase>(),
+          deactivateAccount: gh<_i761.DeactivateAccountUseCase>(),
+          logout: gh<_i17.LogoutUseCase>(),
+        ));
     gh.lazySingleton<_i829.ClinicalHistoryRepository>(
         () => _i144.ClinicalHistoryRepositoryImpl(
               remoteDataSource: gh<_i113.ClinicalHistoryRemoteDataSource>(),
@@ -211,11 +287,6 @@ extension GetItInjectableX on _i174.GetIt {
             ));
     gh.lazySingleton<_i702.GetAppointmentsUseCase>(() =>
         _i702.GetAppointmentsUseCase(gh<_i829.ClinicalHistoryRepository>()));
-    gh.lazySingleton<_i795.GetCondensedMedicalHistoryUseCase>(() =>
-        _i795.GetCondensedMedicalHistoryUseCase(
-            gh<_i829.ClinicalHistoryRepository>()));
-    gh.lazySingleton<_i661.GetEncounterDetailUseCase>(() =>
-        _i661.GetEncounterDetailUseCase(gh<_i829.ClinicalHistoryRepository>()));
     gh.lazySingleton<_i401.GetEncountersTimelineUseCase>(() =>
         _i401.GetEncountersTimelineUseCase(
             gh<_i829.ClinicalHistoryRepository>()));
@@ -237,11 +308,23 @@ extension GetItInjectableX on _i174.GetIt {
           getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>(),
           getPrescriptionsUseCase: gh<_i453.GetPrescriptionsUseCase>(),
         ));
-    gh.factory<_i76.EncounterDetailCubit>(() => _i76.EncounterDetailCubit(
-        getEncounterDetailUseCase: gh<_i661.GetEncounterDetailUseCase>()));
+    gh.lazySingleton<_i356.GetPendingVitalsUseCase>(
+        () => _i356.GetPendingVitalsUseCase(gh<_i84.VitalsRepository>()));
+    gh.lazySingleton<_i677.GetUnifiedVitalsHistoryUseCase>(() =>
+        _i677.GetUnifiedVitalsHistoryUseCase(gh<_i84.VitalsRepository>()));
+    gh.lazySingleton<_i1051.SaveHomeVitalOfflineUseCase>(
+        () => _i1051.SaveHomeVitalOfflineUseCase(gh<_i84.VitalsRepository>()));
+    gh.lazySingleton<_i404.SyncVitalsUseCase>(
+        () => _i404.SyncVitalsUseCase(gh<_i84.VitalsRepository>()));
     gh.factory<_i460.HistoryTimelineBloc>(() => _i460.HistoryTimelineBloc(
         getEncountersTimelineUseCase:
             gh<_i401.GetEncountersTimelineUseCase>()));
+    gh.factory<_i838.VitalsSyncBloc>(() => _i838.VitalsSyncBloc(
+          saveVital: gh<_i1051.SaveHomeVitalOfflineUseCase>(),
+          syncVitals: gh<_i404.SyncVitalsUseCase>(),
+          getHistory: gh<_i677.GetUnifiedVitalsHistoryUseCase>(),
+          getPendingVitals: gh<_i356.GetPendingVitalsUseCase>(),
+        ));
     gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
         getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
     return this;
@@ -249,3 +332,5 @@ extension GetItInjectableX on _i174.GetIt {
 }
 
 class _$RegisterModule extends _i291.RegisterModule {}
+
+class _$VitalsModule extends _i285.VitalsModule {}
