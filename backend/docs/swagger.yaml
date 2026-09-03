@@ -352,6 +352,15 @@ definitions:
         example: pending
         type: string
     type: object
+  clinics.UpdateDoctorProfileRequest:
+    properties:
+      license_number:
+        example: LIC-98765
+        type: string
+      specialization:
+        example: Cardiology
+        type: string
+    type: object
   diagnoses.CreateDiagnosisRequest:
     properties:
       diagnosis_text:

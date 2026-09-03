@@ -1073,3 +1073,26 @@ Magic links are browser-rendered HTML pages used for email-driven workflows with
 - **200 OK**: Returns an array of diagnoses.
 - **403 Forbidden**: Unauthorized role or missing access grant.
 - **404 Not Found**: Encounter not found.
+
+---
+
+### 40. Update Doctor Profile (Specialization & License Number)
+- **Endpoint**: `PATCH /api/v1/clinics/{clinicId}/doctors/{doctorId}`
+- **Auth Required**: Yes (`clinic_admin` for this clinic)
+- **Description**: Updates a doctor's specialization and/or license number. Accepts both fields together or either field individually.
+
+#### Request Body
+```json
+{
+  "specialization": "Cardiology",
+  "license_number": "LIC-98765"
+}
+```
+
+#### Responses
+- **200 OK**: Returns the updated doctor profile.
+- **400 Bad Request**: Validation error (e.g. neither field provided).
+- **401 Unauthorized**: Missing or invalid token.
+- **403 Forbidden**: Caller is not a clinic admin for this clinic.
+- **404 Not Found**: Doctor not found in this clinic.
+

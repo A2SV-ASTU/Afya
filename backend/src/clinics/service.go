@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"strings"
 
 	"afyamind-backend/src/database"
 	"afyamind-backend/src/shared/email"
@@ -28,6 +29,7 @@ type Service interface {
 	ActivateClinic(ctx context.Context, id uuid.UUID) error
 	DeactivateDoctor(ctx context.Context, user *auth.UserContext, clinicID, doctorID uuid.UUID) error
 	ActivateDoctor(ctx context.Context, user *auth.UserContext, clinicID, doctorID uuid.UUID) error
+	UpdateDoctorProfile(ctx context.Context, user *auth.UserContext, clinicID, doctorID uuid.UUID, req UpdateDoctorProfileRequest) (*DoctorResponse, error)
 
 	GetClinic(ctx context.Context, user *auth.UserContext, id uuid.UUID) (*Clinic, error)
 	GetClinicDoctors(ctx context.Context, user *auth.UserContext, clinicID uuid.UUID) ([]DoctorResponse, error)
@@ -199,6 +201,33 @@ func (s *service) ActivateDoctor(ctx context.Context, user *auth.UserContext, cl
 	}
 
 	return s.repo.ActivateDoctor(ctx, clinicID, doctorID)
+}
+
+func (s *service) UpdateDoctorProfile(ctx context.Context, user *auth.UserContext, clinicID, doctorID uuid.UUID, req UpdateDoctorProfileRequest) (*DoctorResponse, error) {
+	if user.Role == string(users.RoleClinicAdmin) && (user.ClinicID == nil || *user.ClinicID != clinicID) {
+		return nil, errors.New("unauthorized for this clinic")
+	}
+
+	hasSpec := req.Specialization != nil && strings.TrimSpace(*req.Specialization) != ""
+	hasLic := req.LicenseNumber != nil && strings.TrimSpace(*req.LicenseNumber) != ""
+
+	if !hasSpec && !hasLic {
+		return nil, errors.New("at least one of specialization or license_number must be provided")
+	}
+
+	var specPtr *string
+	if hasSpec {
+		trimmed := strings.TrimSpace(*req.Specialization)
+		specPtr = &trimmed
+	}
+
+	var licPtr *string
+	if hasLic {
+		trimmed := strings.TrimSpace(*req.LicenseNumber)
+		licPtr = &trimmed
+	}
+
+	return s.repo.UpdateDoctorProfile(ctx, clinicID, doctorID, specPtr, licPtr)
 }
 
 
