@@ -305,14 +305,16 @@ func TestUpdatePrescription(t *testing.T) {
 			expectedError: sharedErr.ErrNotFound("prescription").Error(),
 		},
 		{
-			name: "closed encounter is rejected on update",
+			name: "closed encounter prescription update is allowed",
 			user: &auth.UserContext{ID: doctorID, Role: "doctor"},
 			repo: &mockPrescriptionRepo{
 				encounterIDByPrescription: encounterID,
 				encounterStatus:          "closed",
+				findByIDResult:           updatedPrescription,
+				findItemsResult:          []PrescriptionItem{},
 			},
 			req:           UpdatePrescriptionRequest{Notes: &newNotes},
-			expectedError: sharedErr.ErrConflict("encounter is closed; no further edits allowed").Error(),
+			expectedError: "",
 		},
 	}
 

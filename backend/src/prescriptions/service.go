@@ -101,16 +101,12 @@ func (s *service) UpdatePrescription(ctx context.Context, user *auth.UserContext
 		return nil, appErrors.ErrForbiddenRole()
 	}
 
-	encounterID, err := s.repo.FindEncounterIDByPrescription(ctx, prescriptionID)
+	_, err := s.repo.FindEncounterIDByPrescription(ctx, prescriptionID)
 	if err != nil {
 		if errors.Is(err, ErrPrescriptionNotFound) {
 			return nil, appErrors.ErrNotFound("prescription")
 		}
 		return nil, appErrors.ErrInternal(err.Error())
-	}
-
-	if err := s.requireOpenEncounter(ctx, encounterID); err != nil {
-		return nil, err
 	}
 
 	if req.Notes != nil {
