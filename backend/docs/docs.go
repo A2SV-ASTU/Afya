@@ -2795,7 +2795,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Permanently deletes the authenticated user's account. This action is irreversible.",
+                "description": "Permanently deletes the authenticated user's account (not allowed for super_admin role).",
                 "produces": [
                     "application/json"
                 ],
@@ -2812,6 +2812,12 @@ const docTemplate = `{
                     },
                     "401": {
                         "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden for super_admin role",
                         "schema": {
                             "$ref": "#/definitions/response.ErrorEnvelope"
                         }

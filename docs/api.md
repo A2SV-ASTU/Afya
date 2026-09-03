@@ -326,7 +326,8 @@ All error responses adhere to a consistent error schema:
 ### 9. Delete Account
 - **Endpoint**: `DELETE /api/v1/users/me`
 - **Auth Required**: Yes (`BearerAuth`)
-- **Description**: Permanently deletes the current user account.
+- **Allowed Roles**: `patient`, `doctor`, `clinic_admin` (Prohibited for `super_admin`)
+- **Description**: Permanently deletes the current user account. Not available for users with the `super_admin` role.
 
 #### Responses
 - **200 OK**:
@@ -337,6 +338,8 @@ All error responses adhere to a consistent error schema:
   }
 }
 ```
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid access token.
+- **403 Forbidden** (`forbidden_role`): Super admin accounts cannot be deleted via this endpoint.
 
 ---
 
