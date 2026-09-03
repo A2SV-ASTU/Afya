@@ -6,6 +6,7 @@ import { Building2, ArrowLeft, CheckCircle2, Shield } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/modules/core/ui/Button';
 import { Input } from '@/modules/core/ui/Input';
+import { getErrorMessage } from '@/lib/api/errors';
 
 export function CreateClinicForm() {
   const router = useRouter();
@@ -15,33 +16,49 @@ export function CreateClinicForm() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
-  const [adminName, setAdminName] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
+  const [adminFirstName, setAdminFirstName] = useState('');
+  const [adminLastName, setAdminLastName] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    if (!name || !email || !address || !adminName) {
+    if (!name || !email || !address || !adminFirstName || !adminLastName) {
       setError('Please fill in all mandatory fields.');
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const newClinic = createClinic({
+      const newClinic = await createClinic({
         name,
         email,
         phone: phone || '+254 20 000000',
         address,
-        admin_name: adminName,
-        admin_password: adminPassword || 'Secret@123',
+        admin_first_name: adminFirstName,
+        admin_last_name: adminLastName,
       });
       router.push(`/admin/clinics/${newClinic.id}`);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to onboard facility.');
+      let errorMessage = 'Failed to onboard facility.';
+      
+      if (err && typeof err === 'object' && 'code' in err) {
+        const errorCode = (err as { code: string }).code;
+        if (errorCode === 'conflict') {
+          errorMessage = 'A clinic with this email already exists';
+        } else if (errorCode === 'validation_error') {
+          errorMessage = 'Please check the form for errors';
+        } else {
+          errorMessage = getErrorMessage(errorCode);
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -112,25 +129,27 @@ export function CreateClinicForm() {
 
           <div className="pt-4 border-t border-slate-100 space-y-4">
             <h3 className="text-xs font-bold uppercase tracking-wider text-[#2E7D32]">
-              2. Facility Administrator Credentials
+              2. Facility Administrator Information
             </h3>
+            <p className="text-xs text-slate-600">
+              The clinic administrator will receive their login credentials by email.
+            </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
-                label="Administrator Full Name"
-                placeholder="Dr. Samuel Ombati"
-                value={adminName}
-                onChange={(e) => setAdminName(e.target.value)}
+                label="Administrator First Name"
+                placeholder="Samuel"
+                value={adminFirstName}
+                onChange={(e) => setAdminFirstName(e.target.value)}
                 required
               />
 
               <Input
-                label="Initial Temporary Password"
-                type="password"
-                placeholder="••••••••••••"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                helperText="Must be changed on first login"
+                label="Administrator Last Name"
+                placeholder="Ombati"
+                value={adminLastName}
+                onChange={(e) => setAdminLastName(e.target.value)}
+                required
               />
             </div>
           </div>

@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
-import { Building2, ArrowLeft, ShieldCheck, CheckCircle, Lock } from 'lucide-react';
+import { Building2, ArrowLeft, ShieldCheck, CheckCircle } from 'lucide-react';
+import { getErrorMessage } from '@/lib/api/errors';
 
 export function CreateClinic() {
   const { createClinic, navigateTo } = useStore();
@@ -12,12 +13,13 @@ export function CreateClinic() {
     email: '',
     phone: '+254 ',
     address: '',
-    admin_name: '',
-    admin_password: '',
+    admin_first_name: '',
+    admin_last_name: '',
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const validate = () => {
     const errs: Record<string, string> = {};
@@ -25,31 +27,49 @@ export function CreateClinic() {
     if (!formData.email.trim() || !formData.email.includes('@')) errs.email = 'Valid official clinic email is required';
     if (!formData.phone.trim() || formData.phone.length < 9) errs.phone = 'Valid phone number is required';
     if (!formData.address.trim()) errs.address = 'Physical address and facility suite is required';
-    if (!formData.admin_name.trim()) errs.admin_name = 'Administrator full name is required';
-    if (!formData.admin_password.trim() || formData.admin_password.length < 6) {
-      errs.admin_password = 'Password must be at least 6 characters';
-    }
+    if (!formData.admin_first_name.trim()) errs.admin_first_name = 'Administrator first name is required';
+    if (!formData.admin_last_name.trim()) errs.admin_last_name = 'Administrator last name is required';
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
     setIsSubmitting(true);
-    setTimeout(() => {
-      const newClinic = createClinic({
+    setApiError(null);
+
+    try {
+      const newClinic = await createClinic({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         address: formData.address,
-        admin_name: formData.admin_name,
-        admin_password: formData.admin_password,
+        admin_first_name: formData.admin_first_name,
+        admin_last_name: formData.admin_last_name,
       });
-      setIsSubmitting(false);
       navigateTo('admin-clinic-detail', { clinicId: newClinic.id });
-    }, 400);
+    } catch (err: unknown) {
+      let errorMessage = 'Failed to create clinic. Please try again.';
+      
+      if (err && typeof err === 'object' && 'code' in err) {
+        const errorCode = (err as { code: string }).code;
+        if (errorCode === 'conflict') {
+          errorMessage = 'A clinic with this email already exists';
+        } else if (errorCode === 'validation_error') {
+          errorMessage = 'Please check the form for errors';
+        } else {
+          errorMessage = getErrorMessage(errorCode);
+        }
+      } else if (err instanceof Error) {
+        errorMessage = err.message;
+      }
+
+      setApiError(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -92,6 +112,12 @@ export function CreateClinic() {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
+          {apiError && (
+            <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl">
+              <p className="text-xs text-rose-700 font-medium">{apiError}</p>
+            </div>
+          )}
+
           {/* Section 1: Facility Information */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -163,44 +189,44 @@ export function CreateClinic() {
 
           <div className="h-px bg-slate-100" />
 
-          {/* Section 2: Clinic Admin Account Credentials */}
+          {/* Section 2: Facility Administrator Credentials */}
           <div className="space-y-4">
             <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              2. Facility Administrator Credentials
+              2. Facility Administrator Information
             </h4>
+            <p className="text-xs text-slate-600">
+              The clinic administrator will receive their login credentials by email.
+            </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">
-                  Administrator Full Name <span className="text-rose-500">*</span>
+                  Administrator First Name <span className="text-rose-500">*</span>
                 </label>
                 <input
-                  id="input-admin-name"
+                  id="input-admin-first-name"
                   type="text"
-                  value={formData.admin_name}
-                  onChange={(e) => setFormData({ ...formData, admin_name: e.target.value })}
-                  placeholder="e.g. Faith Mwenda"
+                  value={formData.admin_first_name}
+                  onChange={(e) => setFormData({ ...formData, admin_first_name: e.target.value })}
+                  placeholder="e.g. Faith"
                   className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                 />
-                {errors.admin_name && <p className="text-[11px] text-rose-500">{errors.admin_name}</p>}
+                {errors.admin_first_name && <p className="text-[11px] text-rose-500">{errors.admin_first_name}</p>}
               </div>
 
               <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-slate-700">
-                  Initial Admin Password <span className="text-rose-500">*</span>
+                  Administrator Last Name <span className="text-rose-500">*</span>
                 </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    id="input-admin-password"
-                    type="password"
-                    value={formData.admin_password}
-                    onChange={(e) => setFormData({ ...formData, admin_password: e.target.value })}
-                    placeholder="••••••••••••"
-                    className="w-full pl-9 pr-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                  />
-                </div>
-                {errors.admin_password && <p className="text-[11px] text-rose-500">{errors.admin_password}</p>}
+                <input
+                  id="input-admin-last-name"
+                  type="text"
+                  value={formData.admin_last_name}
+                  onChange={(e) => setFormData({ ...formData, admin_last_name: e.target.value })}
+                  placeholder="e.g. Mwenda"
+                  className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+                {errors.admin_last_name && <p className="text-[11px] text-rose-500">{errors.admin_last_name}</p>}
               </div>
             </div>
           </div>

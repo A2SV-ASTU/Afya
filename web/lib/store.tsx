@@ -22,7 +22,9 @@ import {
   DiagnosisType,
   AppointmentStatus,
 } from '@/types/database';
-import { getClinics, activateClinic as apiActivateClinic, deactivateClinic as apiDeactivateClinic } from '@/lib/api/clinics';
+import { Doctor } from '@/types/clinics';
+import { getClinics, getDoctors, createClinic as apiCreateClinic, activateClinic as apiActivateClinic, deactivateClinic as apiDeactivateClinic, activateDoctor as apiActivateDoctor, deactivateDoctor as apiDeactivateDoctor } from '@/lib/api/clinics';
+import { inviteDoctor as apiInviteDoctor, acceptInvitation as apiAcceptInvitation } from '@/lib/api/invitations';
 
 interface StoreContextType {
   currentUser: User | null;
@@ -45,27 +47,32 @@ interface StoreContextType {
     email: string;
     phone: string;
     address: string;
-    admin_name: string;
-    admin_password?: string;
-  }) => Clinic;
-  activateClinic: (clinicId: string) => void;
-  deactivateClinic: (clinicId: string) => void;
+    admin_first_name: string;
+    admin_last_name: string;
+  }) => Promise<Clinic>;
+  activateClinic: (clinicId: string) => Promise<void>;
+  deactivateClinic: (clinicId: string) => Promise<void>;
 
-  doctors: User[];
+  doctors: Doctor[];
+  doctorsLoading: boolean;
+  doctorsError: string | null;
   invitations: DoctorInvitation[];
-  inviteDoctor: (email: string, specialization: string, clinicId?: string) => DoctorInvitation;
+  inviteDoctor: (clinicId: string, email: string) => Promise<{ message: string }>;
+  refetchDoctors: () => Promise<void>;
   resendInvite: (invitationId: string) => void;
   acceptInvite: (
     token: string,
     doctorData: {
       first_name: string;
       last_name: string;
-      password?: string;
-      specialization?: string;
-      license_number?: string;
+      phone: string;
+      password: string;
+      specialization: string;
+      license_number: string;
     }
-  ) => { success: boolean; error?: string };
-  deactivateDoctor: (doctorId: string) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
+  activateDoctor: (clinicId: string, doctorId: string) => Promise<void>;
+  deactivateDoctor: (clinicId: string, doctorId: string) => Promise<void>;
 
   patients: Patient[];
   lookupPatientExact: (query: string) => Patient | null;
@@ -168,60 +175,7 @@ const DEFAULT_CLINICS: Clinic[] = [
   },
 ];
 
-const DEFAULT_DOCTORS: User[] = [
-  {
-    id: 'doc_angela',
-    email: 'dr.angela@afyahorizon.co.ke',
-    first_name: 'Angela',
-    last_name: 'Mwangi',
-    role: 'doctor',
-    clinic_id: 'cln_horizon',
-    phone: '+254 720 112 233',
-    specialization: 'Internal Medicine & Cardiology',
-    license_number: 'KMPDC-56421',
-    doctor_status: 'active',
-    created_at: '2025-01-20T10:00:00Z',
-  },
-  {
-    id: 'doc_david',
-    email: 'dr.david@afyahorizon.co.ke',
-    first_name: 'David',
-    last_name: 'Ochieng',
-    role: 'doctor',
-    clinic_id: 'cln_horizon',
-    phone: '+254 722 998 877',
-    specialization: 'General Practice & Pediatrics',
-    license_number: 'KMPDC-74190',
-    doctor_status: 'active',
-    created_at: '2025-02-01T08:30:00Z',
-  },
-  {
-    id: 'doc_samuel',
-    email: 'dr.samuel@afyahorizon.co.ke',
-    first_name: 'Samuel',
-    last_name: 'Kiptoo',
-    role: 'doctor',
-    clinic_id: 'cln_horizon',
-    phone: '+254 733 445 566',
-    specialization: 'Pulmonology',
-    license_number: 'KMPDC-91204',
-    doctor_status: 'deactivated',
-    created_at: '2025-01-28T14:00:00Z',
-  },
-  {
-    id: 'doc_sarah_w',
-    email: 'dr.sarah@kilimaniwellness.ke',
-    first_name: 'Sarah',
-    last_name: 'Wanjiku',
-    role: 'doctor',
-    clinic_id: 'cln_kilimani',
-    phone: '+254 715 678 901',
-    specialization: 'Family Medicine & Endocrinology',
-    license_number: 'KMPDC-83412',
-    doctor_status: 'active',
-    created_at: '2025-02-05T09:15:00Z',
-  },
-];
+const DEFAULT_DOCTORS: Doctor[] = [];
 
 const DEFAULT_INVITATIONS: DoctorInvitation[] = [
   {
@@ -492,7 +446,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [clinicsLoading, setClinicsLoading] = useState(true);
   const [clinicsError, setClinicsError] = useState<string | null>(null);
-  const [doctors, setDoctors] = useState<User[]>(DEFAULT_DOCTORS);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorsLoading, setDoctorsLoading] = useState(true);
+  const [doctorsError, setDoctorsError] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<DoctorInvitation[]>(DEFAULT_INVITATIONS);
   const [patients, setPatients] = useState<Patient[]>(DEFAULT_PATIENTS);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>(DEFAULT_ACCESS_REQUESTS);
@@ -521,6 +477,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Only super_admins should fetch all clinics
+    if (currentRole !== 'super_admin') {
+      // Use a different approach - update state in the next tick
+      Promise.resolve().then(() => setClinicsLoading(false));
+      return;
+    }
+
     getClinics()
       .then((data) =>
         setClinics(
@@ -535,7 +498,92 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       .catch((err) => setClinicsError(err.message || 'Failed to load clinics'))
       .finally(() => setClinicsLoading(false));
-  }, []);
+  }, [currentRole]);
+
+  // Compute activeClinic
+  // For clinic_admin/doctor: use currentUser.clinic_id directly (don't need to fetch all clinics)
+  // For super_admin: find from the clinics list
+  const activeClinic: Clinic = currentRole === 'super_admin'
+    ? (clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0] || {
+        id: '',
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        status: 'active' as const,
+        created_at: '',
+        admin_name: '',
+        admin_email: '',
+        total_doctors: 0,
+        active_grants_count: 0,
+      })
+    : (currentUser?.clinic_id
+        ? {
+            id: currentUser.clinic_id,
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            status: 'active' as const,
+            created_at: '',
+            admin_name: '',
+            admin_email: '',
+            total_doctors: 0,
+            active_grants_count: 0,
+          }
+        : {
+            id: '',
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            status: 'active' as const,
+            created_at: '',
+            admin_name: '',
+            admin_email: '',
+            total_doctors: 0,
+            active_grants_count: 0,
+          });
+
+  console.log('[Store] Active clinic computed:', {
+    currentRole,
+    currentUserClinicId: currentUser?.clinic_id,
+    clinicsCount: clinics.length,
+    activeClinicId: activeClinic.id,
+    activeClinicName: activeClinic.name,
+  });
+
+  // Fetch doctors when activeClinic changes
+  useEffect(() => {
+    if (!activeClinic.id) {
+      console.log('[Store] Skipping doctors fetch - no activeClinic.id yet', {
+        activeClinicId: activeClinic.id,
+        currentUserId: currentUser?.id,
+        currentUserClinicId: currentUser?.clinic_id,
+        isAuthReady,
+      });
+      return;
+    }
+    
+    console.log('[Store] Fetching doctors for clinic:', activeClinic.id);
+    setDoctorsLoading(true);
+    setDoctorsError(null);
+    getDoctors(activeClinic.id)
+      .then((data) => {
+        console.log('[Store] Raw API response - doctors:', data);
+        console.log('[Store] Doctors fetched successfully:', data.length, 'doctors', data);
+        console.log('[Store] Doctor sample:', data[0]);
+        setDoctors(data);
+      })
+      .catch((err) => {
+        console.error('[Store] Failed to fetch doctors:', err);
+        const message = err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'Failed to load doctors';
+        setDoctorsError(message);
+      })
+      .finally(() => setDoctorsLoading(false));
+  }, [activeClinic.id, currentUser?.clinic_id, currentUser?.id, isAuthReady]);
 
   // Save changes to LocalStorage
   const persistState = (overrides: Partial<Record<string, unknown>> = {}) => {
@@ -580,31 +628,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     persistState({ activeView: view, viewParams: params });
   };
 
-  const createClinic = (clinicData: {
+  const createClinic = async (clinicData: {
     name: string;
     email: string;
     phone: string;
     address: string;
-    admin_name: string;
-    admin_password?: string;
-  }): Clinic => {
-    const newId = `cln_${Date.now().toString(36)}`;
+    admin_first_name: string;
+    admin_last_name: string;
+  }): Promise<Clinic> => {
+    const apiClinic = await apiCreateClinic(clinicData);
+    
+    // Extend the API clinic with additional display fields
     const newClinic: Clinic = {
-      id: newId,
-      name: clinicData.name,
-      email: clinicData.email,
-      phone: clinicData.phone,
-      address: clinicData.address,
-      status: 'active',
-      admin_name: clinicData.admin_name,
-      admin_email: clinicData.email,
-      created_at: new Date().toISOString(),
+      ...apiClinic,
+      admin_name: `${clinicData.admin_first_name} ${clinicData.admin_last_name}`,
+      admin_email: apiClinic.email,
       total_doctors: 0,
       active_grants_count: 0,
     };
-    const updated = [newClinic, ...clinics];
-    setClinics(updated);
-    persistState({ clinics: updated });
+    
+    setClinics((prev) => [newClinic, ...prev]);
     return newClinic;
   };
 
@@ -628,23 +671,41 @@ const deactivateClinic = async (clinicId: string) => {
   }
 };
   // Clinic Actions - Doctors & Invitations
-  const inviteDoctor = (email: string, specialization: string, clinicId = 'cln_horizon'): DoctorInvitation => {
-    const currentClinic = clinics.find((c) => c.id === clinicId) || clinics[0];
-    const newInvitation: DoctorInvitation = {
-      id: `inv_${Date.now().toString(36)}`,
-      clinic_id: currentClinic.id,
-      clinic_name: currentClinic.name,
-      email,
-      specialization: specialization || 'General Medicine',
-      token: `inv_afya_${Math.random().toString(36).substring(2, 10)}`,
-      status: 'pending',
-      expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-      created_at: new Date().toISOString(),
-    };
-    const updated = [newInvitation, ...invitations];
-    setInvitations(updated);
-    persistState({ invitations: updated });
-    return newInvitation;
+  const inviteDoctor = async (clinicId: string, email: string): Promise<{ message: string }> => {
+    try {
+      const result = await apiInviteDoctor(clinicId, email);
+      // Note: Backend doesn't return the full invitation object, just a confirmation message.
+      // The invitation list would need to be refetched from a GET endpoint if we want to display it.
+      return result;
+    } catch (err) {
+      const message = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : 'Failed to invite doctor';
+      setDoctorsError(message);
+      throw err;
+    }
+  };
+
+  const refetchDoctors = async () => {
+    if (!activeClinic.id) return;
+    
+    console.log('[Store] Refetching doctors for clinic:', activeClinic.id);
+    setDoctorsLoading(true);
+    setDoctorsError(null);
+    
+    try {
+      const data = await getDoctors(activeClinic.id);
+      console.log('[Store] Doctors refetched successfully:', data.length, 'doctors', data);
+      setDoctors(data);
+    } catch (err) {
+      console.error('[Store] Failed to refetch doctors:', err);
+      const message = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : 'Failed to load doctors';
+      setDoctorsError(message);
+    } finally {
+      setDoctorsLoading(false);
+    }
   };
 
   const resendInvite = (invitationId: string) => {
@@ -663,62 +724,59 @@ const deactivateClinic = async (clinicId: string) => {
     persistState({ invitations: updated });
   };
 
-  const acceptInvite = (
+  const acceptInvite = async (
     token: string,
     doctorData: {
       first_name: string;
       last_name: string;
-      password?: string;
-      specialization?: string;
-      license_number?: string;
+      phone: string;
+      password: string;
+      license_number: string;
+      specialization: string;
     }
-  ): { success: boolean; error?: string } => {
-    const invite = invitations.find((inv) => inv.token === token);
-    if (!invite) return { success: false, error: 'Invalid invite token.' };
-    if (new Date(invite.expires_at).getTime() < Date.now() || invite.status === 'expired') {
-      return { success: false, error: 'This invite has expired.' };
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const newDoctor = await apiAcceptInvitation(token, doctorData);
+      setDoctors((prev) => [...prev, newDoctor]);
+      return { success: true };
+    } catch (err) {
+      const message = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : 'Failed to accept invitation';
+      return { success: false, error: message };
     }
-    if (invite.status === 'accepted') {
-      return { success: false, error: 'This invite has already been accepted.' };
-    }
-
-    const newDoctor: User = {
-      id: `doc_${Date.now().toString(36)}`,
-      email: invite.email,
-      first_name: doctorData.first_name,
-      last_name: doctorData.last_name,
-      role: 'doctor',
-      clinic_id: invite.clinic_id,
-      phone: '+254 700 000 000',
-      specialization: doctorData.specialization || invite.specialization || 'General Practice',
-      license_number: doctorData.license_number || `KMPDC-${Math.floor(10000 + Math.random() * 90000)}`,
-      doctor_status: 'active',
-      created_at: new Date().toISOString(),
-    };
-
-    const updatedDoctors = [...doctors, newDoctor];
-    const updatedInvitations = invitations.map((inv) =>
-      inv.id === invite.id ? { ...inv, status: 'accepted' as const } : inv
-    );
-    const updatedClinics = clinics.map((c) =>
-      c.id === invite.clinic_id ? { ...c, total_doctors: c.total_doctors + 1 } : c
-    );
-
-    setDoctors(updatedDoctors);
-    setInvitations(updatedInvitations);
-    setClinics(updatedClinics);
-    persistState({ doctors: updatedDoctors, invitations: updatedInvitations, clinics: updatedClinics });
-    return { success: true };
   };
 
-  const deactivateDoctor = (doctorId: string) => {
-    const updated = doctors.map((d) =>
-      d.id === doctorId
-        ? { ...d, doctor_status: (d.doctor_status === 'active' ? 'deactivated' : 'active') as 'active' | 'deactivated' }
-        : d
-    );
-    setDoctors(updated);
-    persistState({ doctors: updated });
+  const activateDoctor = async (clinicId: string, doctorId: string) => {
+    try {
+      console.log('[Store] Activating doctor:', { clinicId, doctorId });
+      await apiActivateDoctor(clinicId, doctorId);
+      setDoctors((prev) => prev.map((d) => (d.id === doctorId ? { ...d, doctor_status: 'active' as const } : d)));
+      console.log('[Store] Doctor activated successfully');
+    } catch (err) {
+      console.error('[Store] Failed to activate doctor:', err);
+      const message = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : 'Failed to activate doctor';
+      setDoctorsError(message);
+      throw err;
+    }
+  };
+
+  const deactivateDoctor = async (clinicId: string, doctorId: string) => {
+    try {
+      console.log('[Store] Deactivating doctor:', { clinicId, doctorId });
+      await apiDeactivateDoctor(clinicId, doctorId);
+      setDoctors((prev) => prev.map((d) => (d.id === doctorId ? { ...d, doctor_status: 'deactivated' as const } : d)));
+      console.log('[Store] Doctor deactivated successfully');
+    } catch (err) {
+      console.error('[Store] Failed to deactivate doctor:', err);
+      const message = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : 'Failed to deactivate doctor';
+      setDoctorsError(message);
+      throw err;
+    }
   };
 
   const lookupPatientExact = (query: string): Patient | null => {
@@ -1075,15 +1133,7 @@ const deactivateClinic = async (clinicId: string) => {
         login,
         logout,
         setCurrentRole,
-        activeClinic: clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0] || {
-          id: '',
-          name: '',
-          email: '',
-          phone: '',
-          address: '',
-          status: 'active' as const,
-          created_at: '',
-        },
+        activeClinic,
         activeView,
         setActiveView,
         viewParams,
@@ -1095,10 +1145,14 @@ const deactivateClinic = async (clinicId: string) => {
         activateClinic,
         deactivateClinic,
         doctors,
+        doctorsLoading,
+        doctorsError,
         invitations,
         inviteDoctor,
+        refetchDoctors,
         resendInvite,
         acceptInvite,
+        activateDoctor,
         deactivateDoctor,
         patients,
         lookupPatientExact,
