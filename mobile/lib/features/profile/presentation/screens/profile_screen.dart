@@ -698,7 +698,7 @@ class _ProfileViewState extends State<_ProfileView> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(.05),
+                color: Colors.black.withValues(alpha: .05),
                 blurRadius: 10,
                 spreadRadius: 2,
               ),
@@ -756,7 +756,7 @@ class _ProfileViewState extends State<_ProfileView> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.02),
+            color: Colors.black.withValues(alpha: .02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -861,7 +861,7 @@ class _ProfileViewState extends State<_ProfileView> {
         const SizedBox(height: 12),
 
         DropdownButtonFormField<String>(
-          value: _validGenderValue(),
+  initialValue: _validGenderValue(),
           decoration: const InputDecoration(
             labelText: 'Biological Sex',
             border: OutlineInputBorder(),
@@ -1091,7 +1091,7 @@ class _ProfileViewState extends State<_ProfileView> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(.02),
+            color: Colors.black.withValues(alpha: .02),
             blurRadius: 10,
           ),
         ],
@@ -1199,11 +1199,11 @@ class _ProfileViewState extends State<_ProfileView> {
         ),
 
         Switch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: Colors.white,
-          activeTrackColor: primaryGreen,
-        ),
+  value: value,
+  onChanged: onChanged,
+  thumbColor: const WidgetStatePropertyAll(Colors.white),
+  trackColor: const WidgetStatePropertyAll(primaryGreen),
+),
       ],
     );
   }

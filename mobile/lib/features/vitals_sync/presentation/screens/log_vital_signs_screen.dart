@@ -881,11 +881,11 @@ class PrescriptionDetailScreen
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: _getStatusColor()
-                        .withOpacity(0.15),
-                    borderRadius:
-                        BorderRadius.circular(20),
-                  ),
+  color: _getStatusColor()
+      .withValues(alpha: 0.15),
+  borderRadius:
+      BorderRadius.circular(20),
+),
                   child: Text(
                     status.toUpperCase(),
                     style: TextStyle(

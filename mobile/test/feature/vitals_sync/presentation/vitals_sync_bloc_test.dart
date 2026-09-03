@@ -117,9 +117,9 @@ void main() {
     },
     expect: () => [
       VitalsSyncing(),
-      VitalsSynced(
-        uploaded: 3,
-      ),
+      const VitalsSynced(
+  uploaded: 3,
+),
     ],
   );
 }

@@ -16,9 +16,8 @@ import '../../features/clinical_history/presentation/cubit/appointments_cubit.da
 import '../../features/clinical_history/presentation/cubit/encounter_detail_cubit.dart';
 import '../../features/clinical_history/presentation/screens/appointments_screen.dart';
 import '../../features/clinical_history/presentation/screens/encounter_detail_screen.dart';
-import '../../features/clinical_history/presentation/screens/history_timeline_screen.dart';
-
-
+import '../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
+import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../view/app_shell.dart';
 import '../view/placeholder_screens.dart';
 import 'route_paths.dart';

@@ -46,7 +46,7 @@ class VitalsSynced extends VitalsSyncState {
 class VitalsPendingLoaded extends VitalsSyncState {
   final List<VitalSignEntity> vitals;
 
-  VitalsPendingLoaded(this.vitals);
+  const VitalsPendingLoaded(this.vitals);
 
   @override
   List<Object?> get props => [vitals];
@@ -56,7 +56,7 @@ class VitalsPendingLoaded extends VitalsSyncState {
 class VitalsHistoryLoaded extends VitalsSyncState {
   final List<VitalSignEntity> history;
 
-  VitalsHistoryLoaded(this.history);
+  const VitalsHistoryLoaded(this.history);
 
   @override
   List<Object?> get props => [history];
@@ -66,7 +66,7 @@ class VitalsHistoryLoaded extends VitalsSyncState {
 class VitalsError extends VitalsSyncState {
   final String message;
 
-  VitalsError(this.message);
+  const VitalsError(this.message);
 
   @override
   List<Object?> get props => [message];

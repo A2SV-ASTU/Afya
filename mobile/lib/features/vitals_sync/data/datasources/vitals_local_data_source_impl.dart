@@ -4,6 +4,7 @@ import 'package:injectable/injectable.dart';
 import '../../../../core/constants/app_keys.dart';
 import '../models/vital_sign_model.dart';
 import 'vitals_local_data_source.dart';
+import 'package:flutter/foundation.dart';
 
 @LazySingleton(as: VitalsLocalDataSource)
 class VitalsLocalDataSourceImpl implements VitalsLocalDataSource {
@@ -18,7 +19,7 @@ class VitalsLocalDataSourceImpl implements VitalsLocalDataSource {
       vital.clientId,
       vital.toJson(),
     );
-    print('Hive saved vital ${vital.clientId}');
+    debugPrint('Hive saved vital ${vital.clientId}');
   }
 
   @override
