@@ -1,5 +1,7 @@
 import '../../features/vitals_sync/presentation/bloc/vitals_sync_bloc.dart';
 import '../../features/vitals_sync/presentation/screens/vitals_history_screen.dart';
+import '../../features/chat/presentation/cubit/chat_cubit.dart';
+import '../../features/chat/presentation/screens/chat_screen.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -126,7 +128,10 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: RoutePaths.chat,
-                builder: (context, state) => const ChatPlaceholderScreen(),
+                builder: (context, state) => BlocProvider(
+                  create: (context) => sl<ChatCubit>()..loadHistory(),
+                  child: const ChatScreen(),
+                ),
               ),
             ],
           ),

@@ -13,4 +13,6 @@ class AppKeys {
   static const String adherenceHistoryBox = 'adherence_history_box';
   static const String clinicalHistoryCacheBox =
     'clinical_history_cache_box';
+  static const String chatHistoryBox = 'chat_history_box';
 }
+

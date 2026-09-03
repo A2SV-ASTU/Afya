@@ -12,6 +12,7 @@ class LocalDatabaseService {
       Hive.openBox(AppKeys.medicationScheduleBox),
       Hive.openBox(AppKeys.adherenceHistoryBox),
       Hive.openBox(AppKeys.clinicalHistoryCacheBox),
+      Hive.openBox(AppKeys.chatHistoryBox),
     ]);
   }
 
@@ -24,6 +25,7 @@ class LocalDatabaseService {
       Hive.box(AppKeys.medicationScheduleBox).clear(),
       Hive.box(AppKeys.adherenceHistoryBox).clear(),
       Hive.box(AppKeys.clinicalHistoryCacheBox).clear(),
+      Hive.box(AppKeys.chatHistoryBox).clear(),
     ]);
   }
 }
