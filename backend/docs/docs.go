@@ -3240,9 +3240,13 @@ const docTemplate = `{
                     "example": "O+"
                 },
                 "clinic_id": {
-                    "description": "Doctor specific fields (nullable)",
+                    "description": "Doctor / Clinic Admin specific fields (nullable)",
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "clinic_status": {
+                    "type": "string",
+                    "example": "active"
                 },
                 "created_at": {
                     "type": "string"
@@ -4772,9 +4776,13 @@ const docTemplate = `{
                     "example": "O+"
                 },
                 "clinic_id": {
-                    "description": "Doctor specific fields (nullable)",
+                    "description": "Doctor / Clinic Admin specific fields (nullable)",
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "clinic_status": {
+                    "type": "string",
+                    "example": "active"
                 },
                 "created_at": {
                     "type": "string"

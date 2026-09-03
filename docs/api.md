@@ -149,7 +149,7 @@ All error responses adhere to a consistent error schema:
 *(Or use `"phone": "+254712345678"` instead of email).*
 
 #### Responses
-- **200 OK**:
+- **200 OK** (Patient Example):
 ```json
 {
   "data": {
@@ -160,6 +160,25 @@ All error responses adhere to a consistent error schema:
       "role": "patient",
       "phone": "+254712345678",
       "email": "jane.doe@example.com",
+      "created_at": "2026-08-27T12:00:00Z",
+      "updated_at": "2026-08-27T12:00:00Z"
+    }
+  }
+}
+```
+- **200 OK** (Clinic Admin / Doctor Example):
+```json
+{
+  "data": {
+    "user": {
+      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+      "first_name": "Dr. Sarah",
+      "last_name": "Smith",
+      "role": "clinic_admin",
+      "phone": "+254700112233",
+      "email": "admin@afyaclinic.com",
+      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "clinic_status": "active",
       "created_at": "2026-08-27T12:00:00Z",
       "updated_at": "2026-08-27T12:00:00Z"
     }

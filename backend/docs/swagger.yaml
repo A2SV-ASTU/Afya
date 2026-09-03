@@ -58,8 +58,11 @@ definitions:
         example: O+
         type: string
       clinic_id:
-        description: Doctor specific fields (nullable)
+        description: Doctor / Clinic Admin specific fields (nullable)
         example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
+      clinic_status:
+        example: active
         type: string
       created_at:
         type: string
@@ -1155,8 +1158,11 @@ definitions:
         example: O+
         type: string
       clinic_id:
-        description: Doctor specific fields (nullable)
+        description: Doctor / Clinic Admin specific fields (nullable)
         example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
+      clinic_status:
+        example: active
         type: string
       created_at:
         type: string
