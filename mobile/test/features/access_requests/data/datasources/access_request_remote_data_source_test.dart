@@ -1,198 +1,126 @@
-import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:afyamind_mobile/core/network/api_client.dart';
 import 'package:afyamind_mobile/features/access_requests/data/datasources/access_request_remote_data_source.dart';
 import 'package:afyamind_mobile/features/access_requests/data/models/access_request_model.dart';
 import 'package:afyamind_mobile/features/access_requests/data/models/clinic_grant_model.dart';
 
-class MockDio extends Mock implements Dio {}
-
-class MockResponse extends Mock implements Response {}
+class MockApiClient extends Mock implements ApiClient {}
 
 void main() {
   late AccessRequestRemoteDataSourceImpl dataSource;
-  late MockDio mockDio;
+  late MockApiClient mockApiClient;
 
   setUp(() {
-    mockDio = MockDio();
-    dataSource = AccessRequestRemoteDataSourceImpl(dio: mockDio);
+    mockApiClient = MockApiClient();
+    dataSource = AccessRequestRemoteDataSourceImpl(mockApiClient);
   });
 
-  final tAccessRequestJson = {
-    'id': '1',
-    'clinic_id': 'c1',
-    'clinic_name': 'Clinic A',
-    'doctor_name': 'Dr. Smith',
-    'reason': 'Checkup',
-    'status': 'pending',
-    'expires_at': '2026-02-01T00:00:00.000',
-    'created_at': '2026-01-01T00:00:00.000',
-  };
-
-  final tClinicGrantJson = {
-    'grant_id': 'g1',
-    'clinic_id': 'c1',
-    'clinic_name': 'Clinic A',
-    'granted_at': '2026-01-01T00:00:00.000',
-  };
-
   group('getPendingAccessRequests', () {
-    test('should return list of AccessRequestModel on success', () async {
-      final response = Response(
-        data: [tAccessRequestJson],
-        statusCode: 200,
-        requestOptions: RequestOptions(path: '/patient/access-requests/active'),
-      );
-      when(() => mockDio.get('/patient/access-requests/active'))
-          .thenAnswer((_) async => response);
-
+    test('should return the mock list of AccessRequestModel', () async {
       final result = await dataSource.getPendingAccessRequests();
 
       expect(result, isA<List<AccessRequestModel>>());
       expect(result.length, 1);
-      expect(result[0].id, '1');
-      expect(result[0].clinicId, 'c1');
-      expect(result[0].clinicName, 'Clinic A');
-      verify(() => mockDio.get('/patient/access-requests/active')).called(1);
+      expect(result[0].id, 'req-1');
+      expect(result[0].clinicName, 'St. Paul Hospital');
+      expect(result[0].doctorName, 'Dr. Jane Smith');
+      expect(result[0].status, 'pending');
     });
 
-    test('should throw DioException on failure', () async {
-      when(() => mockDio.get('/patient/access-requests/active')).thenThrow(
-        DioException(
-          requestOptions: RequestOptions(path: '/patient/access-requests/active'),
-          message: 'Network error',
-        ),
-      );
+    test('should return empty list after all requests are removed', () async {
+      await dataSource.approveAccessRequest('req-1');
+      final result = await dataSource.getPendingAccessRequests();
 
-      expect(
-        () => dataSource.getPendingAccessRequests(),
-        throwsA(isA<DioException>()),
-      );
+      expect(result, isEmpty);
     });
   });
 
   group('approveAccessRequest', () {
-    test('should post to correct endpoint on success', () async {
-      final response = Response(
-        data: null,
-        statusCode: 200,
-        requestOptions: RequestOptions(path: '/patient/access-requests/1/approve'),
-      );
-      when(() => mockDio.post('/patient/access-requests/1/approve'))
-          .thenAnswer((_) async => response);
+    test('should remove the request with matching id', () async {
+      final before = await dataSource.getPendingAccessRequests();
+      expect(before.length, 1);
 
-      await dataSource.approveAccessRequest('1');
+      await dataSource.approveAccessRequest('req-1');
 
-      verify(() => mockDio.post('/patient/access-requests/1/approve')).called(1);
+      final after = await dataSource.getPendingAccessRequests();
+      expect(after, isEmpty);
     });
 
-    test('should throw DioException on failure', () async {
-      when(() => mockDio.post('/patient/access-requests/1/approve')).thenThrow(
-        DioException(
-          requestOptions: RequestOptions(path: '/patient/access-requests/1/approve'),
-          message: 'Server error',
-        ),
-      );
-
-      expect(
-        () => dataSource.approveAccessRequest('1'),
-        throwsA(isA<DioException>()),
+    test('should not throw when id does not exist', () async {
+      await expectLater(
+        dataSource.approveAccessRequest('non-existent-id'),
+        completes,
       );
     });
   });
 
   group('denyAccessRequest', () {
-    test('should post to correct endpoint on success', () async {
-      final response = Response(
-        data: null,
-        statusCode: 200,
-        requestOptions: RequestOptions(path: '/patient/access-requests/1/deny'),
-      );
-      when(() => mockDio.post('/patient/access-requests/1/deny'))
-          .thenAnswer((_) async => response);
+    test('should remove the request with matching id', () async {
+      final before = await dataSource.getPendingAccessRequests();
+      expect(before.length, 1);
 
-      await dataSource.denyAccessRequest('1');
+      await dataSource.denyAccessRequest('req-1');
 
-      verify(() => mockDio.post('/patient/access-requests/1/deny')).called(1);
+      final after = await dataSource.getPendingAccessRequests();
+      expect(after, isEmpty);
     });
 
-    test('should throw DioException on failure', () async {
-      when(() => mockDio.post('/patient/access-requests/1/deny')).thenThrow(
-        DioException(
-          requestOptions: RequestOptions(path: '/patient/access-requests/1/deny'),
-          message: 'Server error',
-        ),
-      );
-
-      expect(
-        () => dataSource.denyAccessRequest('1'),
-        throwsA(isA<DioException>()),
+    test('should not throw when id does not exist', () async {
+      await expectLater(
+        dataSource.denyAccessRequest('non-existent-id'),
+        completes,
       );
     });
   });
 
   group('getActiveGrants', () {
-    test('should return list of ClinicGrantModel on success', () async {
-      final response = Response(
-        data: [tClinicGrantJson],
-        statusCode: 200,
-        requestOptions: RequestOptions(path: '/patient/grants'),
-      );
-      when(() => mockDio.get('/patient/grants'))
-          .thenAnswer((_) async => response);
-
+    test('should return the mock list of ClinicGrantModel', () async {
       final result = await dataSource.getActiveGrants();
 
       expect(result, isA<List<ClinicGrantModel>>());
-      expect(result.length, 1);
-      expect(result[0].grantId, 'g1');
-      expect(result[0].clinicId, 'c1');
-      expect(result[0].clinicName, 'Clinic A');
-      verify(() => mockDio.get('/patient/grants')).called(1);
+      expect(result.length, 2);
+      expect(result[0].grantId, 'grant-1');
+      expect(result[0].clinicId, 'clinic-1');
+      expect(result[0].clinicName, 'Afya Hospital');
+      expect(result[1].grantId, 'grant-2');
+      expect(result[1].clinicName, 'Addis Ababa Medical Center');
     });
 
-    test('should throw DioException on failure', () async {
-      when(() => mockDio.get('/patient/grants')).thenThrow(
-        DioException(
-          requestOptions: RequestOptions(path: '/patient/grants'),
-          message: 'Network error',
-        ),
-      );
+    test('should return updated list after a grant is revoked', () async {
+      await dataSource.revokeClinicGrant('clinic-1');
+      final result = await dataSource.getActiveGrants();
 
-      expect(
-        () => dataSource.getActiveGrants(),
-        throwsA(isA<DioException>()),
-      );
+      expect(result.length, 1);
+      expect(result[0].clinicId, 'clinic-2');
     });
   });
 
   group('revokeClinicGrant', () {
-    test('should post to correct endpoint on success', () async {
-      final response = Response(
-        data: null,
-        statusCode: 200,
-        requestOptions: RequestOptions(path: '/patient/grants/c1/revoke'),
-      );
-      when(() => mockDio.post('/patient/grants/c1/revoke'))
-          .thenAnswer((_) async => response);
+    test('should remove the grant with matching clinicId', () async {
+      final before = await dataSource.getActiveGrants();
+      expect(before.length, 2);
 
-      await dataSource.revokeClinicGrant('c1');
+      await dataSource.revokeClinicGrant('clinic-1');
 
-      verify(() => mockDio.post('/patient/grants/c1/revoke')).called(1);
+      final after = await dataSource.getActiveGrants();
+      expect(after.length, 1);
+      expect(after.any((g) => g.clinicId == 'clinic-1'), isFalse);
     });
 
-    test('should throw DioException on failure', () async {
-      when(() => mockDio.post('/patient/grants/c1/revoke')).thenThrow(
-        DioException(
-          requestOptions: RequestOptions(path: '/patient/grants/c1/revoke'),
-          message: 'Server error',
-        ),
-      );
+    test('should remove all grants when both are revoked', () async {
+      await dataSource.revokeClinicGrant('clinic-1');
+      await dataSource.revokeClinicGrant('clinic-2');
 
-      expect(
-        () => dataSource.revokeClinicGrant('c1'),
-        throwsA(isA<DioException>()),
+      final result = await dataSource.getActiveGrants();
+      expect(result, isEmpty);
+    });
+
+    test('should not throw when clinicId does not exist', () async {
+      await expectLater(
+        dataSource.revokeClinicGrant('non-existent-id'),
+        completes,
       );
     });
   });

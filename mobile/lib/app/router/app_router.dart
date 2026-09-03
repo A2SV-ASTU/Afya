@@ -16,6 +16,8 @@ import '../../features/clinical_history/presentation/cubit/appointments_cubit.da
 import '../../features/clinical_history/presentation/cubit/encounter_detail_cubit.dart';
 import '../../features/clinical_history/presentation/screens/appointments_screen.dart';
 import '../../features/clinical_history/presentation/screens/encounter_detail_screen.dart';
+import '../../features/access_requests/presentation/screens/clinic_grants_screen.dart';
+import '../../features/access_requests/presentation/screens/pending_access_requests_screen.dart';
 import '../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
 import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../view/app_shell.dart';
@@ -143,6 +145,16 @@ class AppRouter {
               GoRoute(
                 path: RoutePaths.profile,
                 builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'active-grants',
+                    builder: (context, state) => const ClinicGrantsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'pending-access-requests',
+                    builder: (context, state) => const PendingAccessRequestsScreen(),
+                  ),
+                ],
               ),
             ],
           ),

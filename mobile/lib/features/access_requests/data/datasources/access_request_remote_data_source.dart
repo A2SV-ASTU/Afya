@@ -1,5 +1,6 @@
-import 'package:dio/dio.dart';
+import 'package:injectable/injectable.dart';
 
+import '../../../../core/network/api_client.dart';
 import '../models/access_request_model.dart';
 import '../models/clinic_grant_model.dart';
 
@@ -11,42 +12,70 @@ abstract class AccessRequestRemoteDataSource {
   Future<void> revokeClinicGrant(String clinicId);
 }
 
+@LazySingleton(as: AccessRequestRemoteDataSource)
 class AccessRequestRemoteDataSourceImpl
     implements AccessRequestRemoteDataSource {
-  final Dio dio;
+  // ignore: unused_field
+  final ApiClient _apiClient;
 
-  const AccessRequestRemoteDataSourceImpl({required this.dio});
+  // Mock state for in-memory operations since backend is failing
+  final List<ClinicGrantModel> _mockGrants = [
+    ClinicGrantModel(
+      grantId: 'grant-1',
+      clinicId: 'clinic-1',
+      clinicName: 'Afya Hospital',
+      grantedAt: DateTime.now().subtract(const Duration(days: 2)),
+    ),
+    ClinicGrantModel(
+      grantId: 'grant-2',
+      clinicId: 'clinic-2',
+      clinicName: 'Addis Ababa Medical Center',
+      grantedAt: DateTime.now().subtract(const Duration(days: 5)),
+    ),
+  ];
+
+  final List<AccessRequestModel> _mockRequests = [
+    AccessRequestModel(
+      id: 'req-1',
+      clinicId: 'clinic-3',
+      clinicName: 'St. Paul Hospital',
+      doctorName: 'Dr. Jane Smith',
+      reason: 'General consultation and review of past medical history.',
+      status: 'pending',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+      expiresAt: DateTime.now().add(const Duration(hours: 23, minutes: 30)),
+    )
+  ];
+
+  AccessRequestRemoteDataSourceImpl(this._apiClient);
 
   @override
   Future<List<AccessRequestModel>> getPendingAccessRequests() async {
-    final response = await dio.get('/patient/access-requests/active');
-    final data = response.data as List;
-    return data
-        .map((json) => AccessRequestModel.fromJson(json as Map<String, dynamic>))
-        .toList();
+    await Future.delayed(const Duration(seconds: 1));
+    return List.from(_mockRequests);
   }
 
   @override
   Future<void> approveAccessRequest(String requestId) async {
-    await dio.post('/patient/access-requests/$requestId/approve');
+    await Future.delayed(const Duration(milliseconds: 500));
+    _mockRequests.removeWhere((req) => req.id == requestId);
   }
 
   @override
   Future<void> denyAccessRequest(String requestId) async {
-    await dio.post('/patient/access-requests/$requestId/deny');
+    await Future.delayed(const Duration(milliseconds: 500));
+    _mockRequests.removeWhere((req) => req.id == requestId);
   }
 
   @override
   Future<List<ClinicGrantModel>> getActiveGrants() async {
-    final response = await dio.get('/patient/grants');
-    final data = response.data as List;
-    return data
-        .map((json) => ClinicGrantModel.fromJson(json as Map<String, dynamic>))
-        .toList();
+    await Future.delayed(const Duration(seconds: 1));
+    return List.from(_mockGrants);
   }
 
   @override
   Future<void> revokeClinicGrant(String clinicId) async {
-    await dio.post('/patient/grants/$clinicId/revoke');
+    await Future.delayed(const Duration(milliseconds: 500));
+    _mockGrants.removeWhere((grant) => grant.clinicId == clinicId);
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 import '../constants/api_endpoints.dart';
 import '../storage/cookie_storage_service.dart';
@@ -19,7 +20,7 @@ class AppCookieInterceptor extends Interceptor {
   ) async {
     final jar = await cookieService.cookieJar;
     final cookies = await jar.loadForRequest(options.uri);
-    
+
     final cookieHeader = cookies
         .where((cookie) => cookie.expires == null || cookie.expires!.isAfter(DateTime.now()))
         .map((cookie) => '${cookie.name}=${cookie.value}')
@@ -77,10 +78,13 @@ class ApiClient {
               'Content-Type': 'application/json',
               'Accept': 'application/json',
             },
+            extra: {'withCredentials': true},
           ),
         ) {
-    dio.interceptors.add(AppCookieInterceptor(cookieStorageService));
-    dio.interceptors.add(AuthCookieInterceptor(dio: dio, cookieService: cookieStorageService));
+    if (!kIsWeb) {
+      dio.interceptors.add(AppCookieInterceptor(cookieStorageService));
+      dio.interceptors.add(AuthCookieInterceptor(dio: dio, cookieService: cookieStorageService));
+    }
     dio.interceptors.add(ErrorInterceptor());
   }
 }

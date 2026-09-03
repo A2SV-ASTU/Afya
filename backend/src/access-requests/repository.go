@@ -18,6 +18,9 @@ type Repository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*AccessRequest, error)
 	FindByTokenHash(ctx context.Context, tokenHash string) (*AccessRequest, error)
 	ListByClinicID(ctx context.Context, clinicID uuid.UUID, status string) ([]*AccessRequest, error)
+	ListPendingByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
+	ListActiveGrantsByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
+	RevokeByPatientAndClinic(ctx context.Context, patientID, clinicID uuid.UUID) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
 	Revoke(ctx context.Context, id uuid.UUID) error
 	FindActiveGrant(ctx context.Context, clinicID, patientID uuid.UUID) (*AccessRequest, error)
@@ -189,4 +192,94 @@ func (r *repository) MarkExpired(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("failed to mark expired access requests: %w", err)
 	}
 	return res.RowsAffected()
+}
+
+func (r *repository) ListPendingByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error) {
+	query := `
+		SELECT ar.id, ar.patient_id, ar.requesting_clinic_id, ar.reason, ar.submitted_by_doctor_id,
+		       ar.status, ar.expires_at, ar.revoked_at, ar.created_at, ar.updated_at,
+		       COALESCE(c.name, 'Unknown Clinic'),
+		       COALESCE(u.first_name || ' ' || u.last_name, 'Unknown Doctor')
+		FROM access_requests ar
+		LEFT JOIN clinics c ON c.id = ar.requesting_clinic_id
+		LEFT JOIN users u ON u.id = ar.submitted_by_doctor_id
+		WHERE ar.patient_id = $1 AND ar.status = 'pending'
+		AND ar.expires_at > NOW()
+		ORDER BY ar.created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, patientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pending access requests by patient: %w", err)
+	}
+	defer rows.Close()
+
+	var reqs []*AccessRequest
+	for rows.Next() {
+		var ar AccessRequest
+		if err := rows.Scan(
+			&ar.ID, &ar.PatientID, &ar.RequestingClinicID, &ar.Reason, &ar.SubmittedByDoctorID,
+			&ar.Status, &ar.ExpiresAt, &ar.RevokedAt, &ar.CreatedAt, &ar.UpdatedAt,
+			&ar.ClinicName, &ar.DoctorName,
+		); err != nil {
+			return nil, err
+		}
+		reqs = append(reqs, &ar)
+	}
+	return reqs, nil
+}
+
+func (r *repository) ListActiveGrantsByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error) {
+	query := `
+		SELECT ar.id, ar.patient_id, ar.requesting_clinic_id, ar.reason, ar.submitted_by_doctor_id,
+		       ar.status, ar.expires_at, ar.revoked_at, ar.created_at, ar.updated_at,
+		       COALESCE(c.name, 'Unknown Clinic'),
+		       COALESCE(u.first_name || ' ' || u.last_name, 'Unknown Doctor')
+		FROM access_requests ar
+		LEFT JOIN clinics c ON c.id = ar.requesting_clinic_id
+		LEFT JOIN users u ON u.id = ar.submitted_by_doctor_id
+		WHERE ar.patient_id = $1 AND ar.status = 'approved' AND ar.revoked_at IS NULL
+		ORDER BY ar.created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, patientID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list active grants by patient: %w", err)
+	}
+	defer rows.Close()
+
+	var reqs []*AccessRequest
+	for rows.Next() {
+		var ar AccessRequest
+		if err := rows.Scan(
+			&ar.ID, &ar.PatientID, &ar.RequestingClinicID, &ar.Reason, &ar.SubmittedByDoctorID,
+			&ar.Status, &ar.ExpiresAt, &ar.RevokedAt, &ar.CreatedAt, &ar.UpdatedAt,
+			&ar.ClinicName, &ar.DoctorName,
+		); err != nil {
+			return nil, err
+		}
+		reqs = append(reqs, &ar)
+	}
+	return reqs, nil
+}
+
+func (r *repository) RevokeByPatientAndClinic(ctx context.Context, patientID, clinicID uuid.UUID) error {
+	query := `
+		UPDATE access_requests
+		SET revoked_at = NOW(), updated_at = NOW()
+		WHERE patient_id = $1 AND requesting_clinic_id = $2
+		AND status = 'approved' AND revoked_at IS NULL
+	`
+	res, err := r.db.ExecContext(ctx, query, patientID, clinicID)
+	if err != nil {
+		return fmt.Errorf("failed to revoke access request by patient and clinic: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrRequestNotFound
+	}
+	return nil
 }

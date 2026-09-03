@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'app.dart';
 import 'core/di/injection_container.dart';
@@ -9,7 +10,7 @@ import 'features/medication_and_adherence/domain/services/medication_reconciliat
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await dotenv.load(fileName: ".env");
   await configureDependencies();
 
   final localDatabase = sl<LocalDatabaseService>();

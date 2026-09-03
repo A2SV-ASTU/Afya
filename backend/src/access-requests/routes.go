@@ -32,4 +32,23 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 		patientLookupGroup.GET("", handler.LookupPatient)
 	}
 
+	// Patient routes
+	patientAccessGroup := rg.Group("/access-requests/:id")
+	patientAccessGroup.Use(middleware.RequireAuth(jwtSecret))
+	patientAccessGroup.Use(middleware.RequireRole("patient"))
+	{
+		patientAccessGroup.POST("/approve", handler.ApproveRequest)
+		patientAccessGroup.POST("/deny", handler.DenyRequest)
+	}
+
+	// Patient portal routes (listing and grant management)
+	patientPortalGroup := rg.Group("/patient")
+	patientPortalGroup.Use(middleware.RequireAuth(jwtSecret))
+	patientPortalGroup.Use(middleware.RequireRole("patient"))
+	{
+		patientPortalGroup.GET("/access-requests/active", handler.ListPatientActiveRequests)
+		patientPortalGroup.GET("/grants", handler.ListPatientGrants)
+		patientPortalGroup.POST("/grants/:clinicId/revoke", handler.RevokePatientGrant)
+	}
+
 }
