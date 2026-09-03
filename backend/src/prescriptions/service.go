@@ -64,7 +64,8 @@ func (s *service) CreatePrescription(ctx context.Context, user *auth.UserContext
 			Dose:           r.Dose,
 			Route:          r.Route,
 			Frequency:      r.Frequency,
-			Duration:       r.Duration,
+			DurationValue:  r.DurationValue,
+			DurationUnit:   r.DurationUnit,
 			Instructions:   r.Instructions,
 		}
 	}
@@ -126,7 +127,8 @@ func (s *service) UpdatePrescription(ctx context.Context, user *auth.UserContext
 				Dose:           r.Dose,
 				Route:          r.Route,
 				Frequency:      r.Frequency,
-				Duration:       r.Duration,
+				DurationValue:  r.DurationValue,
+				DurationUnit:   r.DurationUnit,
 				Instructions:   r.Instructions,
 			}
 		}

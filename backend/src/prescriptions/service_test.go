@@ -110,7 +110,8 @@ func TestCreatePrescription(t *testing.T) {
 				Dose:           "500mg",
 				Route:          RouteOral,
 				Frequency:      FreqTDS,
-				Duration:       "7 days",
+				DurationValue: 7,
+				DurationUnit:  DurationUnitDay,
 			},
 		},
 	}

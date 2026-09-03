@@ -54,13 +54,13 @@ func (r *repository) CreateWithItems(ctx context.Context, tx database.DBTX, p *P
 		err := tx.QueryRowContext(ctx, `
 			INSERT INTO prescription_items
 				(prescription_id, medication_name, dose, route, frequency,
-				 duration, status, instructions, started_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+				 duration_value, duration_unit, status, instructions, started_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
 			RETURNING id, started_at`,
 			p.ID,
 			items[i].MedicationName, items[i].Dose,
 			string(items[i].Route), string(items[i].Frequency),
-			items[i].Duration, string(items[i].Status), items[i].Instructions,
+			items[i].DurationValue, string(items[i].DurationUnit), string(items[i].Status), items[i].Instructions,
 		).Scan(&items[i].ID, &items[i].StartedAt)
 		if err != nil {
 			return fmt.Errorf("insert prescription item %d: %w", i, err)
@@ -86,7 +86,7 @@ func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*Prescription,
 func (r *repository) FindItemsByPrescriptionID(ctx context.Context, prescriptionID uuid.UUID) ([]PrescriptionItem, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, prescription_id, medication_name, dose, route, frequency,
-		       duration, status, instructions, started_at
+		       duration_value, duration_unit, status, instructions, started_at
 		FROM prescription_items
 		WHERE prescription_id = $1`, prescriptionID)
 	if err != nil {
@@ -99,7 +99,7 @@ func (r *repository) FindItemsByPrescriptionID(ctx context.Context, prescription
 		var item PrescriptionItem
 		if err := rows.Scan(
 			&item.ID, &item.PrescriptionID, &item.MedicationName, &item.Dose,
-			&item.Route, &item.Frequency, &item.Duration, &item.Status,
+			&item.Route, &item.Frequency, &item.DurationValue, &item.DurationUnit, &item.Status,
 			&item.Instructions, &item.StartedAt,
 		); err != nil {
 			return nil, err
@@ -163,13 +163,13 @@ func (r *repository) ReplaceItems(ctx context.Context, tx database.DBTX, prescri
 		err := tx.QueryRowContext(ctx, `
 			INSERT INTO prescription_items
 				(prescription_id, medication_name, dose, route, frequency,
-				 duration, status, instructions, started_at)
-			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+				 duration_value, duration_unit, status, instructions, started_at)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NOW())
 			RETURNING id, started_at`,
 			prescriptionID,
 			items[i].MedicationName, items[i].Dose,
 			string(items[i].Route), string(items[i].Frequency),
-			items[i].Duration, string(items[i].Status), items[i].Instructions,
+			items[i].DurationValue, string(items[i].DurationUnit), string(items[i].Status), items[i].Instructions,
 		).Scan(&items[i].ID, &items[i].StartedAt)
 		if err != nil {
 			return fmt.Errorf("insert replacement item %d: %w", i, err)
