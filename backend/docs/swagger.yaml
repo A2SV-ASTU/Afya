@@ -491,9 +491,12 @@ definitions:
       dose:
         example: 1 tablet
         type: string
-      duration:
-        example: 30 days
+      duration_unit:
+        example: day
         type: string
+      duration_value:
+        example: 30
+        type: integer
       frequency:
         example: once daily
         type: string
@@ -579,9 +582,12 @@ definitions:
       dose:
         example: 1 tablet
         type: string
-      duration:
-        example: 30 days
+      duration_unit:
+        example: day
         type: string
+      duration_value:
+        example: 30
+        type: integer
       frequency:
         example: once daily
         type: string
@@ -748,8 +754,10 @@ definitions:
     properties:
       dose:
         type: string
-      duration:
-        type: string
+      duration_unit:
+        $ref: '#/definitions/prescriptions.DurationUnit'
+      duration_value:
+        type: integer
       frequency:
         $ref: '#/definitions/prescriptions.PrescriptionFrequency'
       instructions:
@@ -760,7 +768,8 @@ definitions:
         $ref: '#/definitions/prescriptions.PrescriptionRoute'
     required:
     - dose
-    - duration
+    - duration_unit
+    - duration_value
     - frequency
     - medication_name
     - route
@@ -777,6 +786,18 @@ definitions:
     required:
     - items
     type: object
+  prescriptions.DurationUnit:
+    enum:
+    - day
+    - week
+    - month
+    - year
+    type: string
+    x-enum-varnames:
+    - DurationUnitDay
+    - DurationUnitWeek
+    - DurationUnitMonth
+    - DurationUnitYear
   prescriptions.PrescriptionFrequency:
     enum:
     - OD
@@ -807,8 +828,10 @@ definitions:
     properties:
       dose:
         type: string
-      duration:
-        type: string
+      duration_unit:
+        $ref: '#/definitions/prescriptions.DurationUnit'
+      duration_value:
+        type: integer
       frequency:
         $ref: '#/definitions/prescriptions.PrescriptionFrequency'
       id:
@@ -871,8 +894,10 @@ definitions:
     properties:
       dose:
         type: string
-      duration:
-        type: string
+      duration_unit:
+        $ref: '#/definitions/prescriptions.DurationUnit'
+      duration_value:
+        type: integer
       frequency:
         $ref: '#/definitions/prescriptions.PrescriptionFrequency'
       instructions:
@@ -883,7 +908,8 @@ definitions:
         $ref: '#/definitions/prescriptions.PrescriptionRoute'
     required:
     - dose
-    - duration
+    - duration_unit
+    - duration_value
     - frequency
     - medication_name
     - route

@@ -848,7 +848,8 @@ All error responses adhere to a consistent error schema:
         "medication_name": "Amlodipine",
         "dose": "5mg",
         "frequency": "OD",
-        "duration": "30 days"
+        "duration_value": 30,
+        "duration_unit": "day"
       }
     ],
     "vitals": {
