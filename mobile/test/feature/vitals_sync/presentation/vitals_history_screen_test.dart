@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:bloc_test/bloc_test.dart';
 
+import 'package:afyamind_mobile/features/vitals_sync/domain/entities/vital_sign_entity.dart';
 import 'package:afyamind_mobile/features/vitals_sync/presentation/bloc/vitals_sync_bloc.dart';
 import 'package:afyamind_mobile/features/vitals_sync/presentation/bloc/vitals_sync_event.dart';
 import 'package:afyamind_mobile/features/vitals_sync/presentation/bloc/vitals_sync_state.dart';
@@ -21,7 +22,15 @@ void main() {
     whenListen(
       mockBloc,
       const Stream<VitalsSyncState>.empty(),
-      initialState: VitalsInitial(),
+      initialState: VitalsHistoryLoaded([
+        VitalSignEntity(
+          clientId: 'test-1',
+          source: 'Home',
+          recordedAt: DateTime(2026, 9, 3, 10, 30),
+          systolicBp: 120,
+          diastolicBp: 80,
+        ),
+      ]),
     );
   });
 
