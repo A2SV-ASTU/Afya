@@ -30,3 +30,5 @@ vendor/
 Thumbs.db
 cookies.txt
 backend/cookies.txt
+backend/cookies*.txt
+backend/=*
