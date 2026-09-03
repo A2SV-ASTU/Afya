@@ -695,7 +695,7 @@ All error responses adhere to a consistent error schema:
 - **Description**: Retrieves all scheduled and past appointments for a patient. Filterable by status.
 
 #### Query Parameters
-- `status` (string, optional): `scheduled`, `attended`, `cancelled`
+- `status` (string, optional): `scheduled`, `attended`, `missed`, `cancelled`
 
 #### Responses
 - **200 OK**:
@@ -715,6 +715,44 @@ All error responses adhere to a consistent error schema:
   ]
 }
 ```
+
+---
+
+### 24. Update Appointment Status
+- **Endpoint**: `PATCH /api/v1/appointments/{id}/status`
+- **Auth Required**: Yes (`doctor` role)
+- **Description**: Updates the status of an appointment (e.g. `attended`, `missed`, or `cancelled`).
+
+#### Request Body
+```json
+{
+  "status": "attended"
+}
+```
+
+#### Responses
+- **200 OK**:
+```json
+{
+  "data": {
+    "appointment": {
+      "id": "e1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+      "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "scheduled_at": "2026-09-15T10:00:00Z",
+      "status": "attended",
+      "notes": "Annual cardiac checkup",
+      "created_at": "2026-08-28T14:00:00Z",
+      "updated_at": "2026-09-03T18:30:00Z"
+    }
+  }
+}
+```
+- **400 Bad Request** (`validation_error`): Invalid payload or invalid status.
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid access token.
+- **403 Forbidden** (`forbidden_role`): User is not a doctor or belongs to another clinic.
+- **404 Not Found** (`not_found`): Appointment not found.
 
 ---
 
