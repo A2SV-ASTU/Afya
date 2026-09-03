@@ -24,14 +24,6 @@ export function DoctorDetail() {
   const doctorId = viewParams.doctorId || doctors[0]?.id;
   const doctor = doctors.find((d) => d.id === doctorId) || doctors[0];
 
-  console.log('[DoctorDetail] Component state:', {
-    doctorId,
-    doctor,
-    doctorStatus: doctor?.doctor_status,
-    activeClinicId: activeClinic.id,
-    totalDoctors: doctors.length,
-  });
-
   if (!doctor) {
     return (
       <div className="p-8 text-center">
@@ -54,19 +46,11 @@ export function DoctorDetail() {
       return;
     }
     
-    console.log('[DoctorDetail] Toggling doctor status:', { 
-      doctorId: doctor.id, 
-      currentStatus: doctor.doctor_status,
-      activeClinicId: activeClinic.id,
-      willActivate: !isActive
-    });
-    
     if (isActive) {
       await deactivateDoctor(activeClinic.id, doctor.id);
     } else {
       await activateDoctor(activeClinic.id, doctor.id);
     }
-    console.log('[DoctorDetail] Status toggle successful');
   };
 
   return (
