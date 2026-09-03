@@ -3324,6 +3324,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "patient": {
+                    "$ref": "#/definitions/src_access-requests.PatientInfo"
+                },
                 "patient_id": {
                     "type": "string"
                 },
@@ -3363,6 +3366,23 @@ const docTemplate = `{
                     "description": "Rationale for requesting clinical record access",
                     "type": "string",
                     "example": "Patient scheduled for cardiovascular follow-up"
+                }
+            }
+        },
+        "src_access-requests.PatientInfo": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
                 }
             }
         },

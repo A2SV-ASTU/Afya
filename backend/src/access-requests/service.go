@@ -84,10 +84,9 @@ func (s *service) CreateRequest(ctx context.Context, clinicID, doctorID uuid.UUI
 	}
 
 	// 2. Get Clinic Name for Email
-	var clinicName string
-	err = s.db.QueryRowContext(ctx, "SELECT name FROM clinics WHERE id = $1", clinicID).Scan(&clinicName)
-	if err != nil {
-		clinicName = "An Afya Clinic" // Fallback
+	clinicName := "An Afya Clinic" // Fallback
+	if s.db != nil {
+		_ = s.db.QueryRowContext(ctx, "SELECT name FROM clinics WHERE id = $1", clinicID).Scan(&clinicName)
 	}
 
 	patient, err := s.userRepo.FindByID(ctx, req.PatientID)
@@ -102,7 +101,13 @@ func (s *service) CreateRequest(ctx context.Context, clinicID, doctorID uuid.UUI
 	}
 
 	ar := &AccessRequest{
-		PatientID:           req.PatientID,
+		PatientID: req.PatientID,
+		Patient: &PatientInfo{
+			ID:        patient.ID,
+			FirstName: patient.FirstName,
+			LastName:  patient.LastName,
+			Email:     patient.Email,
+		},
 		RequestingClinicID:  clinicID,
 		Reason:              req.Reason,
 		SubmittedByDoctorID: &doctorID,

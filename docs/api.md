@@ -597,6 +597,12 @@ All error responses adhere to a consistent error schema:
 {
   "id": "f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
   "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "patient": {
+    "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "email": "jane.doe@example.com"
+  },
   "requesting_clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
   "reason": "Consultation for chronic hypertension management",
   "submitted_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
@@ -625,6 +631,12 @@ All error responses adhere to a consistent error schema:
     {
       "id": "f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
       "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "patient": {
+        "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "email": "jane.doe@example.com"
+      },
       "requesting_clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
       "reason": "Consultation",
       "submitted_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
