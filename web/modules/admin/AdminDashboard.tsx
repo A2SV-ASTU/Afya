@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export function AdminDashboard() {
-  const { clinics, doctors, navigateTo } = useStore();
+  const { clinics, doctors, navigateTo, clinicsLoading, clinicsError, activateClinic, deactivateClinic } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'deactivated'>('all');
 
@@ -32,14 +32,23 @@ export function AdminDashboard() {
     const matchesSearch =
       c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phone.includes(searchTerm) ||
-      c.admin_name.toLowerCase().includes(searchTerm.toLowerCase());
+      c.phone.includes(searchTerm);
     const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   return (
     <div id="admin-dashboard-page" className="p-8 space-y-6 max-w-7xl mx-auto">
+      {clinicsLoading && (
+        <div className="text-center py-12 text-slate-400">Loading clinics…</div>
+      )}
+      {clinicsError && (
+        <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-sm">
+          {clinicsError}
+        </div>
+      )}
+      {!clinicsLoading && !clinicsError && (
+        <>
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -185,7 +194,6 @@ export function AdminDashboard() {
               <tr>
                 <th className="py-4 px-6">Facility & Address</th>
                 <th className="py-4 px-6">Contact Details</th>
-                <th className="py-4 px-6">Administrator</th>
                 <th className="py-4 px-6">Status</th>
                 <th className="py-4 px-6">Onboarded</th>
                 <th className="py-4 px-6 text-right">Actions</th>
@@ -194,7 +202,7 @@ export function AdminDashboard() {
             <tbody className="divide-y divide-slate-100">
               {filteredClinics.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400">
+                    <td colSpan={5} className="text-center py-12 text-slate-400">
                     <Building className="w-8 h-8 mx-auto mb-2 text-slate-300" />
                     <p className="font-medium text-slate-600">No clinics found matching criteria</p>
                     <p className="text-xs text-slate-400 mt-0.5">Try clearing search filters or create a new facility.</p>
@@ -226,10 +234,6 @@ export function AdminDashboard() {
                       <p className="text-[11px] text-slate-400">{clinic.email}</p>
                     </td>
                     <td className="py-4 px-6">
-                      <p className="text-slate-800 font-medium">{clinic.admin_name}</p>
-                      <p className="text-[11px] text-slate-400">{clinic.admin_email}</p>
-                    </td>
-                    <td className="py-4 px-6">
                       <StatusBadge variant={clinic.status}>
                         {clinic.status}
                       </StatusBadge>
@@ -242,10 +246,30 @@ export function AdminDashboard() {
                       })}
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#2E7D32] group-hover:text-[#1B5E20] group-hover:translate-x-0.5 transition-all">
-                        View Details
-                        <ChevronRight className="w-4 h-4" />
-                      </span>
+                      <div className="flex items-center justify-end gap-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (clinic.status === 'active') {
+                              deactivateClinic(clinic.id);
+                            } else {
+                              activateClinic(clinic.id);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+                            clinic.status === 'active'
+                              ? 'bg-rose-50 text-rose-600 hover:bg-rose-100'
+                              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                          }`}
+                        >
+                          {clinic.status === 'active' ? 'Deactivate' : 'Activate'}
+                        </button>
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#2E7D32] group-hover:text-[#1B5E20] group-hover:translate-x-0.5 transition-all">
+                          View Details
+                          <ChevronRight className="w-4 h-4" />
+                        </span>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -254,6 +278,8 @@ export function AdminDashboard() {
           </table>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

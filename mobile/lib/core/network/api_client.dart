@@ -20,6 +20,7 @@ class AppCookieInterceptor extends Interceptor {
   ) async {
     final jar = await cookieService.cookieJar;
     final cookies = await jar.loadForRequest(options.uri);
+
     final cookieHeader = cookies
         .where((cookie) => cookie.expires == null || cookie.expires!.isAfter(DateTime.now()))
         .map((cookie) => '${cookie.name}=${cookie.value}')

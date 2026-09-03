@@ -14,7 +14,7 @@ interface RequestOptions extends RequestInit {
   params?: Record<string, string>;
 }
 
-const BASE_URL = "https://afya-c1ez.onrender.com/api/v1";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 const SKIP_REFRESH_ENDPOINTS = new Set([
   '/auth/login',
@@ -126,6 +126,10 @@ export async function apiClient<T>(
 
   return response.json();
 }
+
+apiClient.get = <T = unknown>(path: string) => apiClient<T>(path, { method: 'GET' });
+apiClient.post = <T = unknown>(path: string, body?: unknown) => apiClient<T>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined });
+apiClient.patch = <T = unknown>(path: string, body?: unknown) => apiClient<T>(path, { method: 'PATCH', body: body ? JSON.stringify(body) : undefined });
 
 export function getApiErrorMessage(err: unknown, fallback: string) {
   if (err instanceof ApiError) return err.message;
