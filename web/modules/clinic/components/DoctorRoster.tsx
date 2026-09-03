@@ -2,18 +2,19 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Users, Mail, ArrowRight, Stethoscope, Copy, CheckCircle2 } from 'lucide-react';
+import { Mail, ArrowRight, Stethoscope, Copy, CheckCircle2 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
 import { Button } from '@/modules/core/ui/Button';
 import { InviteTokenGenerator } from './InviteTokenGenerator';
 
 export function DoctorRoster() {
-  const { doctors, invitations, activeClinic, resendInvite } = useStore();
+  const { doctors, doctorsLoading, doctorsError, invitations, activeClinic, resendInvite } = useStore();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [copiedToken, setCopiedToken] = useState<string | null>(null);
 
-  const clinicDoctors = doctors.filter((d) => d.clinic_id === activeClinic.id);
+  // Doctors are already scoped to activeClinic by the store's fetch logic
+  const clinicDoctors = doctors;
   const clinicInvitations = invitations.filter((i) => i.clinic_id === activeClinic.id);
 
   const handleCopyLink = (token: string) => {
@@ -49,53 +50,74 @@ export function DoctorRoster() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
-                <th className="py-3 px-6">Physician Name</th>
-                <th className="py-3 px-6">Specialization</th>
-                <th className="py-3 px-6">KMPDC License</th>
-                <th className="py-3 px-6">Contact Email</th>
-                <th className="py-3 px-6">Status</th>
-                <th className="py-3 px-6 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {clinicDoctors.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-50/60 transition-colors">
-                  <td className="py-4 px-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-[#E8F5E9] text-[#2E7D32] flex items-center justify-center font-bold text-xs shrink-0 border border-[#C8E6C9]">
-                        <Stethoscope className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-900">
-                          Dr. {doc.first_name} {doc.last_name}
-                        </p>
-                        <p className="text-[11px] text-slate-400">{doc.phone || '+254 700 000000'}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-6 font-medium text-slate-800">{doc.specialization || 'General Practice'}</td>
-                  <td className="py-4 px-6 font-mono text-slate-600">{doc.license_number || 'KMPDC-REG'}</td>
-                  <td className="py-4 px-6 text-slate-500">{doc.email}</td>
-                  <td className="py-4 px-6">
-                    <StatusBadge status={doc.doctor_status || 'active'} />
-                  </td>
-                  <td className="py-4 px-6 text-right">
-                    <Link
-                      href={`/clinic/doctors/${doc.id}`}
-                      className="inline-flex items-center gap-1 font-semibold text-[#2E7D32] hover:text-[#1B5E20] text-xs"
-                    >
-                      Manage Doctor <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
-                  </td>
+        {doctorsLoading ? (
+          <div className="py-12 text-center text-slate-500">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-[#2E7D32] mb-3" />
+            <p className="text-sm font-medium">Loading physicians...</p>
+          </div>
+        ) : doctorsError ? (
+          <div className="py-12 px-6 text-center">
+            <p className="text-sm font-semibold text-slate-900">Failed to load physicians</p>
+            <p className="mt-1 text-xs text-slate-500">{doctorsError}</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
+                  <th className="py-3 px-6">Physician Name</th>
+                  <th className="py-3 px-6">Specialization</th>
+                  <th className="py-3 px-6">KMPDC License</th>
+                  <th className="py-3 px-6">Contact Email</th>
+                  <th className="py-3 px-6">Status</th>
+                  <th className="py-3 px-6 text-right">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {clinicDoctors.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-12 text-center text-slate-500">
+                      <Stethoscope className="mx-auto mb-2 h-8 w-8 text-slate-300" />
+                      <p className="text-sm font-medium">No physicians found for this clinic.</p>
+                    </td>
+                  </tr>
+                ) : (
+                  clinicDoctors.map((doc) => (
+                    <tr key={doc.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-[#E8F5E9] text-[#2E7D32] flex items-center justify-center font-bold text-xs shrink-0 border border-[#C8E6C9]">
+                            <Stethoscope className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">
+                              Dr. {doc.first_name} {doc.last_name}
+                            </p>
+                            <p className="text-[11px] text-slate-400">{doc.phone || '+254 700 000000'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 font-medium text-slate-800">{doc.specialization || 'General Practice'}</td>
+                      <td className="py-4 px-6 font-mono text-slate-600">{doc.license_number || 'KMPDC-REG'}</td>
+                      <td className="py-4 px-6 text-slate-500">{doc.email}</td>
+                      <td className="py-4 px-6">
+                        <StatusBadge status={doc.doctor_status || 'active'} />
+                      </td>
+                      <td className="py-4 px-6 text-right">
+                        <Link
+                          href={`/clinic/doctors/${doc.id}`}
+                          className="inline-flex items-center gap-1 font-semibold text-[#2E7D32] hover:text-[#1B5E20] text-xs"
+                        >
+                          Manage Doctor <ArrowRight className="w-3.5 h-3.5" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Invitations Table */}
