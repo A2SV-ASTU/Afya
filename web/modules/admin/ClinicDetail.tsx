@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
+import { getClinic } from '@/lib/api/clinics';
 import { StatusBadge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import {
@@ -16,20 +17,101 @@ import {
   Calendar,
   UserCheck,
   ShieldAlert,
-  Info,
 } from 'lucide-react';
 
+interface Clinic {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  status: 'active' | 'deactivated';
+  created_at: string;
+  updated_at: string;
+  admin_name?: string;
+  admin_email?: string;
+}
+
 export function ClinicDetail() {
-  const { clinics, viewParams, deactivateClinic, activateClinic, navigateTo } = useStore();
+  const { viewParams, navigateTo } = useStore();
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
+  const [clinic, setClinic] = useState<Clinic | null>(null);
+  const [clinicLoading, setClinicLoading] = useState(true);
+  const [clinicError, setClinicError] = useState<string | null>(null);
 
-  const clinicId = viewParams.clinicId || clinics[0]?.id;
-  const clinic = clinics.find((c) => c.id === clinicId) || clinics[0];
+  const clinicId = viewParams.clinicId as string;
 
-  if (!clinic) {
+  useEffect(() => {
+    if (!clinicId) {
+      return;
+    }
+
+    Promise.resolve()
+      .then(() => {
+        setClinicLoading(true);
+        setClinicError(null);
+        return getClinic(clinicId);
+      })
+      .then((data) => {
+        setClinic(data);
+      })
+      .catch((err) => {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load clinic details';
+        setClinicError(errorMessage);
+      })
+      .finally(() => {
+        setClinicLoading(false);
+      });
+  }, [clinicId]);
+
+  if (!clinicId) {
     return (
       <div className="p-8 text-center">
-        <p className="text-sm text-slate-500">Clinic record not found.</p>
+        <p className="text-sm text-rose-600">No clinic ID provided</p>
+        <button
+          onClick={() => navigateTo('admin-dashboard')}
+          className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs"
+        >
+          Return to Clinics
+        </button>
+      </div>
+    );
+  }
+
+  const handleToggleActivation = async () => {
+    if (!clinic) return;
+
+    try {
+      const endpoint = clinic.status === 'active' 
+        ? `/clinics/${clinic.id}/deactivate`
+        : `/clinics/${clinic.id}/activate`;
+      
+      // Import apiClient to make the call
+      const { apiClient } = await import('@/lib/api/client');
+      const result = await apiClient.patch<{ status: string }>(endpoint);
+      
+      // Update local state with the new status
+      setClinic({ ...clinic, status: result.status as 'active' | 'deactivated' });
+      setIsDeactivateModalOpen(false);
+    } catch (err) {
+      console.error('Failed to toggle clinic status:', err);
+      // Optionally show an error message to the user
+    }
+  };
+
+  if (clinicLoading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+        <p className="text-sm text-slate-500 mt-4">Loading clinic details...</p>
+      </div>
+    );
+  }
+
+  if (clinicError || !clinic) {
+    return (
+      <div className="p-8 text-center">
+        <p className="text-sm text-rose-600">{clinicError || 'Clinic not found'}</p>
         <button
           onClick={() => navigateTo('admin-dashboard')}
           className="mt-4 px-4 py-2 bg-slate-900 text-white rounded-lg text-xs"
@@ -158,14 +240,18 @@ export function ClinicDetail() {
               </h4>
 
               <div className="space-y-3 text-xs">
-                <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <UserCheck className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="text-slate-400 block text-[11px]">Facility Administrator</span>
-                    <span className="font-semibold text-slate-800">{clinic.admin_name}</span>
-                    <span className="text-[11px] text-slate-500 block">{clinic.admin_email}</span>
+                {clinic.admin_name && (
+                  <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <UserCheck className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="text-slate-400 block text-[11px]">Facility Administrator</span>
+                      <span className="font-semibold text-slate-800">{clinic.admin_name}</span>
+                      {clinic.admin_email && (
+                        <span className="text-[11px] text-slate-500 block">{clinic.admin_email}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <Calendar className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
@@ -191,14 +277,7 @@ export function ClinicDetail() {
       <ConfirmDialog
         isOpen={isDeactivateModalOpen}
         onClose={() => setIsDeactivateModalOpen(false)}
-        onConfirm={() => {
-          if (clinic.status === 'active') {
-            deactivateClinic(clinic.id);
-          } else {
-            activateClinic(clinic.id);
-          }
-          setIsDeactivateModalOpen(false);
-        }}
+        onConfirm={handleToggleActivation}
         title={isActive ? `Deactivate ${clinic.name}?` : `Reactivate ${clinic.name}?`}
         isDestructive={isActive}
         confirmText={isActive ? 'Yes, Deactivate Clinic' : 'Reactivate Clinic'}
