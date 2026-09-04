@@ -201,3 +201,184 @@ func (h *Handler) ListRequests(c *gin.Context) {
 
 	response.List(c, http.StatusOK, "access_requests", reqs)
 }
+
+// ApproveRequest godoc
+//
+//	@Summary		Approve an access request
+//	@Description	Patient approves a pending access request.
+//	@Tags			AccessRequests
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string							true	"Access Request ID"
+//	@Success		200	{object}	response.MessageEnvelope	"Access request approved"
+//	@Failure		400	{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401	{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403	{object}	response.ErrorEnvelope		"Not the target patient"
+//	@Failure		404	{object}	response.ErrorEnvelope		"Request not found"
+//	@Router			/access-requests/{id}/approve [post]
+func (h *Handler) ApproveRequest(c *gin.Context) {
+	requestIDStr := c.Param("id")
+	requestID, err := uuid.Parse(requestIDStr)
+	if err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request ID"))
+		return
+	}
+
+	patientID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+		return
+	}
+
+	if err := h.svc.ApproveRequest(c.Request.Context(), patientID, requestID); err != nil {
+		switch err.Error() {
+		case "not_target_patient":
+			response.RespondAppError(c, appErrors.ErrForbiddenRole())
+		case "request_not_pending":
+			response.RespondAppError(c, appErrors.ErrConflict(err.Error()))
+		case "request_expired":
+			response.RespondAppError(c, appErrors.ErrConflict(err.Error()))
+		default:
+			response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
+		}
+		return
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{"status": "approved"})
+}
+
+// DenyRequest godoc
+//
+//	@Summary		Deny an access request
+//	@Description	Patient denies a pending access request.
+//	@Tags			AccessRequests
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string							true	"Access Request ID"
+//	@Success		200	{object}	response.MessageEnvelope	"Access request denied"
+//	@Failure		400	{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		401	{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403	{object}	response.ErrorEnvelope		"Not the target patient"
+//	@Failure		404	{object}	response.ErrorEnvelope		"Request not found"
+//	@Router			/access-requests/{id}/deny [post]
+func (h *Handler) DenyRequest(c *gin.Context) {
+	requestIDStr := c.Param("id")
+	requestID, err := uuid.Parse(requestIDStr)
+	if err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request ID"))
+		return
+	}
+
+	patientID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+		return
+	}
+
+	if err := h.svc.DenyRequest(c.Request.Context(), patientID, requestID); err != nil {
+		switch err.Error() {
+		case "not_target_patient":
+			response.RespondAppError(c, appErrors.ErrForbiddenRole())
+		case "request_not_pending":
+			response.RespondAppError(c, appErrors.ErrConflict(err.Error()))
+		case "request_expired":
+			response.RespondAppError(c, appErrors.ErrConflict(err.Error()))
+		default:
+			response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
+		}
+		return
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{"status": "denied"})
+}
+
+// ListPatientActiveRequests godoc
+//
+//	@Summary		List pending access requests for the authenticated patient
+//	@Description	Returns pending (non-expired) access requests directed at the patient.
+//	@Tags			AccessRequests
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	response.DataEnvelope{data=[]accessrequests.AccessRequest}	"Pending access requests"
+//	@Failure		401	{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Router			/patient/access-requests/active [get]
+func (h *Handler) ListPatientActiveRequests(c *gin.Context) {
+	patientID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+		return
+	}
+
+	reqs, err := h.svc.ListPatientActiveRequests(c.Request.Context(), patientID)
+	if err != nil {
+		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
+		return
+	}
+
+	response.List(c, http.StatusOK, "access_requests", reqs)
+}
+
+// ListPatientGrants godoc
+//
+//	@Summary		List active grants for the authenticated patient
+//	@Description	Returns approved, non-revoked access requests (grants) for the patient.
+//	@Tags			AccessRequests
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Success		200	{object}	response.DataEnvelope{data=[]accessrequests.AccessRequest}	"Active grants"
+//	@Failure		401	{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Router			/patient/grants [get]
+func (h *Handler) ListPatientGrants(c *gin.Context) {
+	patientID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+		return
+	}
+
+	reqs, err := h.svc.ListPatientGrants(c.Request.Context(), patientID)
+	if err != nil {
+		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
+		return
+	}
+
+	response.List(c, http.StatusOK, "grants", reqs)
+}
+
+// RevokePatientGrant godoc
+//
+//	@Summary		Revoke a clinic grant (patient-initiated)
+//	@Description	Patient revokes a previously approved access request from a clinic.
+//	@Tags			AccessRequests
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			clinicId	path		string								true	"Clinic ID"
+//	@Success		200			{object}	response.MessageEnvelope			"Grant revoked"
+//	@Failure		400			{object}	response.ErrorEnvelope				"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Failure		404			{object}	response.ErrorEnvelope				"No active grant found"
+//	@Router			/patient/grants/{clinicId}/revoke [post]
+func (h *Handler) RevokePatientGrant(c *gin.Context) {
+	patientID, ok := middleware.GetUserID(c)
+	if !ok {
+		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+		return
+	}
+
+	clinicIDStr := c.Param("clinicId")
+	clinicID, err := uuid.Parse(clinicIDStr)
+	if err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid clinic ID"))
+		return
+	}
+
+	if err := h.svc.RevokePatientGrant(c.Request.Context(), patientID, clinicID); err != nil {
+		if err == ErrRequestNotFound {
+			response.RespondAppError(c, appErrors.ErrNotFound("active grant"))
+			return
+		}
+		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
+		return
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{"status": "revoked"})
+}

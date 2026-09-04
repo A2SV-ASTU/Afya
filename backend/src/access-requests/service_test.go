@@ -18,7 +18,9 @@ func newMockRepository() *mockRepository {
 }
 
 func (m *mockRepository) Create(ctx context.Context, req *AccessRequest) error {
-	req.ID = uuid.New()
+	if req.ID == uuid.Nil {
+		req.ID = uuid.New()
+	}
 	req.CreatedAt = time.Now()
 	req.UpdatedAt = time.Now()
 	m.requests[req.ID] = req
@@ -52,6 +54,38 @@ func (m *mockRepository) ListByClinicID(ctx context.Context, clinicID uuid.UUID,
 		}
 	}
 	return list, nil
+}
+
+func (m *mockRepository) ListPendingByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error) {
+	var result []*AccessRequest
+	for _, ar := range m.requests {
+		if ar.PatientID == patientID && ar.Status == StatusPending && time.Now().Before(ar.ExpiresAt) {
+			result = append(result, ar)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockRepository) ListActiveGrantsByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error) {
+	var result []*AccessRequest
+	for _, ar := range m.requests {
+		if ar.PatientID == patientID && ar.Status == StatusApproved && ar.RevokedAt == nil {
+			result = append(result, ar)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockRepository) RevokeByPatientAndClinic(ctx context.Context, patientID, clinicID uuid.UUID) error {
+	for _, ar := range m.requests {
+		if ar.PatientID == patientID && ar.RequestingClinicID == clinicID && ar.Status == StatusApproved && ar.RevokedAt == nil {
+			now := time.Now()
+			ar.RevokedAt = &now
+			ar.UpdatedAt = now
+			return nil
+		}
+	}
+	return ErrRequestNotFound
 }
 
 func (m *mockRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status string) error {
@@ -130,6 +164,11 @@ func (m *mockUserRepo) FindByPhone(ctx context.Context, phone string) (*users.Us
 }
 
 func (m *mockUserRepo) FindByLogin(ctx context.Context, login string) (*users.User, error) {
+	for _, u := range m.users {
+		if u.Email == login || u.Phone == login {
+			return u, nil
+		}
+	}
 	return nil, users.ErrUserNotFound
 }
 

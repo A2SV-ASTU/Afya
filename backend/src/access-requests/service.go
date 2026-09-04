@@ -23,6 +23,9 @@ type Service interface {
 	DenyRequest(ctx context.Context, patientID, requestID uuid.UUID) error
 	RevokeRequest(ctx context.Context, clinicID, requestID, callerID uuid.UUID) error
 	ListRequests(ctx context.Context, clinicID, callerID uuid.UUID, status string) ([]*AccessRequest, error)
+	ListPatientActiveRequests(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
+	ListPatientGrants(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
+	RevokePatientGrant(ctx context.Context, patientID, clinicID uuid.UUID) error
 	ApproveByToken(ctx context.Context, tokenRaw string) error
 	DenyByToken(ctx context.Context, tokenRaw string) error
 }
@@ -252,6 +255,18 @@ func (s *service) ListRequests(ctx context.Context, clinicID, callerID uuid.UUID
 	}
 
 	return s.repo.ListByClinicID(ctx, clinicID, status)
+}
+
+func (s *service) ListPatientActiveRequests(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error) {
+	return s.repo.ListPendingByPatientID(ctx, patientID)
+}
+
+func (s *service) ListPatientGrants(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error) {
+	return s.repo.ListActiveGrantsByPatientID(ctx, patientID)
+}
+
+func (s *service) RevokePatientGrant(ctx context.Context, patientID, clinicID uuid.UUID) error {
+	return s.repo.RevokeByPatientAndClinic(ctx, patientID, clinicID)
 }
 
 // ApproveByToken approves an access request using a magic link token (no login required)
