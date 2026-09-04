@@ -25,9 +25,6 @@ type Repository interface {
 	Revoke(ctx context.Context, id uuid.UUID) error
 	FindActiveGrant(ctx context.Context, clinicID, patientID uuid.UUID) (*AccessRequest, error)
 	MarkExpired(ctx context.Context) (int64, error)
-	ListPendingByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
-	ListActiveGrantsByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
-	RevokeByPatientAndClinic(ctx context.Context, patientID, clinicID uuid.UUID) error
 }
 
 type repository struct {
