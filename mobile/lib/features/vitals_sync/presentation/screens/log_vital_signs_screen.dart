@@ -46,16 +46,7 @@ class _LogActionSheetState extends State<LogActionSheet> {
   }
 
   void _markAsTaken() async {
-    // 1. Instant local record (Hive/SQLite stub)
-    // await LocalStorage.saveDoseLog(
-    //   widget.prescriptionId,
-    //   'TAKEN',
-    //   DateTime.now(),
-    // );
-
-    // 2. Course Completion Trigger
     if (widget.isFinalDose) {
-      // Background call PATCH /prescriptions/:id/complete
       _triggerCourseCompletion(widget.prescriptionId);
     }
 
@@ -76,12 +67,6 @@ class _LogActionSheetState extends State<LogActionSheet> {
     setState(() {
       _snoozeCount++;
     });
-
-    // Reschedule native local notification (T + 10 mins)
-    // await LocalNotificationService.reschedule(
-    //   widget.prescriptionId,
-    //   minutes: 10 * _snoozeCount,
-    // );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -125,8 +110,6 @@ class _LogActionSheetState extends State<LogActionSheet> {
                 return;
               }
 
-              // Local store skipped status + reason
-
               Navigator.of(ctx).pop();
               Navigator.of(context).pop(true);
 
@@ -147,8 +130,7 @@ class _LogActionSheetState extends State<LogActionSheet> {
   }
 
   Future<void> _triggerCourseCompletion(int id) async {
-    // Optimistic background call placeholder:
-    // http.patch(Uri.parse('/prescriptions/$id/complete'));
+    // Background call placeholder.
   }
 
   @override
@@ -168,8 +150,7 @@ class _LogActionSheetState extends State<LogActionSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment:
-                MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 widget.medicationName,
@@ -211,8 +192,7 @@ class _LogActionSheetState extends State<LogActionSheet> {
               onPressed: _markAsTaken,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF006837),
-                padding:
-                    const EdgeInsets.symmetric(vertical: 14),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -232,14 +212,11 @@ class _LogActionSheetState extends State<LogActionSheet> {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed:
-                      maxSnoozeReached ? null : _snoozeDose,
+                  onPressed: maxSnoozeReached ? null : _snoozeDose,
                   style: OutlinedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: Text(
@@ -259,14 +236,12 @@ class _LogActionSheetState extends State<LogActionSheet> {
                 child: OutlinedButton(
                   onPressed: _openSkipReasonDialog,
                   style: OutlinedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
                     side: const BorderSide(
                       color: Colors.red,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                   ),
                   child: const Text(
@@ -287,7 +262,6 @@ class _LogActionSheetState extends State<LogActionSheet> {
 
 // ==========================================
 // 3.2 VITAL SIGN INPUT MODAL
-// (VitalSignInputDialog)
 // ==========================================
 class VitalSignInputDialog extends StatefulWidget {
   const VitalSignInputDialog({
@@ -306,18 +280,25 @@ class _VitalSignInputDialogState
 
   final _systolicController =
       TextEditingController(text: '120');
+
   final _diastolicController =
       TextEditingController(text: '80');
+
   final _pulseController =
       TextEditingController(text: '72');
+
   final _spo2Controller =
       TextEditingController(text: '98');
+
   final _tempController =
       TextEditingController(text: '98.6');
+
   final _respController =
       TextEditingController(text: '16');
+
   final _sugarController =
       TextEditingController(text: '100');
+
   final _weightController =
       TextEditingController(text: '150');
 
@@ -344,20 +325,27 @@ class _VitalSignInputDialogState
 
     final vital = VitalSignEntity(
       clientId: _uuid.v4(),
-      systolicBp:
-          double.tryParse(_systolicController.text),
-      diastolicBp:
-          double.tryParse(_diastolicController.text),
-      pulse:
-          int.tryParse(_pulseController.text),
-      temperature:
-          double.tryParse(_tempController.text),
-      spo2:
-          double.tryParse(_spo2Controller.text),
-      bloodSugar:
-          double.tryParse(_sugarController.text),
-      weight:
-          double.tryParse(_weightController.text),
+      systolicBp: double.tryParse(
+        _systolicController.text,
+      ),
+      diastolicBp: double.tryParse(
+        _diastolicController.text,
+      ),
+      pulse: int.tryParse(
+        _pulseController.text,
+      ),
+      temperature: double.tryParse(
+        _tempController.text,
+      ),
+      spo2: double.tryParse(
+        _spo2Controller.text,
+      ),
+      bloodSugar: double.tryParse(
+        _sugarController.text,
+      ),
+      weight: double.tryParse(
+        _weightController.text,
+      ),
       source: 'Manual Entry',
       recordedAt: DateTime.now(),
       synced: false,
@@ -380,15 +368,10 @@ class _VitalSignInputDialogState
     debugPrint('Synced: ${vital.synced}');
     debugPrint('=================================');
 
-    // ==========================================
-    // CONNECT UI → BLOC
-    // ==========================================
     context.read<VitalsSyncBloc>().add(
-          SaveVitalEvent(vital),
-        );
+      SaveVitalEvent(vital),
+    );
 
-    // Return the vital to the caller as well.
-    // The BLoC is responsible for persistence/sync.
     Navigator.of(context).pop(vital);
   }
 
@@ -437,20 +420,16 @@ class _VitalSignInputDialogState
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
-                      // Blood Pressure
                       _buildDualVitalInput(
                         icon: Icons.favorite_border,
                         leftTitle: 'Systolic',
-                        leftController:
-                            _systolicController,
+                        leftController: _systolicController,
                         rightTitle: 'Diastolic',
-                        rightController:
-                            _diastolicController,
+                        rightController: _diastolicController,
                         unit: 'mmHg',
                       ),
                       const SizedBox(height: 12),
 
-                      // Pulse
                       _buildSingleVitalInput(
                         icon: Icons.show_chart,
                         title: 'Pulse',
@@ -459,7 +438,6 @@ class _VitalSignInputDialogState
                       ),
                       const SizedBox(height: 12),
 
-                      // SpO2
                       _buildSingleVitalInput(
                         icon: Icons.air,
                         title: 'SpO2',
@@ -469,7 +447,6 @@ class _VitalSignInputDialogState
                       ),
                       const SizedBox(height: 12),
 
-                      // Temperature
                       _buildSingleVitalInput(
                         icon: Icons.thermostat,
                         title: 'Temperature',
@@ -479,27 +456,22 @@ class _VitalSignInputDialogState
                       ),
                       const SizedBox(height: 12),
 
-                      // Respiration
                       _buildSingleVitalInput(
-                        icon:
-                            Icons.personal_injury_outlined,
+                        icon: Icons.personal_injury_outlined,
                         title: 'Respiration',
                         controller: _respController,
                         unit: 'bpm',
                       ),
                       const SizedBox(height: 12),
 
-                      // Blood Sugar
                       _buildSingleVitalInput(
-                        icon:
-                            Icons.water_drop_outlined,
+                        icon: Icons.water_drop_outlined,
                         title: 'Blood Sugar',
                         controller: _sugarController,
                         unit: 'mg/dL',
                       ),
                       const SizedBox(height: 12),
 
-                      // Weight
                       _buildSingleVitalInput(
                         icon: Icons.scale_outlined,
                         title: 'Weight',
@@ -534,8 +506,7 @@ class _VitalSignInputDialogState
                     style: ElevatedButton.styleFrom(
                       backgroundColor:
                           const Color(0xFF006837),
-                      padding:
-                          const EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 24,
                         vertical: 14,
                       ),
@@ -562,6 +533,9 @@ class _VitalSignInputDialogState
     );
   }
 
+  // ==========================================
+  // SINGLE VITAL INPUT
+  // ==========================================
   Widget _buildSingleVitalInput({
     required IconData icon,
     required String title,
@@ -581,9 +555,8 @@ class _VitalSignInputDialogState
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius:
-                  BorderRadius.circular(12),
+              color: const Color(0xFFE8F2EC),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
@@ -626,8 +599,7 @@ class _VitalSignInputDialogState
                       return 'Required';
                     }
 
-                    final numVal =
-                        double.tryParse(val);
+                    final numVal = double.tryParse(val);
 
                     if (numVal == null) {
                       return 'Invalid';
@@ -645,12 +617,14 @@ class _VitalSignInputDialogState
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
-                  decoration:
-                      const InputDecoration(
+
+                  // THIS MAKES THE PATIENT INPUT AREA GREEN
+                  decoration: const InputDecoration(
                     isDense: true,
-                    contentPadding:
-                        EdgeInsets.zero,
+                    contentPadding: EdgeInsets.zero,
                     border: InputBorder.none,
+                    filled: true,
+                    fillColor: Color(0xFFE8F2EC),
                   ),
                 ),
               ],
@@ -669,6 +643,9 @@ class _VitalSignInputDialogState
     );
   }
 
+  // ==========================================
+  // DUAL VITAL INPUT
+  // ==========================================
   Widget _buildDualVitalInput({
     required IconData icon,
     required String leftTitle,
@@ -688,9 +665,8 @@ class _VitalSignInputDialogState
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius:
-                  BorderRadius.circular(12),
+              color: const Color(0xFFE8F2EC),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               icon,
@@ -715,11 +691,9 @@ class _VitalSignInputDialogState
                 const SizedBox(height: 2),
                 TextFormField(
                   controller: leftController,
-                  keyboardType:
-                      TextInputType.number,
+                  keyboardType: TextInputType.number,
                   inputFormatters: [
-                    FilteringTextInputFormatter
-                        .digitsOnly,
+                    FilteringTextInputFormatter.digitsOnly,
                   ],
                   validator: (v) =>
                       v == null || v.isEmpty
@@ -730,12 +704,14 @@ class _VitalSignInputDialogState
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
-                  decoration:
-                      const InputDecoration(
+
+                  // SYSTOLIC INPUT AREA
+                  decoration: const InputDecoration(
                     isDense: true,
-                    contentPadding:
-                        EdgeInsets.zero,
+                    contentPadding: EdgeInsets.zero,
                     border: InputBorder.none,
+                    filled: true,
+                    fillColor: Color(0xFFE8F2EC),
                   ),
                 ),
               ],
@@ -745,8 +721,7 @@ class _VitalSignInputDialogState
             height: 36,
             width: 1,
             color: Colors.black12,
-            margin:
-                const EdgeInsets.symmetric(
+            margin: const EdgeInsets.symmetric(
               horizontal: 12,
             ),
           ),
@@ -766,11 +741,9 @@ class _VitalSignInputDialogState
                 const SizedBox(height: 2),
                 TextFormField(
                   controller: rightController,
-                  keyboardType:
-                      TextInputType.number,
+                  keyboardType: TextInputType.number,
                   inputFormatters: [
-                    FilteringTextInputFormatter
-                        .digitsOnly,
+                    FilteringTextInputFormatter.digitsOnly,
                   ],
                   validator: (v) =>
                       v == null || v.isEmpty
@@ -781,12 +754,14 @@ class _VitalSignInputDialogState
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
-                  decoration:
-                      const InputDecoration(
+
+                  // DIASTOLIC INPUT AREA
+                  decoration: const InputDecoration(
                     isDense: true,
-                    contentPadding:
-                        EdgeInsets.zero,
+                    contentPadding: EdgeInsets.zero,
                     border: InputBorder.none,
+                    filled: true,
+                    fillColor: Color(0xFFE8F2EC),
                   ),
                 ),
               ],
@@ -847,8 +822,7 @@ class PrescriptionDetailScreen
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            const Text('Prescription Details'),
+        title: const Text('Prescription Details'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () =>
@@ -875,24 +849,21 @@ class PrescriptionDetailScreen
                   ),
                 ),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: 12,
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-  color: _getStatusColor()
-      .withValues(alpha: 0.15),
-  borderRadius:
-      BorderRadius.circular(20),
-),
+                    color: _getStatusColor()
+                        .withValues(alpha: 0.15),
+                    borderRadius:
+                        BorderRadius.circular(20),
+                  ),
                   child: Text(
                     status.toUpperCase(),
                     style: TextStyle(
-                      color:
-                          _getStatusColor(),
-                      fontWeight:
-                          FontWeight.bold,
+                      color: _getStatusColor(),
+                      fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
                   ),
@@ -902,27 +873,25 @@ class PrescriptionDetailScreen
             const SizedBox(height: 24),
             _buildDetailRow('Dose', dose),
             _buildDetailRow('Route', route),
+            _buildDetailRow('Frequency', frequency),
+            _buildDetailRow('Duration', duration),
             _buildDetailRow(
-                'Frequency', frequency),
+              'Prescribing Doctor',
+              prescribingDoctor,
+            ),
             _buildDetailRow(
-                'Duration', duration),
-            _buildDetailRow(
-                'Prescribing Doctor',
-                prescribingDoctor),
-            _buildDetailRow(
-                'Instructions',
-                instructions),
+              'Instructions',
+              instructions,
+            ),
             const SizedBox(height: 24),
             Container(
-              padding:
-                  const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.amber.shade50,
                 borderRadius:
                     BorderRadius.circular(12),
                 border: Border.all(
-                  color:
-                      Colors.amber.shade300,
+                  color: Colors.amber.shade300,
                 ),
               ),
               child: const Row(
@@ -955,8 +924,7 @@ class PrescriptionDetailScreen
     String value,
   ) {
     return Padding(
-      padding:
-          const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment:
             CrossAxisAlignment.start,

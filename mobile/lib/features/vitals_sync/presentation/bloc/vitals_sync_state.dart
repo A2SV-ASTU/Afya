@@ -18,13 +18,15 @@ class VitalsLoading extends VitalsSyncState {}
 /// Vital saved offline successfully
 class VitalSavedOffline extends VitalsSyncState {
   final String message;
+  final VitalSignEntity vital;
 
   const VitalSavedOffline({
     required this.message,
+    required this.vital,
   });
 
   @override
-  List<Object?> get props => [message];
+  List<Object?> get props => [message, vital];
 }
 
 /// Syncing data

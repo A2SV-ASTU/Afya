@@ -15,22 +15,32 @@ class ProfileRepositoryImpl implements ProfileRepository {
     return remote.getProfile();
   }
 
-  @override
-  Future<PatientProfileEntity> updateDemographics({
-    required String firstName,
-    required String lastName,
-    String? phone,
-    String? gender,
-    DateTime? dateOfBirth,
-  }) {
-    return remote.updateDemographics(
-      firstName: firstName,
-      lastName: lastName,
-      phone: phone,
-      gender: gender,
-      dateOfBirth: dateOfBirth,
-    );
-  }
+
+@override
+Future<PatientProfileEntity> updateDemographics({
+  required String firstName,
+  required String lastName,
+  String? email,
+  String? phone,
+  String? gender,
+  DateTime? dateOfBirth,
+  String? bloodType,
+  String? emergencyContactName,
+  String? emergencyContactPhone,
+}) {
+  return remote.updateDemographics(
+    firstName: firstName,
+    lastName: lastName,
+    email: email,
+    phone: phone,
+    gender: gender,
+    dateOfBirth: dateOfBirth,
+    bloodType: bloodType,
+    emergencyContactName: emergencyContactName,
+    emergencyContactPhone: emergencyContactPhone,
+  );
+}
+
 
   @override
   Future<void> changePassword({
