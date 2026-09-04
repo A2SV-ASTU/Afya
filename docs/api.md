@@ -18,6 +18,7 @@ This document contains the complete specification and reference for the AfyaMind
 - [Clinical Evaluations Endpoints (`/api/v1/encounters/{id}/clinical-evaluation`)](#clinical-evaluations-endpoints-apiv1encountersidclinical-evaluation)
 - [Labs Endpoints (`/api/v1/encounters/{encounterId}/labs`)](#labs-endpoints-apiv1encountersencounteridlabs)
 - [Diagnoses Endpoints (`/api/v1/encounters/{encounterId}/diagnoses`)](#diagnoses-endpoints-apiv1encountersencounteriddiagnoses)
+- [Prescriptions Endpoints (`/api/v1/prescriptions`)](#prescriptions-endpoints-apiv1prescriptions)
 - [Magic Links Endpoints (`/api/v1/magic`)](#magic-links-endpoints-apiv1magic)
 
 ---
@@ -984,6 +985,211 @@ All error responses adhere to a consistent error schema:
 
 #### Responses
 - **200 OK**: Returns `clinical_evaluation` object.
+
+---
+
+## Prescriptions Endpoints (`/api/v1/prescriptions`)
+
+All prescription endpoints require a valid `BearerAuth` JWT. Encounter-scoped endpoints are protected by `AccessGuard` (requires an active clinic→patient grant). Prescription-level mutation endpoints are protected by `PrescriptionAccessGuard` (resolves prescription → encounter → patient ownership).
+
+### 41. Create Prescription
+- **Endpoint**: `POST /api/v1/encounters/{id}/prescriptions`
+- **Auth Required**: Yes (`doctor` role + `AccessGuard`)
+- **Description**: Creates a new prescription with one or more medication items for an open encounter.
+
+#### Request Body
+```json
+{
+  "notes": "Take with food",
+  "items": [
+    {
+      "medication_name": "Amlodipine",
+      "dose": "5mg",
+      "route": "oral",
+      "frequency": "OD",
+      "duration_value": 30,
+      "duration_unit": "day",
+      "instructions": "Take in the morning"
+    }
+  ]
+}
+```
+
+**Valid `route` values**: `oral`, `iv`, `im`, `subcutaneous`, `topical`, `other`
+**Valid `frequency` values**: `OD`, `BD`, `TDS`, `QID`, `QHS`, `PRN`, `STAT`, `Q4H`, `Q6H`, `Q8H`, `Q12H`
+**Valid `duration_unit` values**: `day`, `week`, `month`, `year`
+
+#### Responses
+- **201 Created**:
+```json
+{
+  "prescription": {
+    "ID": "p1eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+    "EncounterID": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+    "Notes": "Take with food",
+    "PrescribedAt": "2026-08-28T14:10:00Z",
+    "items": [
+      {
+        "ID": "i1eebc99-9c0b-4ef8-bb6d-6bb9bd380a88",
+        "PrescriptionID": "p1eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+        "MedicationName": "Amlodipine",
+        "Dose": "5mg",
+        "Route": "oral",
+        "Frequency": "OD",
+        "duration_value": 30,
+        "duration_unit": "day",
+        "Status": "active",
+        "Instructions": "Take in the morning",
+        "StartedAt": "2026-08-28T14:10:00Z"
+      }
+    ]
+  }
+}
+```
+- **400 Bad Request** (`validation_error`): Missing required fields or `items` is empty.
+- **403 Forbidden** (`forbidden_role` / `forbidden_grant`): Not a doctor or no active access grant.
+- **409 Conflict** (`conflict`): Encounter is already closed.
+
+---
+
+### 42. List Prescriptions for Encounter
+- **Endpoint**: `GET /api/v1/encounters/{id}/prescriptions`
+- **Auth Required**: Yes (`doctor` or `patient` + `AccessGuard`)
+- **Description**: Lists all prescriptions (with items) for a specific encounter.
+
+#### Responses
+- **200 OK**:
+```json
+{
+  "prescriptions": [
+    {
+      "ID": "p1eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+      "EncounterID": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+      "Notes": "Take with food",
+      "PrescribedAt": "2026-08-28T14:10:00Z",
+      "items": [...]
+    }
+  ]
+}
+```
+- **403 Forbidden**: Missing access grant.
+
+---
+
+### 43. List All Prescriptions for Patient (Paginated)
+- **Endpoint**: `GET /api/v1/patients/{patientId}/prescriptions`
+- **Auth Required**: Yes (`doctor` or `patient` + `AccessGuard`)
+- **Description**: Returns all prescriptions across **all encounters** for a given patient, ordered by most recent first. Supports pagination.
+
+#### Query Parameters
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | `1` | Page number |
+| `limit` | integer | `20` | Items per page (max: 100) |
+
+#### Responses
+- **200 OK**:
+```json
+{
+  "prescriptions": [
+    {
+      "ID": "p1eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+      "EncounterID": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+      "Notes": "Take with food",
+      "PrescribedAt": "2026-08-28T14:10:00Z",
+      "items": [
+        {
+          "ID": "i1eebc99-9c0b-4ef8-bb6d-6bb9bd380a88",
+          "MedicationName": "Amlodipine",
+          "Dose": "5mg",
+          "Route": "oral",
+          "Frequency": "OD",
+          "duration_value": 30,
+          "duration_unit": "day",
+          "Status": "active",
+          "StartedAt": "2026-08-28T14:10:00Z"
+        }
+      ]
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 47
+}
+```
+- **400 Bad Request** (`validation_error`): Invalid `patientId`.
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **403 Forbidden** (`forbidden_role` / `forbidden_grant`): Patient accessing another patient's records, or doctor without active grant.
+
+---
+
+### 44. Update Prescription
+- **Endpoint**: `PATCH /api/v1/prescriptions/{id}`
+- **Auth Required**: Yes (`doctor` role + `PrescriptionAccessGuard`)
+- **Description**: Updates the notes and/or replaces all items of an active prescription.
+
+#### Request Body
+```json
+{
+  "notes": "Updated instructions",
+  "items": [
+    {
+      "medication_name": "Amlodipine",
+      "dose": "10mg",
+      "route": "oral",
+      "frequency": "OD",
+      "duration_value": 30,
+      "duration_unit": "day"
+    }
+  ]
+}
+```
+*(Both `notes` and `items` are optional — only provided fields are updated.)*
+
+#### Responses
+- **200 OK**: Returns updated `prescription` object with items.
+- **400 Bad Request** (`validation_error`): Invalid prescription ID.
+- **403 Forbidden**: Not the prescribing doctor or no active grant.
+- **404 Not Found**: Prescription not found.
+
+---
+
+### 45. Complete Prescription Items
+- **Endpoint**: `PATCH /api/v1/prescriptions/{id}/complete`
+- **Auth Required**: Yes (`patient` role + `PrescriptionAccessGuard`)
+- **Description**: Marks specific items (or all active items) in a prescription as completed.
+
+#### Request Body *(optional)*
+```json
+{
+  "item_ids": [
+    "i1eebc99-9c0b-4ef8-bb6d-6bb9bd380a88"
+  ]
+}
+```
+*(If `item_ids` is empty or body is omitted, **all active items** are marked completed.)*
+
+#### Responses
+- **200 OK**:
+```json
+{ "status": "completed" }
+```
+- **403 Forbidden**: Not the owning patient.
+
+---
+
+### 46. Deactivate Prescription
+- **Endpoint**: `PATCH /api/v1/prescriptions/{id}/deactivate`
+- **Auth Required**: Yes (`doctor` role + `PrescriptionAccessGuard`)
+- **Description**: Deactivates all active items within a prescription (e.g. discontinued treatment).
+
+#### Responses
+- **200 OK**:
+```json
+{ "status": "deactivated" }
+```
+- **403 Forbidden**: Not the prescribing doctor or no active grant.
+- **404 Not Found**: Prescription not found.
 
 ---
 

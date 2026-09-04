@@ -19,21 +19,23 @@ import (
 
 type mockPrescriptionRepo struct {
 	// stubbed returns
-	encounterStatus          string
-	encounterStatusErr       error
+	encounterStatus           string
+	encounterStatusErr        error
 	encounterIDByPrescription uuid.UUID
-	encounterIDErr           error
-	createWithItemsErr       error
-	listByEncounterResult    []Prescription
-	listByEncounterErr       error
-	findItemsResult          []PrescriptionItem
-	findItemsErr             error
-	findByIDResult           *Prescription
-	findByIDErr              error
-	updateNotesErr           error
-	replaceItemsErr          error
-	updateItemStatusErr      error
-	updateAllActiveItemsErr  error
+	encounterIDErr            error
+	createWithItemsErr        error
+	listByEncounterResult     []Prescription
+	listByEncounterErr        error
+	listByPatientResult       []Prescription
+	listByPatientErr          error
+	findItemsResult           []PrescriptionItem
+	findItemsErr              error
+	findByIDResult            *Prescription
+	findByIDErr               error
+	updateNotesErr            error
+	replaceItemsErr           error
+	updateItemStatusErr       error
+	updateAllActiveItemsErr   error
 }
 
 func (m *mockPrescriptionRepo) FindEncounterStatus(ctx context.Context, encounterID uuid.UUID) (string, error) {
@@ -81,6 +83,10 @@ func (m *mockPrescriptionRepo) UpdateItemStatus(ctx context.Context, itemID uuid
 
 func (m *mockPrescriptionRepo) UpdateAllActiveItemsStatus(ctx context.Context, prescriptionID uuid.UUID, status PrescriptionItemStatus) error {
 	return m.updateAllActiveItemsErr
+}
+
+func (m *mockPrescriptionRepo) ListByPatientID(ctx context.Context, patientID uuid.UUID, limit, offset int) ([]Prescription, int, error) {
+	return m.listByPatientResult, len(m.listByPatientResult), m.listByPatientErr
 }
 
 // ---------------------------------------------------------------------------

@@ -2640,6 +2640,87 @@
                 }
             }
         },
+        "/patients/{patientId}/prescriptions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all prescriptions across all encounters for a given patient, ordered by most recent first. Patient (self) or doctor with active access grant only. Supports pagination.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Prescriptions"
+                ],
+                "summary": "List all prescriptions for a patient",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of prescriptions",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "limit": {
+                                    "type": "integer"
+                                },
+                                "page": {
+                                    "type": "integer"
+                                },
+                                "prescriptions": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/src_prescriptions.PrescriptionResponse"
+                                    }
+                                },
+                                "total": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden / Access denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/patients/{patientId}/vitals": {
             "get": {
                 "security": [

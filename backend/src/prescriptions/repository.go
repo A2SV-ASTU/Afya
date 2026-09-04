@@ -21,6 +21,7 @@ type Repository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*Prescription, error)
 	FindItemsByPrescriptionID(ctx context.Context, prescriptionID uuid.UUID) ([]PrescriptionItem, error)
 	ListByEncounterID(ctx context.Context, encounterID uuid.UUID) ([]Prescription, error)
+	ListByPatientID(ctx context.Context, patientID uuid.UUID, limit, offset int) ([]Prescription, int, error)
 	UpdateNotes(ctx context.Context, id uuid.UUID, notes *string) error
 	ReplaceItems(ctx context.Context, tx database.DBTX, prescriptionID uuid.UUID, items []PrescriptionItem) error
 	UpdateItemStatus(ctx context.Context, itemID uuid.UUID, status PrescriptionItemStatus) error
@@ -135,6 +136,43 @@ func (r *repository) ListByEncounterID(ctx context.Context, encounterID uuid.UUI
 		return []Prescription{}, nil
 	}
 	return out, nil
+}
+
+func (r *repository) ListByPatientID(ctx context.Context, patientID uuid.UUID, limit, offset int) ([]Prescription, int, error) {
+	var total int
+	if err := r.db.QueryRowContext(ctx,
+		`SELECT COUNT(*)
+		 FROM prescriptions p
+		 JOIN encounters e ON e.id = p.encounter_id
+		 WHERE e.patient_id = $1`, patientID,
+	).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count prescriptions: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT p.id, p.encounter_id, p.notes, p.prescribed_at
+		FROM prescriptions p
+		JOIN encounters e ON e.id = p.encounter_id
+		WHERE e.patient_id = $1
+		ORDER BY p.prescribed_at DESC
+		LIMIT $2 OFFSET $3`, patientID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	var out []Prescription
+	for rows.Next() {
+		var p Prescription
+		if err := rows.Scan(&p.ID, &p.EncounterID, &p.Notes, &p.PrescribedAt); err != nil {
+			return nil, 0, err
+		}
+		out = append(out, p)
+	}
+	if out == nil {
+		return []Prescription{}, total, nil
+	}
+	return out, total, nil
 }
 
 func (r *repository) UpdateNotes(ctx context.Context, id uuid.UUID, notes *string) error {

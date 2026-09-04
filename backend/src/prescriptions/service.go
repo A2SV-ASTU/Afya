@@ -15,6 +15,7 @@ import (
 type Service interface {
 	CreatePrescription(ctx context.Context, user *auth.UserContext, encounterID uuid.UUID, req CreatePrescriptionRequest) (*PrescriptionResponse, error)
 	ListPrescriptions(ctx context.Context, user *auth.UserContext, encounterID uuid.UUID) ([]PrescriptionResponse, error)
+	ListPatientPrescriptions(ctx context.Context, user *auth.UserContext, patientID uuid.UUID, page, limit int) ([]PrescriptionResponse, int, error)
 	UpdatePrescription(ctx context.Context, user *auth.UserContext, prescriptionID uuid.UUID, req UpdatePrescriptionRequest) (*PrescriptionResponse, error)
 	CompletePrescription(ctx context.Context, user *auth.UserContext, prescriptionID uuid.UUID, req CompletePrescriptionRequest) error
 	DeactivatePrescription(ctx context.Context, user *auth.UserContext, prescriptionID uuid.UUID) error
@@ -94,6 +95,36 @@ func (s *service) ListPrescriptions(ctx context.Context, user *auth.UserContext,
 		out = append(out, PrescriptionResponse{Prescription: p, Items: items})
 	}
 	return out, nil
+}
+
+func (s *service) ListPatientPrescriptions(ctx context.Context, user *auth.UserContext, patientID uuid.UUID, page, limit int) ([]PrescriptionResponse, int, error) {
+	// Patient can only access their own records; doctor access is enforced by AccessGuard at route level.
+	if user.Role == "patient" && user.ID != patientID {
+		return nil, 0, appErrors.ErrForbiddenRole()
+	}
+
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+
+	prescriptions, total, err := s.repo.ListByPatientID(ctx, patientID, limit, offset)
+	if err != nil {
+		return nil, 0, appErrors.ErrInternal(err.Error())
+	}
+
+	out := make([]PrescriptionResponse, 0, len(prescriptions))
+	for _, p := range prescriptions {
+		items, err := s.repo.FindItemsByPrescriptionID(ctx, p.ID)
+		if err != nil {
+			return nil, 0, appErrors.ErrInternal(err.Error())
+		}
+		out = append(out, PrescriptionResponse{Prescription: p, Items: items})
+	}
+	return out, total, nil
 }
 
 func (s *service) UpdatePrescription(ctx context.Context, user *auth.UserContext, prescriptionID uuid.UUID, req UpdatePrescriptionRequest) (*PrescriptionResponse, error) {

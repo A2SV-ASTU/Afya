@@ -2935,6 +2935,60 @@ paths:
       summary: Open a new clinical encounter
       tags:
       - Encounters
+  /patients/{patientId}/prescriptions:
+    get:
+      description: Returns all prescriptions across all encounters for a given patient,
+        ordered by most recent first. Patient (self) or doctor with active access
+        grant only. Supports pagination.
+      parameters:
+      - description: Patient ID
+        in: path
+        name: patientId
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Items per page (default: 20)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Paginated list of prescriptions
+          schema:
+            properties:
+              limit:
+                type: integer
+              page:
+                type: integer
+              prescriptions:
+                items:
+                  $ref: '#/definitions/src_prescriptions.PrescriptionResponse'
+                type: array
+              total:
+                type: integer
+            type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Forbidden / Access denied
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List all prescriptions for a patient
+      tags:
+      - Prescriptions
   /patients/{patientId}/vitals:
     get:
       description: Lists vital signs history for a patient. Patient or Doctor with
