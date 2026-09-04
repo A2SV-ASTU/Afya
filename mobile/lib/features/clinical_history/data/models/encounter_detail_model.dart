@@ -93,6 +93,7 @@ class EncounterVitalModel {
 
 class EncounterPrescriptionItemModel {
   final String id;
+  final String? prescriptionId;
   final String medicationName;
   final String dose;
   final String route;
@@ -101,9 +102,11 @@ class EncounterPrescriptionItemModel {
   final EncounterPrescriptionStatus status;
   final String? instructions;
   final DateTime startedAt;
+  final bool isTrackingActive;
 
   const EncounterPrescriptionItemModel({
     required this.id,
+    this.prescriptionId,
     required this.medicationName,
     required this.dose,
     required this.route,
@@ -112,26 +115,42 @@ class EncounterPrescriptionItemModel {
     required this.status,
     this.instructions,
     required this.startedAt,
+    this.isTrackingActive = false,
   });
 
   factory EncounterPrescriptionItemModel.fromJson(
     Map<String, dynamic> json,
   ) {
+    final medName = (json['medication_name'] ??
+            json['medicationName'] ??
+            json['MedicationName'] ??
+            '') as String;
+    final startedAtRaw =
+        json['started_at'] ?? json['startedAt'] ?? json['StartedAt'];
+    final parsedStartedAt = startedAtRaw != null
+        ? DateTime.parse(startedAtRaw as String)
+        : DateTime.now();
+
     return EncounterPrescriptionItemModel(
-      id: json['id'] as String,
-      medicationName: json['medication_name'] as String,
-      dose: json['dose'] as String,
-      route: json['route'] as String,
-      frequency: json['frequency'] as String,
-      duration: json['duration'] as String,
-      status: _parseStatus(json['status'] as String),
-      instructions: json['instructions'] as String?,
-      startedAt: DateTime.parse(json['started_at'] as String),
+      id: (json['id'] ?? json['ID'] ?? '') as String,
+      prescriptionId: (json['prescription_id'] ??
+              json['PrescriptionID'] ??
+              json['prescriptionId']) as String?,
+      medicationName: medName,
+      dose: (json['dose'] ?? json['Dose'] ?? '') as String,
+      route: (json['route'] ?? json['Route'] ?? '') as String,
+      frequency: (json['frequency'] ?? json['Frequency'] ?? '') as String,
+      duration: (json['duration'] ?? json['Duration'] ?? '') as String,
+      status:
+          _parseStatus((json['status'] ?? json['Status'] ?? 'active') as String),
+      instructions: (json['instructions'] ?? json['Instructions']) as String?,
+      startedAt: parsedStartedAt,
+      isTrackingActive: (json['is_tracking_active'] ?? json['isTrackingActive'] ?? false) as bool,
     );
   }
 
   static EncounterPrescriptionStatus _parseStatus(String value) {
-    switch (value) {
+    switch (value.toLowerCase()) {
       case 'active':
         return EncounterPrescriptionStatus.active;
       case 'deactivated':
@@ -148,6 +167,7 @@ class EncounterPrescriptionItemModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      if (prescriptionId != null) 'prescription_id': prescriptionId,
       'medication_name': medicationName,
       'dose': dose,
       'route': route,
@@ -156,12 +176,14 @@ class EncounterPrescriptionItemModel {
       'status': status.name,
       if (instructions != null) 'instructions': instructions,
       'started_at': startedAt.toIso8601String(),
+      'is_tracking_active': isTrackingActive,
     };
   }
 
   EncounterPrescriptionItemEntity toEntity() {
     return EncounterPrescriptionItemEntity(
       id: id,
+      prescriptionId: prescriptionId,
       medicationName: medicationName,
       dose: dose,
       route: route,
@@ -170,6 +192,7 @@ class EncounterPrescriptionItemModel {
       status: status,
       instructions: instructions,
       startedAt: startedAt,
+      isTrackingActive: isTrackingActive,
     );
   }
 }
@@ -190,15 +213,18 @@ class EncounterPrescriptionModel {
   factory EncounterPrescriptionModel.fromJson(
     Map<String, dynamic> json,
   ) {
+    final prescriptionId = json['id'] as String;
     return EncounterPrescriptionModel(
-      id: json['id'] as String,
+      id: prescriptionId,
       notes: json['notes'] as String?,
       prescribedAt: DateTime.parse(json['prescribed_at'] as String),
       items: (json['items'] as List<dynamic>)
           .map(
-            (item) => EncounterPrescriptionItemModel.fromJson(
-              item as Map<String, dynamic>,
-            ),
+            (item) {
+              final itemMap = Map<String, dynamic>.from(item as Map);
+              itemMap['prescription_id'] ??= prescriptionId;
+              return EncounterPrescriptionItemModel.fromJson(itemMap);
+            },
           )
           .toList(),
     );

@@ -104,6 +104,7 @@ void main() {
 
       expect(result.length, 1);
       expect(result.first.medicationName, 'Amoxicillin');
+      expect(result.first.prescriptionId, 'rx-header-1');
     });
 
     test('throws ServerException on DioException with response error body',
@@ -135,55 +136,68 @@ void main() {
   });
 
   group('completePrescription', () {
+    const prescriptionId = 'rx-header-123';
+
     test('returns completed model on successful PATCH with item payload',
         () async {
       final completedJson = {
         ...sampleItemJson,
+        'prescription_id': prescriptionId,
         'status': 'completed',
       };
 
-      when(() => mockDio.patch('/prescriptions/$prescriptionItemId/complete'))
-          .thenAnswer((_) async => Response(
-                requestOptions: RequestOptions(
-                    path: '/prescriptions/$prescriptionItemId/complete'),
-                statusCode: 200,
-                data: {'data': completedJson},
-              ));
+      when(() => mockDio.patch(
+            '/prescriptions/$prescriptionId/complete',
+            data: {'item_ids': [prescriptionItemId]},
+          )).thenAnswer((_) async => Response(
+            requestOptions: RequestOptions(
+                path: '/prescriptions/$prescriptionId/complete'),
+            statusCode: 200,
+            data: {'data': completedJson},
+          ));
 
       final result = await remoteDataSource.completePrescription(
+        prescriptionId: prescriptionId,
         prescriptionItemId: prescriptionItemId,
       );
 
       expect(result.id, prescriptionItemId);
+      expect(result.prescriptionId, prescriptionId);
       expect(result.status, EncounterPrescriptionStatus.completed);
     });
 
-    test('returns completed synthetic model on successful empty 200 response',
+    test('returns completed synthetic model on successful empty or status response',
         () async {
-      when(() => mockDio.patch('/prescriptions/$prescriptionItemId/complete'))
-          .thenAnswer((_) async => Response(
-                requestOptions: RequestOptions(
-                    path: '/prescriptions/$prescriptionItemId/complete'),
-                statusCode: 200,
-                data: {'message': 'Prescription marked as completed'},
-              ));
+      when(() => mockDio.patch(
+            '/prescriptions/$prescriptionId/complete',
+            data: {'item_ids': [prescriptionItemId]},
+          )).thenAnswer((_) async => Response(
+            requestOptions: RequestOptions(
+                path: '/prescriptions/$prescriptionId/complete'),
+            statusCode: 200,
+            data: {'status': 'completed'},
+          ));
 
       final result = await remoteDataSource.completePrescription(
+        prescriptionId: prescriptionId,
         prescriptionItemId: prescriptionItemId,
       );
 
       expect(result.id, prescriptionItemId);
+      expect(result.prescriptionId, prescriptionId);
       expect(result.status, EncounterPrescriptionStatus.completed);
     });
 
     test('throws ServerException when PATCH returns 500 error', () async {
-      when(() => mockDio.patch('/prescriptions/$prescriptionItemId/complete'))
-          .thenThrow(DioException(
+      when(() => mockDio.patch(
+            '/prescriptions/$prescriptionId/complete',
+            data: {'item_ids': [prescriptionItemId]},
+          )).thenThrow(DioException(
         requestOptions:
-            RequestOptions(path: '/prescriptions/$prescriptionItemId/complete'),
+            RequestOptions(path: '/prescriptions/$prescriptionId/complete'),
         response: Response(
           requestOptions: RequestOptions(
-              path: '/prescriptions/$prescriptionItemId/complete'),
+              path: '/prescriptions/$prescriptionId/complete'),
           statusCode: 500,
           data: {
             'error': {'code': 'internal_error', 'message': 'Database failure'}
@@ -193,6 +207,7 @@ void main() {
 
       expect(
         () => remoteDataSource.completePrescription(
+          prescriptionId: prescriptionId,
           prescriptionItemId: prescriptionItemId,
         ),
         throwsA(isA<ServerException>()),

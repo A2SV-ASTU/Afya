@@ -17,6 +17,7 @@ abstract class MedicationRepository {
   Future<Either<Failure, EncounterPrescriptionItemEntity>>
       completePrescriptionItem({
     required String prescriptionItemId,
+    String? prescriptionId,
   });
 
   Future<Either<Failure, void>> recordDoseAdherence({
