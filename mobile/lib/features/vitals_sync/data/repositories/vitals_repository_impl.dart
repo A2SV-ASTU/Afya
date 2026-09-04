@@ -7,6 +7,7 @@ import '../../domain/repositories/vitals_repository.dart';
 import '../datasources/vitals_local_data_source.dart';
 import '../datasources/vitals_remote_data_source.dart';
 import '../models/vital_sign_model.dart';
+import 'package:flutter/foundation.dart';
 
 @LazySingleton(as: VitalsRepository)
 class VitalsRepositoryImpl implements VitalsRepository {
@@ -58,7 +59,71 @@ class VitalsRepositoryImpl implements VitalsRepository {
   }
 
   @override
-  Future<List<VitalSignEntity>> getHistory() async {
-    return await remote.getHistory();
+Future<List<VitalSignEntity>> getHistory() async {
+  final remoteHistory = await remote.getHistory();
+  final pendingVitals = await local.getPendingVitals();
+
+  debugPrint('========== VITAL HISTORY DEBUG ==========');
+  debugPrint('Remote history count: ${remoteHistory.length}');
+  debugPrint('Local pending count: ${pendingVitals.length}');
+
+  for (final vital in remoteHistory) {
+    debugPrint(
+      'REMOTE -> '
+      'id=${vital.clientId}, '
+      'BP=${vital.systolicBp}/${vital.diastolicBp}, '
+      'pulse=${vital.pulse}, '
+      'temp=${vital.temperature}, '
+      'weight=${vital.weight}, '
+      'recordedAt=${vital.recordedAt}',
+    );
   }
+
+  for (final vital in pendingVitals) {
+    debugPrint(
+      'LOCAL -> '
+      'id=${vital.clientId}, '
+      'BP=${vital.systolicBp}/${vital.diastolicBp}, '
+      'pulse=${vital.pulse}, '
+      'temp=${vital.temperature}, '
+      'weight=${vital.weight}, '
+      'recordedAt=${vital.recordedAt}',
+    );
+  }
+
+  final allVitals = <VitalSignEntity>[
+    ...remoteHistory,
+    ...pendingVitals,
+  ];
+
+  final uniqueVitals = <String, VitalSignEntity>{};
+
+  for (final vital in allVitals) {
+    uniqueVitals[vital.clientId] = vital;
+  }
+
+  final history = uniqueVitals.values.toList();
+
+  history.sort(
+    (a, b) => b.recordedAt.compareTo(a.recordedAt),
+  );
+
+  debugPrint('Final history count: ${history.length}');
+
+  for (final vital in history) {
+    debugPrint(
+      'FINAL -> '
+      'id=${vital.clientId}, '
+      'BP=${vital.systolicBp}/${vital.diastolicBp}, '
+      'pulse=${vital.pulse}, '
+      'temp=${vital.temperature}, '
+      'weight=${vital.weight}, '
+      'recordedAt=${vital.recordedAt}',
+    );
+  }
+
+  debugPrint('=========================================');
+
+  return history;
+}
 }
