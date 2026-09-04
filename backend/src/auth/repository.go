@@ -10,6 +10,17 @@ import (
 	"github.com/google/uuid"
 )
 
+type EmailVerification struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Email     string
+	OTPHash   string
+	Attempts  int
+	ExpiresAt time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type Repository interface {
 	FindByEmail(ctx context.Context, email string) (*users.User, error)
 	FindByPhone(ctx context.Context, phone string) (*users.User, error)
@@ -20,6 +31,11 @@ type Repository interface {
 	FindPasswordResetByTokenHash(ctx context.Context, tokenHash string) (uuid.UUID, uuid.UUID, bool, error)
 	MarkPasswordResetUsed(ctx context.Context, id uuid.UUID) error
 	UpdateUserPassword(ctx context.Context, userID uuid.UUID, newHash string) error
+	CreateEmailVerification(ctx context.Context, userID uuid.UUID, email, otpHash string, expiresAt time.Time) error
+	FindEmailVerificationByEmail(ctx context.Context, email string) (*EmailVerification, error)
+	IncrementVerificationAttempts(ctx context.Context, id uuid.UUID) error
+	DeleteEmailVerification(ctx context.Context, id uuid.UUID) error
+	MarkEmailVerified(ctx context.Context, userID uuid.UUID) error
 }
 
 type repository struct {
@@ -85,3 +101,57 @@ func (r *repository) UpdateUserPassword(ctx context.Context, userID uuid.UUID, n
 	_, err := r.db.ExecContext(ctx, query, newHash, userID)
 	return err
 }
+
+func (r *repository) CreateEmailVerification(ctx context.Context, userID uuid.UUID, email, otpHash string, expiresAt time.Time) error {
+	// Clean up any existing verifications for this user/email
+	_, _ = r.db.ExecContext(ctx, `DELETE FROM email_verifications WHERE user_id = $1 OR email = $2`, userID, email)
+
+	query := `
+		INSERT INTO email_verifications (user_id, email, otp_hash, attempts, expires_at, created_at, updated_at)
+		VALUES ($1, $2, $3, 0, $4, NOW(), NOW())
+	`
+	_, err := r.db.ExecContext(ctx, query, userID, email, otpHash, expiresAt)
+	return err
+}
+
+func (r *repository) FindEmailVerificationByEmail(ctx context.Context, email string) (*EmailVerification, error) {
+	query := `
+		SELECT id, user_id, email, otp_hash, attempts, expires_at, created_at, updated_at
+		FROM email_verifications
+		WHERE email = $1
+		ORDER BY created_at DESC
+		LIMIT 1
+	`
+	var ev EmailVerification
+	err := r.db.QueryRowContext(ctx, query, email).Scan(
+		&ev.ID,
+		&ev.UserID,
+		&ev.Email,
+		&ev.OTPHash,
+		&ev.Attempts,
+		&ev.ExpiresAt,
+		&ev.CreatedAt,
+		&ev.UpdatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &ev, nil
+}
+
+func (r *repository) IncrementVerificationAttempts(ctx context.Context, id uuid.UUID) error {
+	query := `UPDATE email_verifications SET attempts = attempts + 1, updated_at = NOW() WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
+
+func (r *repository) DeleteEmailVerification(ctx context.Context, id uuid.UUID) error {
+	query := `DELETE FROM email_verifications WHERE id = $1`
+	_, err := r.db.ExecContext(ctx, query, id)
+	return err
+}
+
+func (r *repository) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+	return r.userRepo.MarkEmailVerified(ctx, userID)
+}
+

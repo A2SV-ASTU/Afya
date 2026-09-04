@@ -111,6 +111,18 @@ func (m *mockRepository) DeleteAccount(ctx context.Context, id uuid.UUID) error 
 	return nil
 }
 
+func (m *mockRepository) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+	u, exists := m.users[userID]
+	if !exists {
+		return ErrUserNotFound
+	}
+	u.IsEmailVerified = true
+	now := time.Now()
+	u.EmailVerifiedAt = &now
+	return nil
+}
+
+
 func TestUserService_GetProfile(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)

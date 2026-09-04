@@ -87,15 +87,15 @@ func clearCookies(c *gin.Context, cfg *config.Config) {
 // Signup godoc
 //
 //	@Summary		Register a new patient account
-//	@Description	Creates a new patient account and sets HttpOnly JWT cookies (access_token + refresh_token).
+//	@Description	Creates a new unverified patient account and sends a 6-digit verification code to their email.
 //	@Description	Also aliased at POST /auth/signup.
 //	@Tags			Auth
 //	@Accept			json
 //	@Produce		json
-//	@Param			body	body		auth.SignupRequest						true	"Patient registration payload"
-//	@Success		201		{object}	response.DataEnvelope{data=users.UserResponse}	"Account created"
-//	@Failure		400		{object}	response.ErrorEnvelope					"Validation error"
-//	@Failure		409		{object}	response.ErrorEnvelope					"Email or phone already in use"
+//	@Param			body	body		auth.SignupRequest	true	"Patient registration payload"
+//	@Success		201		{object}	response.DataEnvelope{data=auth.SignupResponse}	"Account created, verification required"
+//	@Failure		400		{object}	response.ErrorEnvelope	"Validation error"
+//	@Failure		409		{object}	response.ErrorEnvelope	"Email or phone already in use"
 //	@Router			/auth/register [post]
 //	@Router			/auth/signup [post]
 func (h *Handler) Signup(c *gin.Context) {
@@ -112,23 +112,85 @@ func (h *Handler) Signup(c *gin.Context) {
 		return
 	}
 
-	// Create the patient and generate JWT tokens.
-	user, accessToken, refreshToken, appErr :=
-		h.service.Signup(c.Request.Context(), req)
-
+	// Create the patient and dispatch verification OTP.
+	user, appErr := h.service.Signup(c.Request.Context(), req)
 	if appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
 
-	// Store authentication tokens in HttpOnly cookies.
+	// Return registration confirmation (no tokens issued until email verification).
+	response.JSON(c, http.StatusCreated, gin.H{
+		"data": SignupResponse{
+			Message: "Registration successful. Please verify your email with the 6-digit code sent to your inbox.",
+			Email:   user.Email,
+		},
+	})
+}
+
+// VerifyEmail godoc
+//
+//	@Summary		Verify patient email address
+//	@Description	Verifies patient email address using 6-digit OTP code and sets HttpOnly JWT cookies.
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.VerifyEmailRequest	true	"Email and OTP verification payload"
+//	@Success		200		{object}	response.DataEnvelope{data=users.UserResponse}	"Email verified and authenticated"
+//	@Failure		400		{object}	response.ErrorEnvelope	"Invalid or expired OTP"
+//	@Router			/auth/verify-email [post]
+func (h *Handler) VerifyEmail(c *gin.Context) {
+	var req VerifyEmailRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request body"))
+		return
+	}
+
+	user, accessToken, refreshToken, appErr := h.service.VerifyEmail(c.Request.Context(), req)
+	if appErr != nil {
+		response.RespondAppError(c, appErr)
+		return
+	}
+
 	setCookies(c, accessToken, refreshToken, h.cfg)
 
-	// Return the created patient.
-	response.JSON(c, http.StatusCreated, gin.H{
+	response.JSON(c, http.StatusOK, gin.H{
 		"data": users.ToUserResponse(user),
 	})
 }
+
+// ResendOTP godoc
+//
+//	@Summary		Resend email verification code
+//	@Description	Resends a fresh 6-digit verification code to the patient's registered email (rate-limited).
+//	@Tags			Auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		auth.ResendOTPRequest	true	"Email address payload"
+//	@Success		200		{object}	response.MessageEnvelope	"Verification code sent"
+//	@Failure		400		{object}	response.ErrorEnvelope		"Validation error"
+//	@Failure		404		{object}	response.ErrorEnvelope		"User not found"
+//	@Failure		409		{object}	response.ErrorEnvelope		"Email already verified or cooldown active"
+//	@Router			/auth/resend-otp [post]
+func (h *Handler) ResendOTP(c *gin.Context) {
+	var req ResendOTPRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request body"))
+		return
+	}
+
+	if appErr := h.service.ResendOTP(c.Request.Context(), req); appErr != nil {
+		response.RespondAppError(c, appErr)
+		return
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{
+		"data": gin.H{
+			"message": "A new verification code has been sent to your email.",
+		},
+	})
+}
+
 
 // Login godoc
 //

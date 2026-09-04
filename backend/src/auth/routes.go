@@ -11,6 +11,8 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 	{
 		authGroup.POST("/register", handler.Signup)
 		authGroup.POST("/signup", handler.Signup)
+		authGroup.POST("/verify-email", handler.VerifyEmail)
+		authGroup.POST("/resend-otp", handler.ResendOTP)
 		authGroup.POST("/login", handler.Login)
 		authGroup.POST("/refresh", handler.Refresh)
 		authGroup.POST("/forgot-password", handler.ForgotPassword)
@@ -18,3 +20,4 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 		authGroup.POST("/logout", middleware.RequireAuth(jwtSecret), handler.Logout)
 	}
 }
+
