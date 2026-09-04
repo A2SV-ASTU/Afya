@@ -21,6 +21,7 @@ type Repository interface {
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
 	DeactivateDoctor(ctx context.Context, clinicID, doctorID uuid.UUID) error
 	ActivateDoctor(ctx context.Context, clinicID, doctorID uuid.UUID) error
+	UpdateDoctorProfile(ctx context.Context, clinicID, doctorID uuid.UUID, specialization, licenseNumber *string) (*DoctorResponse, error)
 
 	FindDoctorsByClinicID(ctx context.Context, clinicID uuid.UUID) ([]DoctorResponse, error)
 	FindInvitationsByClinicID(ctx context.Context, clinicID uuid.UUID) ([]InvitationResponse, error)
@@ -182,6 +183,30 @@ func (r *repository) ActivateDoctor(ctx context.Context, clinicID, doctorID uuid
 		return errors.New("doctor not found in this clinic")
 	}
 	return nil
+}
+
+func (r *repository) UpdateDoctorProfile(ctx context.Context, clinicID, doctorID uuid.UUID, specialization, licenseNumber *string) (*DoctorResponse, error) {
+	query := `
+		UPDATE users
+		SET specialization = COALESCE($1, specialization),
+		    license_number = COALESCE($2, license_number),
+		    updated_at = NOW()
+		WHERE id = $3 AND clinic_id = $4 AND role = 'doctor'
+		RETURNING id, first_name, last_name, role, phone, email, specialization, license_number, doctor_status, invited_by, created_at
+	`
+	var d DoctorResponse
+	err := r.db.QueryRowContext(ctx, query, specialization, licenseNumber, doctorID, clinicID).Scan(
+		&d.ID, &d.FirstName, &d.LastName, &d.Role, &d.Phone,
+		&d.Email, &d.Specialization, &d.LicenseNumber, &d.DoctorStatus,
+		&d.InvitedBy, &d.CreatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errors.New("doctor not found in this clinic")
+		}
+		return nil, fmt.Errorf("failed to update doctor profile: %w", err)
+	}
+	return &d, nil
 }
 
 

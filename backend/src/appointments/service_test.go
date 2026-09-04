@@ -50,6 +50,32 @@ func (m *mockRepository) FindByPatientID(ctx context.Context, patientID uuid.UUI
 	return result, nil
 }
 
+func (m *mockRepository) FindByID(ctx context.Context, id uuid.UUID) (*Appointment, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	for _, a := range m.appointments {
+		if a.ID == id {
+			return &a, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status AppointmentStatus, updatedAt time.Time) error {
+	if m.err != nil {
+		return m.err
+	}
+	for i, a := range m.appointments {
+		if a.ID == id {
+			m.appointments[i].Status = status
+			m.appointments[i].UpdatedAt = updatedAt
+			return nil
+		}
+	}
+	return errors.New("not found")
+}
+
 func TestCreateAppointment(t *testing.T) {
 	clinicID := uuid.New()
 	doctorID := uuid.New()
@@ -238,6 +264,110 @@ func TestGetPatientAppointments(t *testing.T) {
 				}
 				if res == nil {
 					t.Errorf("expected non-nil array")
+				}
+			}
+		})
+	}
+}
+
+func TestUpdateAppointmentStatus(t *testing.T) {
+	clinicID := uuid.New()
+	otherClinicID := uuid.New()
+	doctorID := uuid.New()
+	patientID := uuid.New()
+	apptID := uuid.New()
+	dbErr := errors.New("db error")
+
+	seedAppointments := []Appointment{
+		{
+			ID:          apptID,
+			ClinicID:    clinicID,
+			DoctorID:    doctorID,
+			PatientID:   patientID,
+			ScheduledAt: time.Now(),
+			Status:      StatusScheduled,
+		},
+	}
+
+	tests := []struct {
+		name           string
+		user           *auth.UserContext
+		apptID         uuid.UUID
+		req            UpdateAppointmentStatusRequest
+		mockRepo       *mockRepository
+		expectedError  error
+		expectedStatus AppointmentStatus
+	}{
+		{
+			name:           "doctor updates status to attended",
+			user:           &auth.UserContext{ID: doctorID, Role: "doctor", ClinicID: &clinicID},
+			apptID:         apptID,
+			req:            UpdateAppointmentStatusRequest{Status: StatusAttended},
+			mockRepo:       &mockRepository{appointments: seedAppointments},
+			expectedError:  nil,
+			expectedStatus: StatusAttended,
+		},
+		{
+			name:           "doctor updates status to missed",
+			user:           &auth.UserContext{ID: doctorID, Role: "doctor", ClinicID: &clinicID},
+			apptID:         apptID,
+			req:            UpdateAppointmentStatusRequest{Status: StatusMissed},
+			mockRepo:       &mockRepository{appointments: seedAppointments},
+			expectedError:  nil,
+			expectedStatus: StatusMissed,
+		},
+		{
+			name:          "invalid status value",
+			user:          &auth.UserContext{ID: doctorID, Role: "doctor", ClinicID: &clinicID},
+			apptID:        apptID,
+			req:           UpdateAppointmentStatusRequest{Status: "invalid_status"},
+			mockRepo:      &mockRepository{appointments: seedAppointments},
+			expectedError: sharedErr.ErrValidationError("status must be attended, missed, or cancelled"),
+		},
+		{
+			name:          "patient forbidden from updating status",
+			user:          &auth.UserContext{ID: patientID, Role: "patient"},
+			apptID:        apptID,
+			req:           UpdateAppointmentStatusRequest{Status: StatusAttended},
+			mockRepo:      &mockRepository{appointments: seedAppointments},
+			expectedError: sharedErr.ErrForbiddenRole(),
+		},
+		{
+			name:          "doctor from different clinic forbidden",
+			user:          &auth.UserContext{ID: doctorID, Role: "doctor", ClinicID: &otherClinicID},
+			apptID:        apptID,
+			req:           UpdateAppointmentStatusRequest{Status: StatusAttended},
+			mockRepo:      &mockRepository{appointments: seedAppointments},
+			expectedError: sharedErr.ErrForbiddenRole(),
+		},
+		{
+			name:          "appointment not found",
+			user:          &auth.UserContext{ID: doctorID, Role: "doctor", ClinicID: &clinicID},
+			apptID:        uuid.New(),
+			req:           UpdateAppointmentStatusRequest{Status: StatusAttended},
+			mockRepo:      &mockRepository{appointments: seedAppointments},
+			expectedError: sharedErr.ErrNotFound("appointment"),
+		},
+		{
+			name:          "database error",
+			user:          &auth.UserContext{ID: doctorID, Role: "doctor", ClinicID: &clinicID},
+			apptID:        apptID,
+			req:           UpdateAppointmentStatusRequest{Status: StatusAttended},
+			mockRepo:      &mockRepository{err: dbErr},
+			expectedError: dbErr,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			svc := NewService(tt.mockRepo, &mockARRepo{})
+			appt, err := svc.UpdateAppointmentStatus(context.Background(), tt.user, tt.apptID, tt.req)
+			if (err != nil && tt.expectedError == nil) || (err == nil && tt.expectedError != nil) || (err != nil && tt.expectedError != nil && err.Error() != tt.expectedError.Error()) {
+				t.Errorf("expected error %v, got %v", tt.expectedError, err)
+			}
+			if err == nil {
+				if appt.Status != tt.expectedStatus {
+					t.Errorf("expected status %s, got %s", tt.expectedStatus, appt.Status)
 				}
 			}
 		})

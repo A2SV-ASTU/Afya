@@ -104,10 +104,19 @@ func (s *service) ChangePassword(ctx context.Context, userID uuid.UUID, req Chan
 }
 
 func (s *service) DeleteAccount(ctx context.Context, userID uuid.UUID) *appErrors.AppError {
-	if err := s.repo.DeleteAccount(ctx, userID); err != nil {
+	user, err := s.repo.FindByID(ctx, userID)
+	if err != nil {
 		if errors.Is(err, ErrUserNotFound) {
 			return appErrors.ErrNotFound("User")
 		}
+		return appErrors.ErrInternal("Failed to lookup user")
+	}
+
+	if user.Role == RoleSuperAdmin {
+		return appErrors.ErrForbiddenRole()
+	}
+
+	if err := s.repo.DeleteAccount(ctx, userID); err != nil {
 		return appErrors.ErrInternal("Failed to delete user account")
 	}
 	return nil

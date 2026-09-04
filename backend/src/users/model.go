@@ -38,8 +38,9 @@ type User struct {
 	EmergencyContactName  *string    `json:"emergency_contact_name,omitempty"`
 	EmergencyContactPhone *string    `json:"emergency_contact_phone,omitempty"`
 
-	// Doctor specific fields (nullable)
+	// Doctor / Clinic Admin specific fields (nullable)
 	ClinicID       *uuid.UUID    `json:"clinic_id,omitempty"`
+	ClinicStatus   *string       `json:"clinic_status,omitempty"`
 	Specialization *string       `json:"specialization,omitempty"`
 	LicenseNumber  *string       `json:"license_number,omitempty"`
 	DoctorStatus   *DoctorStatus `json:"doctor_status,omitempty"`

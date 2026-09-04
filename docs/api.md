@@ -18,6 +18,7 @@ This document contains the complete specification and reference for the AfyaMind
 - [Clinical Evaluations Endpoints (`/api/v1/encounters/{id}/clinical-evaluation`)](#clinical-evaluations-endpoints-apiv1encountersidclinical-evaluation)
 - [Labs Endpoints (`/api/v1/encounters/{encounterId}/labs`)](#labs-endpoints-apiv1encountersencounteridlabs)
 - [Diagnoses Endpoints (`/api/v1/encounters/{encounterId}/diagnoses`)](#diagnoses-endpoints-apiv1encountersencounteriddiagnoses)
+- [Prescriptions Endpoints (`/api/v1/prescriptions`)](#prescriptions-endpoints-apiv1prescriptions)
 - [Magic Links Endpoints (`/api/v1/magic`)](#magic-links-endpoints-apiv1magic)
 
 ---
@@ -149,7 +150,7 @@ All error responses adhere to a consistent error schema:
 *(Or use `"phone": "+254712345678"` instead of email).*
 
 #### Responses
-- **200 OK**:
+- **200 OK** (Patient Example):
 ```json
 {
   "data": {
@@ -160,6 +161,25 @@ All error responses adhere to a consistent error schema:
       "role": "patient",
       "phone": "+254712345678",
       "email": "jane.doe@example.com",
+      "created_at": "2026-08-27T12:00:00Z",
+      "updated_at": "2026-08-27T12:00:00Z"
+    }
+  }
+}
+```
+- **200 OK** (Clinic Admin / Doctor Example):
+```json
+{
+  "data": {
+    "user": {
+      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+      "first_name": "Dr. Sarah",
+      "last_name": "Smith",
+      "role": "clinic_admin",
+      "phone": "+254700112233",
+      "email": "admin@afyaclinic.com",
+      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "clinic_status": "active",
       "created_at": "2026-08-27T12:00:00Z",
       "updated_at": "2026-08-27T12:00:00Z"
     }
@@ -326,7 +346,8 @@ All error responses adhere to a consistent error schema:
 ### 9. Delete Account
 - **Endpoint**: `DELETE /api/v1/users/me`
 - **Auth Required**: Yes (`BearerAuth`)
-- **Description**: Permanently deletes the current user account.
+- **Allowed Roles**: `patient`, `doctor`, `clinic_admin` (Prohibited for `super_admin`)
+- **Description**: Permanently deletes the current user account. Not available for users with the `super_admin` role.
 
 #### Responses
 - **200 OK**:
@@ -337,6 +358,8 @@ All error responses adhere to a consistent error schema:
   }
 }
 ```
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid access token.
+- **403 Forbidden** (`forbidden_role`): Super admin accounts cannot be deleted via this endpoint.
 
 ---
 
@@ -594,6 +617,12 @@ All error responses adhere to a consistent error schema:
 {
   "id": "f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
   "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "patient": {
+    "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "email": "jane.doe@example.com"
+  },
   "requesting_clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
   "reason": "Consultation for chronic hypertension management",
   "submitted_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
@@ -622,6 +651,12 @@ All error responses adhere to a consistent error schema:
     {
       "id": "f5eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
       "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "patient": {
+        "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "email": "jane.doe@example.com"
+      },
       "requesting_clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
       "reason": "Consultation",
       "submitted_by_doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
@@ -692,7 +727,7 @@ All error responses adhere to a consistent error schema:
 - **Description**: Retrieves all scheduled and past appointments for a patient. Filterable by status.
 
 #### Query Parameters
-- `status` (string, optional): `scheduled`, `attended`, `cancelled`
+- `status` (string, optional): `scheduled`, `attended`, `missed`, `cancelled`
 
 #### Responses
 - **200 OK**:
@@ -712,6 +747,44 @@ All error responses adhere to a consistent error schema:
   ]
 }
 ```
+
+---
+
+### 24. Update Appointment Status
+- **Endpoint**: `PATCH /api/v1/appointments/{id}/status`
+- **Auth Required**: Yes (`doctor` role)
+- **Description**: Updates the status of an appointment (e.g. `attended`, `missed`, or `cancelled`).
+
+#### Request Body
+```json
+{
+  "status": "attended"
+}
+```
+
+#### Responses
+- **200 OK**:
+```json
+{
+  "data": {
+    "appointment": {
+      "id": "e1eebc99-9c0b-4ef8-bb6d-6bb9bd380a44",
+      "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "doctor_id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
+      "patient_id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+      "scheduled_at": "2026-09-15T10:00:00Z",
+      "status": "attended",
+      "notes": "Annual cardiac checkup",
+      "created_at": "2026-08-28T14:00:00Z",
+      "updated_at": "2026-09-03T18:30:00Z"
+    }
+  }
+}
+```
+- **400 Bad Request** (`validation_error`): Invalid payload or invalid status.
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid access token.
+- **403 Forbidden** (`forbidden_role`): User is not a doctor or belongs to another clinic.
+- **404 Not Found** (`not_found`): Appointment not found.
 
 ---
 
@@ -845,7 +918,8 @@ All error responses adhere to a consistent error schema:
         "medication_name": "Amlodipine",
         "dose": "5mg",
         "frequency": "OD",
-        "duration": "30 days"
+        "duration_value": 30,
+        "duration_unit": "day"
       }
     ],
     "vitals": {
@@ -911,6 +985,211 @@ All error responses adhere to a consistent error schema:
 
 #### Responses
 - **200 OK**: Returns `clinical_evaluation` object.
+
+---
+
+## Prescriptions Endpoints (`/api/v1/prescriptions`)
+
+All prescription endpoints require a valid `BearerAuth` JWT. Encounter-scoped endpoints are protected by `AccessGuard` (requires an active clinic→patient grant). Prescription-level mutation endpoints are protected by `PrescriptionAccessGuard` (resolves prescription → encounter → patient ownership).
+
+### 41. Create Prescription
+- **Endpoint**: `POST /api/v1/encounters/{id}/prescriptions`
+- **Auth Required**: Yes (`doctor` role + `AccessGuard`)
+- **Description**: Creates a new prescription with one or more medication items for an open encounter.
+
+#### Request Body
+```json
+{
+  "notes": "Take with food",
+  "items": [
+    {
+      "medication_name": "Amlodipine",
+      "dose": "5mg",
+      "route": "oral",
+      "frequency": "OD",
+      "duration_value": 30,
+      "duration_unit": "day",
+      "instructions": "Take in the morning"
+    }
+  ]
+}
+```
+
+**Valid `route` values**: `oral`, `iv`, `im`, `subcutaneous`, `topical`, `other`
+**Valid `frequency` values**: `OD`, `BD`, `TDS`, `QID`, `QHS`, `PRN`, `STAT`, `Q4H`, `Q6H`, `Q8H`, `Q12H`
+**Valid `duration_unit` values**: `day`, `week`, `month`, `year`
+
+#### Responses
+- **201 Created**:
+```json
+{
+  "prescription": {
+    "ID": "p1eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+    "EncounterID": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+    "Notes": "Take with food",
+    "PrescribedAt": "2026-08-28T14:10:00Z",
+    "items": [
+      {
+        "ID": "i1eebc99-9c0b-4ef8-bb6d-6bb9bd380a88",
+        "PrescriptionID": "p1eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+        "MedicationName": "Amlodipine",
+        "Dose": "5mg",
+        "Route": "oral",
+        "Frequency": "OD",
+        "duration_value": 30,
+        "duration_unit": "day",
+        "Status": "active",
+        "Instructions": "Take in the morning",
+        "StartedAt": "2026-08-28T14:10:00Z"
+      }
+    ]
+  }
+}
+```
+- **400 Bad Request** (`validation_error`): Missing required fields or `items` is empty.
+- **403 Forbidden** (`forbidden_role` / `forbidden_grant`): Not a doctor or no active access grant.
+- **409 Conflict** (`conflict`): Encounter is already closed.
+
+---
+
+### 42. List Prescriptions for Encounter
+- **Endpoint**: `GET /api/v1/encounters/{id}/prescriptions`
+- **Auth Required**: Yes (`doctor` or `patient` + `AccessGuard`)
+- **Description**: Lists all prescriptions (with items) for a specific encounter.
+
+#### Responses
+- **200 OK**:
+```json
+{
+  "prescriptions": [
+    {
+      "ID": "p1eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+      "EncounterID": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+      "Notes": "Take with food",
+      "PrescribedAt": "2026-08-28T14:10:00Z",
+      "items": [...]
+    }
+  ]
+}
+```
+- **403 Forbidden**: Missing access grant.
+
+---
+
+### 43. List All Prescriptions for Patient (Paginated)
+- **Endpoint**: `GET /api/v1/patients/{patientId}/prescriptions`
+- **Auth Required**: Yes (`doctor` or `patient` + `AccessGuard`)
+- **Description**: Returns all prescriptions across **all encounters** for a given patient, ordered by most recent first. Supports pagination.
+
+#### Query Parameters
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `page` | integer | `1` | Page number |
+| `limit` | integer | `20` | Items per page (max: 100) |
+
+#### Responses
+- **200 OK**:
+```json
+{
+  "prescriptions": [
+    {
+      "ID": "p1eebc99-9c0b-4ef8-bb6d-6bb9bd380a77",
+      "EncounterID": "d0eebc99-9c0b-4ef8-bb6d-6bb9bd380a55",
+      "Notes": "Take with food",
+      "PrescribedAt": "2026-08-28T14:10:00Z",
+      "items": [
+        {
+          "ID": "i1eebc99-9c0b-4ef8-bb6d-6bb9bd380a88",
+          "MedicationName": "Amlodipine",
+          "Dose": "5mg",
+          "Route": "oral",
+          "Frequency": "OD",
+          "duration_value": 30,
+          "duration_unit": "day",
+          "Status": "active",
+          "StartedAt": "2026-08-28T14:10:00Z"
+        }
+      ]
+    }
+  ],
+  "page": 1,
+  "limit": 20,
+  "total": 47
+}
+```
+- **400 Bad Request** (`validation_error`): Invalid `patientId`.
+- **401 Unauthorized** (`unauthenticated`): Missing or invalid token.
+- **403 Forbidden** (`forbidden_role` / `forbidden_grant`): Patient accessing another patient's records, or doctor without active grant.
+
+---
+
+### 44. Update Prescription
+- **Endpoint**: `PATCH /api/v1/prescriptions/{id}`
+- **Auth Required**: Yes (`doctor` role + `PrescriptionAccessGuard`)
+- **Description**: Updates the notes and/or replaces all items of an active prescription.
+
+#### Request Body
+```json
+{
+  "notes": "Updated instructions",
+  "items": [
+    {
+      "medication_name": "Amlodipine",
+      "dose": "10mg",
+      "route": "oral",
+      "frequency": "OD",
+      "duration_value": 30,
+      "duration_unit": "day"
+    }
+  ]
+}
+```
+*(Both `notes` and `items` are optional — only provided fields are updated.)*
+
+#### Responses
+- **200 OK**: Returns updated `prescription` object with items.
+- **400 Bad Request** (`validation_error`): Invalid prescription ID.
+- **403 Forbidden**: Not the prescribing doctor or no active grant.
+- **404 Not Found**: Prescription not found.
+
+---
+
+### 45. Complete Prescription Items
+- **Endpoint**: `PATCH /api/v1/prescriptions/{id}/complete`
+- **Auth Required**: Yes (`patient` role + `PrescriptionAccessGuard`)
+- **Description**: Marks specific items (or all active items) in a prescription as completed.
+
+#### Request Body *(optional)*
+```json
+{
+  "item_ids": [
+    "i1eebc99-9c0b-4ef8-bb6d-6bb9bd380a88"
+  ]
+}
+```
+*(If `item_ids` is empty or body is omitted, **all active items** are marked completed.)*
+
+#### Responses
+- **200 OK**:
+```json
+{ "status": "completed" }
+```
+- **403 Forbidden**: Not the owning patient.
+
+---
+
+### 46. Deactivate Prescription
+- **Endpoint**: `PATCH /api/v1/prescriptions/{id}/deactivate`
+- **Auth Required**: Yes (`doctor` role + `PrescriptionAccessGuard`)
+- **Description**: Deactivates all active items within a prescription (e.g. discontinued treatment).
+
+#### Responses
+- **200 OK**:
+```json
+{ "status": "deactivated" }
+```
+- **403 Forbidden**: Not the prescribing doctor or no active grant.
+- **404 Not Found**: Prescription not found.
 
 ---
 
@@ -1069,3 +1348,26 @@ Magic links are browser-rendered HTML pages used for email-driven workflows with
 - **200 OK**: Returns an array of diagnoses.
 - **403 Forbidden**: Unauthorized role or missing access grant.
 - **404 Not Found**: Encounter not found.
+
+---
+
+### 40. Update Doctor Profile (Specialization & License Number)
+- **Endpoint**: `PATCH /api/v1/clinics/{clinicId}/doctors/{doctorId}`
+- **Auth Required**: Yes (`clinic_admin` for this clinic)
+- **Description**: Updates a doctor's specialization and/or license number. Accepts both fields together or either field individually.
+
+#### Request Body
+```json
+{
+  "specialization": "Cardiology",
+  "license_number": "LIC-98765"
+}
+```
+
+#### Responses
+- **200 OK**: Returns the updated doctor profile.
+- **400 Bad Request**: Validation error (e.g. neither field provided).
+- **401 Unauthorized**: Missing or invalid token.
+- **403 Forbidden**: Caller is not a clinic admin for this clinic.
+- **404 Not Found**: Doctor not found in this clinic.
+
