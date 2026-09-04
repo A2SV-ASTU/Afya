@@ -23,6 +23,9 @@ type Service interface {
 	DenyRequest(ctx context.Context, patientID, requestID uuid.UUID) error
 	RevokeRequest(ctx context.Context, clinicID, requestID, callerID uuid.UUID) error
 	ListRequests(ctx context.Context, clinicID, callerID uuid.UUID, status string) ([]*AccessRequest, error)
+	ListPatientActiveRequests(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
+	ListPatientGrants(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
+	RevokePatientGrant(ctx context.Context, patientID, clinicID uuid.UUID) error
 	ApproveByToken(ctx context.Context, tokenRaw string) error
 	DenyByToken(ctx context.Context, tokenRaw string) error
 }
@@ -84,10 +87,9 @@ func (s *service) CreateRequest(ctx context.Context, clinicID, doctorID uuid.UUI
 	}
 
 	// 2. Get Clinic Name for Email
-	var clinicName string
-	err = s.db.QueryRowContext(ctx, "SELECT name FROM clinics WHERE id = $1", clinicID).Scan(&clinicName)
-	if err != nil {
-		clinicName = "An Afya Clinic" // Fallback
+	clinicName := "An Afya Clinic" // Fallback
+	if s.db != nil {
+		_ = s.db.QueryRowContext(ctx, "SELECT name FROM clinics WHERE id = $1", clinicID).Scan(&clinicName)
 	}
 
 	patient, err := s.userRepo.FindByID(ctx, req.PatientID)
@@ -102,7 +104,13 @@ func (s *service) CreateRequest(ctx context.Context, clinicID, doctorID uuid.UUI
 	}
 
 	ar := &AccessRequest{
-		PatientID:           req.PatientID,
+		PatientID: req.PatientID,
+		Patient: &PatientInfo{
+			ID:        patient.ID,
+			FirstName: patient.FirstName,
+			LastName:  patient.LastName,
+			Email:     patient.Email,
+		},
 		RequestingClinicID:  clinicID,
 		Reason:              req.Reason,
 		SubmittedByDoctorID: &doctorID,
@@ -247,6 +255,18 @@ func (s *service) ListRequests(ctx context.Context, clinicID, callerID uuid.UUID
 	}
 
 	return s.repo.ListByClinicID(ctx, clinicID, status)
+}
+
+func (s *service) ListPatientActiveRequests(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error) {
+	return s.repo.ListPendingByPatientID(ctx, patientID)
+}
+
+func (s *service) ListPatientGrants(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error) {
+	return s.repo.ListActiveGrantsByPatientID(ctx, patientID)
+}
+
+func (s *service) RevokePatientGrant(ctx context.Context, patientID, clinicID uuid.UUID) error {
+	return s.repo.RevokeByPatientAndClinic(ctx, patientID, clinicID)
 }
 
 // ApproveByToken approves an access request using a magic link token (no login required)

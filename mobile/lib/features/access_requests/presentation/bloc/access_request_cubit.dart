@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/errors/exceptions.dart';
 import '../../domain/entities/access_request_entity.dart';
 import '../../domain/entities/clinic_grant_entity.dart';
 import '../../domain/usecases/approve_access_request_usecase.dart';
@@ -10,7 +9,7 @@ import '../../domain/usecases/deny_access_request_usecase.dart';
 import '../../domain/usecases/get_active_grants_usecase.dart';
 import '../../domain/usecases/get_pending_access_requests_usecase.dart';
 import '../../domain/usecases/revoke_clinic_grant_usecase.dart';
-import '../utils/countdown_timer_helper.dart';
+import '../../../../core/utils/countdown_timer_helper.dart';
 import 'access_request_state.dart';
 
 class AccessRequestCubit extends Cubit<AccessRequestState> {
@@ -37,84 +36,67 @@ class AccessRequestCubit extends Cubit<AccessRequestState> {
         _revokeClinicGrantUseCase = revokeClinicGrantUseCase,
         super(const AccessRequestInitial());
 
-  /// Fetches active pending access requests and starts the countdown timer.
-  Future<void> fetchActiveRequest() async {
+  Future<void> fetchPendingRequest() async {
     emit(const AccessRequestLoading());
 
     final result = await _getPendingAccessRequestsUseCase();
 
     result.fold(
-      (failure) => emit(AccessRequestFailure(message: failure.message)),
+      (failure) => emit(AccessRequestError(message: failure.message)),
       (requests) {
         if (requests.isEmpty) {
-          emit(const AccessRequestFailure(message: 'No pending access requests'));
+          emit(const AccessRequestInitial());
           return;
         }
 
         _currentRequest = requests.first;
-        _startTimer(_currentRequest!);
+
+        if (CountdownTimerHelper.isExpired(_currentRequest!.expiresAt)) {
+          emit(const AccessRequestExpired());
+        } else {
+          _startTimer(_currentRequest!);
+        }
       },
     );
   }
 
-  /// Approves the given access request by [id].
   Future<void> approveRequest(String id) async {
-    emit(const AccessRequestActionInFlight());
+    _cancelTimer();
+    emit(AccessRequestSubmitting(requestId: id, isApproving: true));
 
-    try {
-      final result = await _approveAccessRequestUseCase(id);
+    final result = await _approveAccessRequestUseCase(id);
 
-      result.fold(
-        (failure) => emit(AccessRequestFailure(message: failure.message)),
-        (_) {
-          _cancelTimer();
-          emit(const AccessRequestSuccess(
-            message: 'Access request approved successfully',
-          ));
-        },
-      );
-    } on ExpiredException {
-      _cancelTimer();
-      emit(const AccessRequestExpired());
-    }
+    result.fold(
+      (failure) => emit(AccessRequestError(message: failure.message)),
+      (_) => emit(const AccessRequestSuccess(message: 'Access granted')),
+    );
   }
 
-  /// Denies the given access request by [id].
   Future<void> denyRequest(String id) async {
-    emit(const AccessRequestActionInFlight());
+    _cancelTimer();
+    emit(AccessRequestSubmitting(requestId: id, isApproving: false));
 
-    try {
-      final result = await _denyAccessRequestUseCase(id);
+    final result = await _denyAccessRequestUseCase(id);
 
-      result.fold(
-        (failure) => emit(AccessRequestFailure(message: failure.message)),
-        (_) {
-          _cancelTimer();
-          emit(const AccessRequestSuccess(
-            message: 'Access request denied successfully',
-          ));
-        },
-      );
-    } on ExpiredException {
-      _cancelTimer();
-      emit(const AccessRequestExpired());
-    }
+    result.fold(
+      (failure) => emit(AccessRequestError(message: failure.message)),
+      (_) => emit(const AccessRequestSuccess(message: 'Request denied')),
+    );
   }
 
-  /// Starts a 1-second periodic timer that ticks down the remaining time.
   void _startTimer(AccessRequestEntity request) {
     _cancelTimer();
 
-    final secondsRemaining = CountdownTimerHelper.remainingSeconds(request.expiresAt);
-
-    if (secondsRemaining <= 0) {
-      emit(const AccessRequestExpired());
+    final initialSeconds = CountdownTimerHelper.remainingSeconds(request.expiresAt);
+    if (initialSeconds <= 0) {
+      _handleExpiration(request.id);
       return;
     }
 
     emit(AccessRequestActive(
       request: request,
-      secondsRemaining: secondsRemaining,
+      formattedTime: CountdownTimerHelper.formatSeconds(initialSeconds),
+      secondsRemaining: initialSeconds,
     ));
 
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -122,32 +104,35 @@ class AccessRequestCubit extends Cubit<AccessRequestState> {
     });
   }
 
-  /// Single tick of the countdown timer.
   void _tick(AccessRequestEntity request) {
     final secondsRemaining = CountdownTimerHelper.remainingSeconds(request.expiresAt);
 
     if (secondsRemaining <= 0) {
-      _cancelTimer();
-      emit(const AccessRequestExpired());
+      _handleExpiration(request.id);
     } else {
       emit(AccessRequestActive(
         request: request,
+        formattedTime: CountdownTimerHelper.formatSeconds(secondsRemaining),
         secondsRemaining: secondsRemaining,
       ));
     }
   }
 
-  /// Cancels the active timer to prevent memory leaks.
+  void _handleExpiration(String requestId) {
+    _cancelTimer();
+    emit(const AccessRequestExpired());
+    denyRequest(requestId);
+  }
+
   void _cancelTimer() {
     _timer?.cancel();
     _timer = null;
   }
 
   // -----------------------------------------------------------------------
-  // Active Grants
+  // Active Grants Logic
   // -----------------------------------------------------------------------
 
-  /// Fetches the list of active clinic access grants.
   Future<void> fetchActiveGrants() async {
     emit(const ActiveGrantsLoading());
 
@@ -162,7 +147,6 @@ class AccessRequestCubit extends Cubit<AccessRequestState> {
     );
   }
 
-  /// Revokes a clinic grant by [clinicId].
   Future<void> revokeGrant(String clinicId) async {
     emit(RevokingGrant(grants: _activeGrants));
 

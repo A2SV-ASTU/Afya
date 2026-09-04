@@ -8,11 +8,17 @@ class RoutePaths {
   // Shell Tabs
   static const String dashboard = '/dashboard';
   static const String history = '/history';
+  static const String chat = '/chat';
+  static const String access = '/access';
   static const String profile = '/profile';
 
   // Deep Link Route
   static const String accessDecision = '/access-requests/:id';
   static String accessDecisionPath(String id) => '/access-requests/$id';
+
+  // Access Requests
+  static const String activeGrants = '/profile/active-grants';
+  static const String pendingAccessRequests = '/profile/pending-access-requests';
 
   // Clinical History & Appointments Routes
   static const String encounterDetail = '/history/encounter/:id';

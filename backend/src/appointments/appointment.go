@@ -11,6 +11,7 @@ type AppointmentStatus string
 const (
 	StatusScheduled AppointmentStatus = "scheduled"
 	StatusAttended  AppointmentStatus = "attended"
+	StatusMissed    AppointmentStatus = "missed"
 	StatusCancelled AppointmentStatus = "cancelled"
 )
 

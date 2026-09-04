@@ -15,13 +15,16 @@ class AccessRequestModel extends AccessRequestEntity {
   factory AccessRequestModel.fromJson(Map<String, dynamic> json) {
     return AccessRequestModel(
       id: json['id'] as String,
-      clinicId: json['clinic_id'] as String,
-      clinicName: json['clinic_name'] as String,
-      doctorName: json['doctor_name'] as String,
-      reason: json['reason'] as String,
+      // Backend uses 'requesting_clinic_id', mobile uses 'clinicId'
+      clinicId: (json['clinic_id'] ?? json['requesting_clinic_id']) as String,
+      // clinic_name may be populated by backend JOIN or may be absent
+      clinicName: (json['clinic_name'] ?? 'Unknown Clinic') as String,
+      // doctor_name may be populated by backend JOIN or may be absent
+      doctorName: (json['doctor_name'] ?? 'Unknown Doctor') as String,
+      reason: (json['reason'] ?? '') as String,
       status: json['status'] as String,
-      expiresAt: DateTime.parse(json['expires_at'] as String),
-      createdAt: DateTime.parse(json['created_at'] as String),
+      expiresAt: DateTime.parse(json['expires_at'] as String).toLocal(),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
   }
 

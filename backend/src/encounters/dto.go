@@ -65,7 +65,8 @@ type PrescriptionItemDTO struct {
 	Dose           string    `json:"dose" example:"1 tablet"`
 	Route          string    `json:"route" example:"oral"`
 	Frequency      string    `json:"frequency" example:"once daily"`
-	Duration       string    `json:"duration" example:"30 days"`
+	DurationValue  int       `json:"duration_value" example:"30"`
+	DurationUnit   string    `json:"duration_unit" example:"day"`
 	Status         string    `json:"status" example:"active"`
 	Instructions   *string   `json:"instructions" example:"Take in the morning with water"`
 	StartedAt      time.Time `json:"started_at"`
@@ -95,7 +96,8 @@ type MedicalHistoryPrescriptionItem struct {
 	Dose           string `json:"dose" example:"1 tablet"`
 	Route          string `json:"route" example:"oral"`
 	Frequency      string `json:"frequency" example:"once daily"`
-	Duration       string `json:"duration" example:"30 days"`
+	DurationValue  int    `json:"duration_value" example:"30"`
+	DurationUnit   string `json:"duration_unit" example:"day"`
 }
 
 // MedicalHistoryVitals represents vitals details in medical history.

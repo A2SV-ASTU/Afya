@@ -3,6 +3,7 @@ package appointments
 import (
 	"context"
 	"database/sql"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -10,6 +11,8 @@ import (
 type Repository interface {
 	Create(ctx context.Context, appt *Appointment) error
 	FindByPatientID(ctx context.Context, patientID uuid.UUID, status *AppointmentStatus) ([]Appointment, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*Appointment, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status AppointmentStatus, updatedAt time.Time) error
 }
 
 type postgresRepository struct {
@@ -67,4 +70,34 @@ func (r *postgresRepository) FindByPatientID(ctx context.Context, patientID uuid
 		return []Appointment{}, nil
 	}
 	return appointments, nil
+}
+
+func (r *postgresRepository) FindByID(ctx context.Context, id uuid.UUID) (*Appointment, error) {
+	query := `
+		SELECT id, clinic_id, doctor_id, patient_id, scheduled_at, status, notes, created_at, updated_at
+		FROM appointments
+		WHERE id = $1`
+
+	var a Appointment
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&a.ID, &a.ClinicID, &a.DoctorID, &a.PatientID,
+		&a.ScheduledAt, &a.Status, &a.Notes, &a.CreatedAt, &a.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+func (r *postgresRepository) UpdateStatus(ctx context.Context, id uuid.UUID, status AppointmentStatus, updatedAt time.Time) error {
+	query := `
+		UPDATE appointments
+		SET status = $1, updated_at = $2
+		WHERE id = $3`
+
+	_, err := r.db.ExecContext(ctx, query, status, updatedAt, id)
+	return err
 }

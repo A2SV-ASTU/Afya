@@ -33,7 +33,7 @@ func NewRepository(db database.DBTX) Repository {
 	return &repository{db: db}
 }
 
-const userColumns = `id, first_name, last_name, role, phone, email, password_hash, date_of_birth, sex, blood_type, emergency_contact_name, emergency_contact_phone, clinic_id, specialization, license_number, doctor_status, invited_by, created_at, updated_at`
+const userSelectColumns = `u.id, u.first_name, u.last_name, u.role, u.phone, u.email, u.password_hash, u.date_of_birth, u.sex, u.blood_type, u.emergency_contact_name, u.emergency_contact_phone, u.clinic_id, c.status AS clinic_status, u.specialization, u.license_number, u.doctor_status, u.invited_by, u.created_at, u.updated_at`
 
 type scanner interface {
 	Scan(dest ...interface{}) error
@@ -41,6 +41,7 @@ type scanner interface {
 
 func scanUser(s scanner) (*User, error) {
 	u := &User{}
+	var clinicStatus sql.NullString
 	err := s.Scan(
 		&u.ID,
 		&u.FirstName,
@@ -55,6 +56,7 @@ func scanUser(s scanner) (*User, error) {
 		&u.EmergencyContactName,
 		&u.EmergencyContactPhone,
 		&u.ClinicID,
+		&clinicStatus,
 		&u.Specialization,
 		&u.LicenseNumber,
 		&u.DoctorStatus,
@@ -68,26 +70,29 @@ func scanUser(s scanner) (*User, error) {
 		}
 		return nil, err
 	}
+	if clinicStatus.Valid {
+		u.ClinicStatus = &clinicStatus.String
+	}
 	return u, nil
 }
 
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*User, error) {
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE id = $1`, userColumns)
+	query := fmt.Sprintf(`SELECT %s FROM users u LEFT JOIN clinics c ON c.id = u.clinic_id WHERE u.id = $1`, userSelectColumns)
 	return scanUser(r.db.QueryRowContext(ctx, query, id))
 }
 
 func (r *repository) FindByEmail(ctx context.Context, email string) (*User, error) {
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE email = $1`, userColumns)
+	query := fmt.Sprintf(`SELECT %s FROM users u LEFT JOIN clinics c ON c.id = u.clinic_id WHERE u.email = $1`, userSelectColumns)
 	return scanUser(r.db.QueryRowContext(ctx, query, email))
 }
 
 func (r *repository) FindByPhone(ctx context.Context, phone string) (*User, error) {
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE phone = $1`, userColumns)
+	query := fmt.Sprintf(`SELECT %s FROM users u LEFT JOIN clinics c ON c.id = u.clinic_id WHERE u.phone = $1`, userSelectColumns)
 	return scanUser(r.db.QueryRowContext(ctx, query, phone))
 }
 
 func (r *repository) FindByLogin(ctx context.Context, login string) (*User, error) {
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE email = $1 OR phone = $1`, userColumns)
+	query := fmt.Sprintf(`SELECT %s FROM users u LEFT JOIN clinics c ON c.id = u.clinic_id WHERE u.email = $1 OR u.phone = $1`, userSelectColumns)
 	return scanUser(r.db.QueryRowContext(ctx, query, login))
 }
 
@@ -173,13 +178,16 @@ func (r *repository) UpdateProfile(ctx context.Context, id uuid.UUID, req Update
 	}
 
 	query := fmt.Sprintf(`
-		UPDATE users
-		SET first_name = $1, last_name = $2, email = $3, phone = $4, date_of_birth = $5, sex = $6,
-		    blood_type = $7, emergency_contact_name = $8, emergency_contact_phone = $9,
-		    updated_at = NOW()
-		WHERE id = $10
-		RETURNING %s
-	`, userColumns)
+		WITH updated AS (
+			UPDATE users
+			SET first_name = $1, last_name = $2, email = $3, phone = $4, date_of_birth = $5, sex = $6,
+			    blood_type = $7, emergency_contact_name = $8, emergency_contact_phone = $9,
+			    updated_at = NOW()
+			WHERE id = $10
+			RETURNING *
+		)
+		SELECT %s FROM updated u LEFT JOIN clinics c ON c.id = u.clinic_id
+	`, userSelectColumns)
 
 	return scanUser(r.db.QueryRowContext(
 		ctx,

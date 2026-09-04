@@ -1,18 +1,27 @@
+import '../../features/vitals_sync/presentation/bloc/vitals_sync_bloc.dart';
+import '../../features/vitals_sync/presentation/screens/vitals_history_screen.dart';
+import '../../features/chat/presentation/cubit/chat_cubit.dart';
+import '../../features/chat/presentation/screens/chat_screen.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../core/di/injection_container.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
 import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
-import '../../features/clinical_history/presentation/bloc/history_timeline_bloc.dart';
+
 import '../../features/clinical_history/presentation/cubit/appointments_cubit.dart';
 import '../../features/clinical_history/presentation/cubit/encounter_detail_cubit.dart';
 import '../../features/clinical_history/presentation/screens/appointments_screen.dart';
 import '../../features/clinical_history/presentation/screens/encounter_detail_screen.dart';
-import '../../features/clinical_history/presentation/screens/history_timeline_screen.dart';
+import '../../features/access_requests/presentation/screens/clinic_grants_screen.dart';
+import '../../features/access_requests/presentation/screens/pending_access_requests_screen.dart';
+import '../../features/dashboard/presentation/cubit/dashboard_cubit.dart';
+import '../../features/dashboard/presentation/screens/dashboard_screen.dart';
 import '../view/app_shell.dart';
 import '../view/placeholder_screens.dart';
 import 'route_paths.dart';
@@ -23,6 +32,10 @@ final GlobalKey<NavigatorState> _dashboardNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'dashboard');
 final GlobalKey<NavigatorState> _historyNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'history');
+final GlobalKey<NavigatorState> _chatNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'chat');
+final GlobalKey<NavigatorState> _accessNavigatorKey =
+    GlobalKey<NavigatorState>(debugLabel: 'access');
 final GlobalKey<NavigatorState> _profileNavigatorKey =
     GlobalKey<NavigatorState>(debugLabel: 'profile');
 
@@ -91,19 +104,43 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: RoutePaths.dashboard,
-                builder: (context, state) => const DashboardPlaceholderScreen(),
+                builder: (context, state) => BlocProvider(
+                  create: (context) => sl<DashboardCubit>()..loadDashboard(),
+                  child: const DashboardScreen(),
+                ),
               ),
             ],
           ),
           StatefulShellBranch(
-            navigatorKey: _historyNavigatorKey,
+  navigatorKey: _historyNavigatorKey,
+  routes: [
+    GoRoute(
+      path: RoutePaths.history,
+      builder: (context, state) => BlocProvider(
+        create: (context) => sl<VitalsSyncBloc>(),
+        child: const VitalsHistoryScreen(),
+      ),
+    ),
+  ],
+),
+          StatefulShellBranch(
+            navigatorKey: _chatNavigatorKey,
             routes: [
               GoRoute(
-                path: RoutePaths.history,
+                path: RoutePaths.chat,
                 builder: (context, state) => BlocProvider(
-                  create: (context) => sl<HistoryTimelineBloc>(),
-                  child: const HistoryTimelineScreen(patientId: 'me'),
+                  create: (context) => sl<ChatCubit>()..loadHistory(),
+                  child: const ChatScreen(),
                 ),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: _accessNavigatorKey,
+            routes: [
+              GoRoute(
+                path: RoutePaths.access,
+                builder: (context, state) => const AccessPlaceholderScreen(),
               ),
             ],
           ),
@@ -112,7 +149,17 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: RoutePaths.profile,
-                builder: (context, state) => const ProfilePlaceholderScreen(),
+                builder: (context, state) => const ProfileScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'active-grants',
+                    builder: (context, state) => const ClinicGrantsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'pending-access-requests',
+                    builder: (context, state) => const PendingAccessRequestsScreen(),
+                  ),
+                ],
               ),
             ],
           ),
