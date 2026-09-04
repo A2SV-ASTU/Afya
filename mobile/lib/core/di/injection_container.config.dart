@@ -16,6 +16,11 @@ import 'package:injectable/injectable.dart' as _i526;
 
 import '../../app/router/app_router.dart' as _i180;
 import '../../app/router/route_guards.dart' as _i469;
+import '../../features/chat/data/datasources/chat_local_data_source.dart' as _i990;
+import '../../features/chat/data/datasources/gemini_remote_data_source.dart' as _i991;
+import '../../features/chat/data/repositories/chat_repository_impl.dart' as _i992;
+import '../../features/chat/domain/repositories/chat_repository.dart' as _i993;
+import '../../features/chat/presentation/cubit/chat_cubit.dart' as _i994;
 import '../../features/access_requests/data/datasources/access_request_remote_data_source.dart'
     as _i718;
 import '../../features/access_requests/data/repositories/access_request_repository_impl.dart'
@@ -373,6 +378,16 @@ extension GetItInjectableX on _i174.GetIt {
         ));
     gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
         getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
+    gh.lazySingleton<_i990.ChatLocalDataSource>(
+        () => _i990.ChatLocalDataSourceImpl());
+    gh.lazySingleton<_i991.GeminiRemoteDataSource>(
+        () => _i991.GeminiRemoteDataSourceImpl());
+    gh.lazySingleton<_i993.ChatRepository>(() => _i992.ChatRepositoryImpl(
+          localDataSource: gh<_i990.ChatLocalDataSource>(),
+          remoteDataSource: gh<_i991.GeminiRemoteDataSource>(),
+        ));
+    gh.factory<_i994.ChatCubit>(
+        () => _i994.ChatCubit(repository: gh<_i993.ChatRepository>()));
     return this;
   }
 }

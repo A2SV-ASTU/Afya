@@ -17,6 +17,9 @@ class LocalDatabaseService {
 
       // Profile data
       Hive.openBox(AppKeys.profileBox),
+
+      // Chat data
+      Hive.openBox(AppKeys.chatHistoryBox),
     ]);
   }
 
@@ -29,6 +32,8 @@ class LocalDatabaseService {
       Hive.box(AppKeys.medicationScheduleBox).clear(),
       Hive.box(AppKeys.adherenceHistoryBox).clear(),
       Hive.box(AppKeys.clinicalHistoryCacheBox).clear(),
+      Hive.box(AppKeys.profileBox).clear(),
+      Hive.box(AppKeys.chatHistoryBox).clear(),
     ]);
   }
 }

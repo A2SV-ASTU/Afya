@@ -13,6 +13,7 @@ import (
 type Service interface {
 	CreateAppointment(ctx context.Context, user *auth.UserContext, req CreateAppointmentRequest) (*Appointment, error)
 	GetPatientAppointments(ctx context.Context, user *auth.UserContext, patientID uuid.UUID, status *AppointmentStatus) ([]Appointment, error)
+	UpdateAppointmentStatus(ctx context.Context, user *auth.UserContext, apptID uuid.UUID, req UpdateAppointmentStatusRequest) (*Appointment, error)
 }
 
 type service struct {
@@ -70,4 +71,36 @@ func (s *service) GetPatientAppointments(ctx context.Context, user *auth.UserCon
 	}
 
 	return appointments, nil
+}
+
+func (s *service) UpdateAppointmentStatus(ctx context.Context, user *auth.UserContext, apptID uuid.UUID, req UpdateAppointmentStatusRequest) (*Appointment, error) {
+	if user.Role != "doctor" || user.ClinicID == nil {
+		return nil, errors.ErrForbiddenRole()
+	}
+
+	if req.Status != StatusAttended && req.Status != StatusMissed && req.Status != StatusCancelled {
+		return nil, errors.ErrValidationError("status must be attended, missed, or cancelled")
+	}
+
+	appt, err := s.repo.FindByID(ctx, apptID)
+	if err != nil {
+		return nil, err
+	}
+	if appt == nil {
+		return nil, errors.ErrNotFound("appointment")
+	}
+
+	if appt.ClinicID != *user.ClinicID {
+		return nil, errors.ErrForbiddenRole()
+	}
+
+	now := time.Now()
+	err = s.repo.UpdateStatus(ctx, apptID, req.Status, now)
+	if err != nil {
+		return nil, err
+	}
+
+	appt.Status = req.Status
+	appt.UpdatedAt = now
+	return appt, nil
 }

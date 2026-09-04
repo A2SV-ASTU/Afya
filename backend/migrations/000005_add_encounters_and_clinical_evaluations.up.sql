@@ -25,6 +25,9 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'prescription_item_status') THEN
         CREATE TYPE prescription_item_status AS ENUM ('active', 'deactivated', 'completed');
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'duration_unit') THEN
+        CREATE TYPE duration_unit AS ENUM ('day', 'week', 'month', 'year');
+    END IF;
 END $$;
 
 -- Create encounters table
@@ -124,7 +127,8 @@ CREATE TABLE IF NOT EXISTS prescription_items (
     dose VARCHAR(100) NOT NULL,
     route prescription_route NOT NULL DEFAULT 'oral',
     frequency prescription_frequency NOT NULL DEFAULT 'OD',
-    duration VARCHAR(100) NOT NULL,
+    duration_value INT NOT NULL DEFAULT 1,
+    duration_unit duration_unit NOT NULL DEFAULT 'day',
     status prescription_item_status NOT NULL DEFAULT 'active',
     instructions TEXT,
     started_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
