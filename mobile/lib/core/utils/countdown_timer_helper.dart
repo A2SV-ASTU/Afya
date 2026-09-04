@@ -1,9 +1,15 @@
 class CountdownTimerHelper {
   CountdownTimerHelper._();
 
-  static String formatDuration(Duration duration) {
-    final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
-    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  static int remainingSeconds(DateTime expiresAt) {
+    final diff = expiresAt.difference(DateTime.now());
+    return diff.inSeconds > 0 ? diff.inSeconds : 0;
+  }
+
+  static String formatSeconds(int totalSeconds) {
+    if (totalSeconds < 0) return '0:00';
+    final minutes = totalSeconds ~/ 60;
+    final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
     return '$minutes:$seconds';
   }
 

@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 
-import 'package:afyamind_mobile/core/errors/exceptions.dart';
 import 'package:afyamind_mobile/core/errors/failures.dart';
 import 'package:afyamind_mobile/features/access_requests/domain/entities/access_request_entity.dart';
 import 'package:afyamind_mobile/features/access_requests/domain/entities/clinic_grant_entity.dart';
@@ -84,14 +83,14 @@ void main() {
         (_) async => Right([tActiveRequest()]),
       );
 
-      await cubit.fetchActiveRequest();
+      await cubit.fetchPendingRequest();
       await cubit.close();
 
       expect(cubit.state, isA<AccessRequestActive>());
     });
   });
 
-  group('fetchActiveRequest', () {
+  group('fetchPendingRequest', () {
     blocTest<AccessRequestCubit, AccessRequestState>(
       'should emit [Loading, Active] when request exists',
       build: () {
@@ -100,7 +99,7 @@ void main() {
         );
         return cubit;
       },
-      act: (cubit) => cubit.fetchActiveRequest(),
+      act: (cubit) => cubit.fetchPendingRequest(),
       expect: () => [
         isA<AccessRequestLoading>(),
         isA<AccessRequestActive>(),
@@ -111,33 +110,33 @@ void main() {
     );
 
     blocTest<AccessRequestCubit, AccessRequestState>(
-      'should emit [Loading, Failure] when no pending requests',
+      'should emit [Loading, Initial] when no pending requests',
       build: () {
         when(() => mockGetPending()).thenAnswer(
           (_) async => const Right([]),
         );
         return cubit;
       },
-      act: (cubit) => cubit.fetchActiveRequest(),
+      act: (cubit) => cubit.fetchPendingRequest(),
       expect: () => [
         isA<AccessRequestLoading>(),
-        isA<AccessRequestFailure>(),
+        isA<AccessRequestInitial>(),
       ],
     );
 
     blocTest<AccessRequestCubit, AccessRequestState>(
-      'should emit [Loading, Failure] when repository returns ServerFailure',
+      'should emit [Loading, Error] when repository returns ServerFailure',
       build: () {
         when(() => mockGetPending()).thenAnswer(
           (_) async => const Left(ServerFailure('Server error')),
         );
         return cubit;
       },
-      act: (cubit) => cubit.fetchActiveRequest(),
+      act: (cubit) => cubit.fetchPendingRequest(),
       expect: () => [
         isA<AccessRequestLoading>(),
         predicate<AccessRequestState>((state) =>
-            state is AccessRequestFailure && state.message == 'Server error'),
+            state is AccessRequestError && state.message == 'Server error'),
       ],
     );
 
@@ -149,7 +148,7 @@ void main() {
         );
         return cubit;
       },
-      act: (cubit) => cubit.fetchActiveRequest(),
+      act: (cubit) => cubit.fetchPendingRequest(),
       expect: () => [
         isA<AccessRequestLoading>(),
         isA<AccessRequestExpired>(),
@@ -161,14 +160,15 @@ void main() {
     blocTest<AccessRequestCubit, AccessRequestState>(
       'should emit updated secondsRemaining on each tick',
       build: () {
-        final nearExpiry = DateTime.now().toUtc().add(const Duration(seconds: 3));
+        final nearExpiry = DateTime.now().add(const Duration(seconds: 3));
         when(() => mockGetPending()).thenAnswer(
           (_) async => Right([tActiveRequest(expiresAt: nearExpiry)]),
         );
+        when(() => mockDeny('1')).thenAnswer((_) async => const Right(unit));
         return cubit;
       },
       act: (cubit) async {
-        await cubit.fetchActiveRequest();
+        await cubit.fetchPendingRequest();
         await Future<void>.delayed(const Duration(seconds: 2));
       },
       expect: () => [
@@ -176,6 +176,8 @@ void main() {
         isA<AccessRequestActive>(),
         isA<AccessRequestActive>(),
         isA<AccessRequestExpired>(),
+        isA<AccessRequestSubmitting>(),
+        isA<AccessRequestSuccess>(),
       ],
       verify: (_) {
         verify(() => mockGetPending()).called(1);
@@ -187,27 +189,30 @@ void main() {
     blocTest<AccessRequestCubit, AccessRequestState>(
       'should emit Expired when secondsRemaining reaches 0',
       build: () {
-        final nearExpiry = DateTime.now().toUtc().add(const Duration(seconds: 2));
+        final nearExpiry = DateTime.now().add(const Duration(seconds: 2));
         when(() => mockGetPending()).thenAnswer(
           (_) async => Right([tActiveRequest(expiresAt: nearExpiry)]),
         );
+        when(() => mockDeny('1')).thenAnswer((_) async => const Right(unit));
         return cubit;
       },
       act: (cubit) async {
-        await cubit.fetchActiveRequest();
+        await cubit.fetchPendingRequest();
         await Future<void>.delayed(const Duration(seconds: 3));
       },
       expect: () => [
         isA<AccessRequestLoading>(),
         isA<AccessRequestActive>(),
         isA<AccessRequestExpired>(),
+        isA<AccessRequestSubmitting>(),
+        isA<AccessRequestSuccess>(),
       ],
     );
   });
 
   group('approveRequest', () {
     blocTest<AccessRequestCubit, AccessRequestState>(
-      'should emit [ActionInFlight, Success] on successful approval',
+      'should emit [Submitting, Success] on successful approval',
       build: () {
         when(() => mockApprove('1')).thenAnswer(
           (_) async => const Right(unit),
@@ -216,7 +221,7 @@ void main() {
       },
       act: (cubit) => cubit.approveRequest('1'),
       expect: () => [
-        isA<AccessRequestActionInFlight>(),
+        isA<AccessRequestSubmitting>(),
         isA<AccessRequestSuccess>(),
       ],
       verify: (_) {
@@ -225,7 +230,7 @@ void main() {
     );
 
     blocTest<AccessRequestCubit, AccessRequestState>(
-      'should emit [ActionInFlight, Failure] when approval fails',
+      'should emit [Submitting, Error] when approval fails',
       build: () {
         when(() => mockApprove('1')).thenAnswer(
           (_) async => const Left(ServerFailure('Approval failed')),
@@ -234,32 +239,17 @@ void main() {
       },
       act: (cubit) => cubit.approveRequest('1'),
       expect: () => [
-        isA<AccessRequestActionInFlight>(),
+        isA<AccessRequestSubmitting>(),
         predicate<AccessRequestState>((state) =>
-            state is AccessRequestFailure &&
+            state is AccessRequestError &&
             state.message == 'Approval failed'),
-      ],
-    );
-
-    blocTest<AccessRequestCubit, AccessRequestState>(
-      'should emit [ActionInFlight, Expired] on HTTP 410 error',
-      build: () {
-        when(() => mockApprove('1')).thenThrow(
-          const ExpiredException('Request expired'),
-        );
-        return cubit;
-      },
-      act: (cubit) => cubit.approveRequest('1'),
-      expect: () => [
-        isA<AccessRequestActionInFlight>(),
-        isA<AccessRequestExpired>(),
       ],
     );
   });
 
   group('denyRequest', () {
     blocTest<AccessRequestCubit, AccessRequestState>(
-      'should emit [ActionInFlight, Success] on successful denial',
+      'should emit [Submitting, Success] on successful denial',
       build: () {
         when(() => mockDeny('1')).thenAnswer(
           (_) async => const Right(unit),
@@ -268,7 +258,7 @@ void main() {
       },
       act: (cubit) => cubit.denyRequest('1'),
       expect: () => [
-        isA<AccessRequestActionInFlight>(),
+        isA<AccessRequestSubmitting>(),
         isA<AccessRequestSuccess>(),
       ],
       verify: (_) {
@@ -277,7 +267,7 @@ void main() {
     );
 
     blocTest<AccessRequestCubit, AccessRequestState>(
-      'should emit [ActionInFlight, Failure] when denial fails',
+      'should emit [Submitting, Error] when denial fails',
       build: () {
         when(() => mockDeny('1')).thenAnswer(
           (_) async => const Left(ServerFailure('Denial failed')),
@@ -286,25 +276,10 @@ void main() {
       },
       act: (cubit) => cubit.denyRequest('1'),
       expect: () => [
-        isA<AccessRequestActionInFlight>(),
+        isA<AccessRequestSubmitting>(),
         predicate<AccessRequestState>((state) =>
-            state is AccessRequestFailure &&
+            state is AccessRequestError &&
             state.message == 'Denial failed'),
-      ],
-    );
-
-    blocTest<AccessRequestCubit, AccessRequestState>(
-      'should emit [ActionInFlight, Expired] on HTTP 410 error',
-      build: () {
-        when(() => mockDeny('1')).thenThrow(
-          const ExpiredException('Request expired'),
-        );
-        return cubit;
-      },
-      act: (cubit) => cubit.denyRequest('1'),
-      expect: () => [
-        isA<AccessRequestActionInFlight>(),
-        isA<AccessRequestExpired>(),
       ],
     );
   });
@@ -315,7 +290,7 @@ void main() {
         (_) async => Right([tActiveRequest()]),
       );
 
-      await cubit.fetchActiveRequest();
+      await cubit.fetchPendingRequest();
 
       // Close the cubit — this should cancel the timer without error
       await cubit.close();

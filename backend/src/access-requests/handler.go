@@ -157,21 +157,19 @@ func (h *Handler) RevokeRequest(c *gin.Context) {
 	}
 
 	response.JSON(c, http.StatusOK, gin.H{"status": "revoked_at set"})
-}
-
-// ListRequests godoc
+}// ListRequests godoc
 //
 //	@Summary		List access requests for a clinic
 //	@Description	Lists access requests. Filterable by status (pending, approved, denied, expired).
 //	@Tags			AccessRequests
 //	@Produce		json
 //	@Security		BearerAuth
-//	@Param			clinicId	path		string								true	"Clinic ID"
-//	@Param			status		query		string								false	"Filter by status"
+//	@Param			clinicId	path		string									true	"Clinic ID"
+//	@Param			status		query		string									false	"Filter by status"
 //	@Success		200			{object}	response.DataEnvelope{data=[]accessrequests.AccessRequest}	"List of requests"
-//	@Failure		400			{object}	response.ErrorEnvelope				"Validation error"
-//	@Failure		401			{object}	response.ErrorEnvelope				"Not authenticated"
-//	@Failure		403			{object}	response.ErrorEnvelope				"Forbidden — unauthorized for clinic"
+//	@Failure		400			{object}	response.ErrorEnvelope					"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope					"Not authenticated"
+//	@Failure		403			{object}	response.ErrorEnvelope					"Forbidden — unauthorized for clinic"
 //	@Router			/clinics/{clinicId}/access-requests [get]
 func (h *Handler) ListRequests(c *gin.Context) {
 	clinicIDStr := c.Param("clinicId")

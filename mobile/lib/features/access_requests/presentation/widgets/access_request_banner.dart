@@ -1,19 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+
 import '../bloc/access_request_cubit.dart';
 import '../bloc/access_request_state.dart';
-import '../utils/countdown_timer_helper.dart';
 import 'access_request_decision_modal.dart';
 
-/// Gentle Coral accent color.
-const Color kGentleCoral = Color(0xFFF3C9C9);
-
-/// Deep Charcoal for timer text.
-const Color kDeepCharcoal = Color(0xFF333333);
-
-/// Floating top banner that shows when an access request is active.
-/// Displays clinic name and countdown timer. Tapping opens the decision modal.
 class AccessRequestBanner extends StatelessWidget {
   const AccessRequestBanner({super.key});
 
@@ -25,8 +17,7 @@ class AccessRequestBanner extends StatelessWidget {
           return const SizedBox.shrink();
         }
 
-        final formattedTime =
-            CountdownTimerHelper.formatRemaining(state.secondsRemaining);
+        final request = state.request;
 
         return Positioned(
           top: MediaQuery.of(context).padding.top + 8,
@@ -38,38 +29,35 @@ class AccessRequestBanner extends StatelessWidget {
               onTap: () {
                 AccessRequestDecisionModal.show(
                   context: context,
-                  request: state.request,
-                  secondsRemaining: state.secondsRemaining,
+                  request: request,
+                  onApprove: () {
+                    context.read<AccessRequestCubit>().approveRequest(request.id);
+                  },
+                  onDeny: () {
+                    context.read<AccessRequestCubit>().denyRequest(request.id);
+                  },
                 );
               },
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: const Color(0xFFFFEBEE),
+                  border: Border.all(color: const Color(0xFFFFCDD2)),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
                 child: Row(
                   children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: kGentleCoral,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.medical_information_outlined,
-                        color: Colors.white,
-                        size: 22,
-                      ),
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Color(0xFFD32F2F),
+                      size: 24,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -78,37 +66,41 @@ class AccessRequestBanner extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            state.request.clinicName,
+                            request.clinicName,
                             style: const TextStyle(
+                              fontFamily: 'Inter',
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
-                              color: kDeepCharcoal,
+                              color: Color(0xFFD32F2F),
                             ),
                           ),
                           const SizedBox(height: 2),
-                          const Text(
-                            'Access request pending',
+                          Text(
+                            'Requested by ${request.doctorName}',
                             style: TextStyle(
+                              fontFamily: 'Inter',
                               fontSize: 12,
-                              color: Colors.grey,
+                              color: const Color(0xFFD32F2F).withValues(alpha: 0.8),
                             ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: kGentleCoral,
+                        color: const Color(0xFFD32F2F),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        formattedTime,
+                        state.formattedTime,
                         style: const TextStyle(
+                          fontFamily: 'Manrope',
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
-                          color: kDeepCharcoal,
+                          color: Colors.white,
                         ),
                       ),
                     ),

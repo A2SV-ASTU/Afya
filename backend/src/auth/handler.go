@@ -1,6 +1,8 @@
+
 package auth
 
 import (
+	"log"
 	"net/http"
 
 	"afyamind-backend/src/config"
@@ -23,6 +25,13 @@ func NewHandler(service Service, cfg *config.Config) *Handler {
 	}
 }
 
+// setCookies sets the access and refresh JWT cookies.
+//
+// IMPORTANT:
+// - HttpOnly = true means JavaScript cannot read the cookies.
+// - CookieDomain comes from COOKIE_DOMAIN.
+// - CookieSecure comes from COOKIE_SECURE.
+// - SameSite is Strict.
 func setCookies(c *gin.Context, accessToken, refreshToken string, cfg *config.Config) {
 	accessMaxAge := cfg.AccessTokenExpiryMinutes * 60
 	refreshMaxAge := cfg.RefreshTokenExpiryDays * 24 * 60 * 60
@@ -50,10 +59,29 @@ func setCookies(c *gin.Context, accessToken, refreshToken string, cfg *config.Co
 	)
 }
 
+// clearCookies removes the authentication cookies.
 func clearCookies(c *gin.Context, cfg *config.Config) {
 	c.SetSameSite(http.SameSiteStrictMode)
-	c.SetCookie("access_token", "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
-	c.SetCookie("refresh_token", "", -1, "/", cfg.CookieDomain, cfg.CookieSecure, true)
+
+	c.SetCookie(
+		"access_token",
+		"",
+		-1,
+		"/",
+		cfg.CookieDomain,
+		cfg.CookieSecure,
+		true,
+	)
+
+	c.SetCookie(
+		"refresh_token",
+		"",
+		-1,
+		"/",
+		cfg.CookieDomain,
+		cfg.CookieSecure,
+		true,
+	)
 }
 
 // Signup godoc
@@ -69,20 +97,34 @@ func clearCookies(c *gin.Context, cfg *config.Config) {
 //	@Failure		400		{object}	response.ErrorEnvelope					"Validation error"
 //	@Failure		409		{object}	response.ErrorEnvelope					"Email or phone already in use"
 //	@Router			/auth/register [post]
+//	@Router			/auth/signup [post]
 func (h *Handler) Signup(c *gin.Context) {
 	var req SignupRequest
+
+	// Parse and validate JSON request body.
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request body"))
+		log.Printf("SIGNUP BIND ERROR: %v", err)
+
+		response.RespondAppError(
+			c,
+			appErrors.ErrValidationError("Invalid request body"),
+		)
 		return
 	}
 
-	user, accessToken, refreshToken, appErr := h.service.Signup(c.Request.Context(), req)
+	// Create the patient and generate JWT tokens.
+	user, accessToken, refreshToken, appErr :=
+		h.service.Signup(c.Request.Context(), req)
+
 	if appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
 
+	// Store authentication tokens in HttpOnly cookies.
 	setCookies(c, accessToken, refreshToken, h.cfg)
+
+	// Return the created patient.
 	response.JSON(c, http.StatusCreated, gin.H{
 		"data": users.ToUserResponse(user),
 	})
@@ -103,18 +145,28 @@ func (h *Handler) Signup(c *gin.Context) {
 //	@Router			/auth/login [post]
 func (h *Handler) Login(c *gin.Context) {
 	var req LoginRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request body"))
+		log.Printf("LOGIN BIND ERROR: %v", err)
+
+		response.RespondAppError(
+			c,
+			appErrors.ErrValidationError("Invalid request body"),
+		)
 		return
 	}
 
-	user, accessToken, refreshToken, appErr := h.service.Login(c.Request.Context(), req)
+	user, accessToken, refreshToken, appErr :=
+		h.service.Login(c.Request.Context(), req)
+
 	if appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
 
+	// Store authentication tokens in HttpOnly cookies.
 	setCookies(c, accessToken, refreshToken, h.cfg)
+
 	response.JSON(c, http.StatusOK, gin.H{
 		"data": gin.H{
 			"user": users.ToUserResponse(user),
@@ -137,10 +189,13 @@ func (h *Handler) Login(c *gin.Context) {
 func (h *Handler) Refresh(c *gin.Context) {
 	var refreshToken string
 	var req RefreshRequest
+
+	// First try to read refresh token from JSON body.
 	if err := c.ShouldBindJSON(&req); err == nil && req.RefreshToken != "" {
 		refreshToken = req.RefreshToken
 	}
 
+	// If no token was supplied in JSON, read the HttpOnly cookie.
 	if refreshToken == "" {
 		cookieToken, err := c.Cookie("refresh_token")
 		if err == nil {
@@ -153,14 +208,17 @@ func (h *Handler) Refresh(c *gin.Context) {
 		return
 	}
 
-	_, newAccessToken, appErr := h.service.Refresh(c.Request.Context(), refreshToken)
+	_, newAccessToken, appErr :=
+		h.service.Refresh(c.Request.Context(), refreshToken)
+
 	if appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
 
-	// Update access_token cookie
+	// Update access_token cookie.
 	c.SetSameSite(http.SameSiteStrictMode)
+
 	c.SetCookie(
 		"access_token",
 		newAccessToken,
@@ -190,6 +248,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 //	@Router			/auth/logout [post]
 func (h *Handler) Logout(c *gin.Context) {
 	clearCookies(c, h.cfg)
+
 	response.JSON(c, http.StatusOK, gin.H{
 		"data": gin.H{
 			"message": "Logged out successfully",
@@ -210,13 +269,17 @@ func (h *Handler) Logout(c *gin.Context) {
 //	@Router			/auth/forgot-password [post]
 func (h *Handler) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid email format"))
+		response.RespondAppError(
+			c,
+			appErrors.ErrValidationError("Invalid email format"),
+		)
 		return
 	}
 
+	// Do not leak whether the email exists.
 	_ = h.service.ForgotPassword(c.Request.Context(), req.Email)
-	// Do not leak whether the email exists or if there was an internal error. Always return success.
 
 	response.JSON(c, http.StatusOK, gin.H{
 		"data": gin.H{
@@ -238,33 +301,57 @@ func (h *Handler) ForgotPassword(c *gin.Context) {
 //	@Router			/auth/reset-password [post]
 func (h *Handler) ResetPassword(c *gin.Context) {
 	var req ResetPasswordRequest
+
 	if err := c.ShouldBindJSON(&req); err != nil {
-		response.RespondAppError(c, appErrors.ErrValidationError("Invalid request body"))
+		response.RespondAppError(
+			c,
+			appErrors.ErrValidationError("Invalid request body"),
+		)
 		return
 	}
 
 	resetToken := req.Token
+
+	// Try reset_token cookie.
 	if resetToken == "" {
 		if cookieToken, err := c.Cookie("reset_token"); err == nil && cookieToken != "" {
 			resetToken = cookieToken
 		}
 	}
+
+	// Finally try query parameter.
 	if resetToken == "" {
 		resetToken = c.Query("token")
 	}
 
 	if resetToken == "" {
-		response.RespondAppError(c, appErrors.ErrValidationError("Reset token is required"))
+		response.RespondAppError(
+			c,
+			appErrors.ErrValidationError("Reset token is required"),
+		)
 		return
 	}
 
-	if appErr := h.service.ResetPassword(c.Request.Context(), resetToken, req.Password); appErr != nil {
+	if appErr :=
+		h.service.ResetPassword(
+			c.Request.Context(),
+			resetToken,
+			req.Password,
+		); appErr != nil {
 		response.RespondAppError(c, appErr)
 		return
 	}
 
-	// Clear reset_token cookie if present
-	c.SetCookie("reset_token", "", -1, "/", h.cfg.CookieDomain, h.cfg.CookieSecure, true)
+	// Clear reset_token cookie if present.
+	c.SetCookie(
+		"reset_token",
+		"",
+		-1,
+		"/",
+		h.cfg.CookieDomain,
+		h.cfg.CookieSecure,
+		true,
+	)
 
 	response.JSON(c, http.StatusOK, gin.H{
 		"data": gin.H{

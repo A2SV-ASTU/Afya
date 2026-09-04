@@ -10,10 +10,16 @@ class ClinicGrantModel extends ClinicGrantEntity {
 
   factory ClinicGrantModel.fromJson(Map<String, dynamic> json) {
     return ClinicGrantModel(
-      grantId: json['grant_id'] as String,
-      clinicId: json['clinic_id'] as String,
-      clinicName: json['clinic_name'] as String,
-      grantedAt: DateTime.parse(json['granted_at'] as String),
+      // Backend returns 'id', mobile expects 'grant_id'
+      grantId: (json['grant_id'] ?? json['id']) as String,
+      // Backend returns 'requesting_clinic_id', mobile expects 'clinic_id'
+      clinicId: (json['clinic_id'] ?? json['requesting_clinic_id']) as String,
+      // clinic_name may be populated by backend JOIN or may be absent
+      clinicName: (json['clinic_name'] ?? 'Unknown Clinic') as String,
+      // Backend returns 'created_at', mobile expects 'granted_at'
+      grantedAt: DateTime.parse(
+        (json['granted_at'] ?? json['created_at']) as String,
+      ).toLocal(),
     );
   }
 

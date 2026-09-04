@@ -18,6 +18,9 @@ type Repository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*AccessRequest, error)
 	FindByTokenHash(ctx context.Context, tokenHash string) (*AccessRequest, error)
 	ListByClinicID(ctx context.Context, clinicID uuid.UUID, status string) ([]*AccessRequest, error)
+	ListPendingByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
+	ListActiveGrantsByPatientID(ctx context.Context, patientID uuid.UUID) ([]*AccessRequest, error)
+	RevokeByPatientAndClinic(ctx context.Context, patientID, clinicID uuid.UUID) error
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string) error
 	Revoke(ctx context.Context, id uuid.UUID) error
 	FindActiveGrant(ctx context.Context, clinicID, patientID uuid.UUID) (*AccessRequest, error)
