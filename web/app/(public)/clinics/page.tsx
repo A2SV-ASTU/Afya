@@ -25,10 +25,10 @@ export default function ClinicsPage() {
 
           <div className="relative w-full h-[400px] md:h-[600px] rounded-[2rem] overflow-hidden shadow-2xl border border-[var(--color-main-border)]">
              <Image
-              src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&q=80&w=1600"
+              src="/images/clinics-hero.png"
               alt="Hospital command center dashboard"
               fill
-              className="object-cover"
+              className="object-cover rounded-2xl"
               priority
             />
           </div>
@@ -47,8 +47,8 @@ export default function ClinicsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
 
           {/* Feature 1 */}
-          <div className="flex flex-col group">
-            <div className="relative h-[300px] w-full rounded-[2rem] overflow-hidden shadow-md border border-[var(--color-main-border)] mb-8">
+          <div className="flex flex-col group bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-lg shadow-slate-200/50 p-8 rounded-[2rem] hover:-translate-y-1 transition-transform">
+            <div className="relative h-[300px] w-full rounded-2xl overflow-hidden shadow-md border border-slate-200/60 mb-8">
               <Image
                 src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&q=80&w=1000"
                 alt="Secure medical dashboard and network graphic"
@@ -58,19 +58,19 @@ export default function ClinicsPage() {
               <div className="absolute inset-0 bg-[var(--color-main)]/5"></div>
             </div>
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-[var(--color-canvas)] text-[var(--color-main-dark)] rounded-xl flex items-center justify-center shadow-sm border border-[var(--color-main-border)]">
+              <div className="w-12 h-12 bg-white text-[var(--color-main-dark)] rounded-xl flex items-center justify-center shadow-sm border border-slate-200/60">
                 <ShieldCheck className="w-6 h-6" />
               </div>
-              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">Institutional Grants</h3>
+              <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">Institutional Grants</h3>
             </div>
-            <p className="text-gray-600 text-lg leading-relaxed font-medium">
+            <p className="text-slate-600 text-lg leading-relaxed font-medium">
               Access requests belong to the <strong>Clinic as a whole</strong>, allowing seamless, audited collaboration across all specialists without repeatedly burdening the patient for consent.
             </p>
           </div>
 
           {/* Feature 2 */}
-          <div className="flex flex-col group">
-            <div className="relative h-[300px] w-full rounded-[2rem] overflow-hidden shadow-md border border-[var(--color-main-border)] mb-8">
+          <div className="flex flex-col group bg-white/80 backdrop-blur-xl border border-slate-200/60 shadow-lg shadow-slate-200/50 p-8 rounded-[2rem] hover:-translate-y-1 transition-transform">
+            <div className="relative h-[300px] w-full rounded-2xl overflow-hidden shadow-md border border-slate-200/60 mb-8">
               <Image
                 src="https://images.unsplash.com/photo-1530497610245-94d3c16cda28?auto=format&fit=crop&q=80&w=1000"
                 alt="Cryptographic data lock graphic representing security"
@@ -79,12 +79,12 @@ export default function ClinicsPage() {
               />
             </div>
             <div className="flex items-center gap-4 mb-4">
-              <div className="w-12 h-12 bg-[var(--color-canvas)] text-[var(--color-main-dark)] rounded-xl flex items-center justify-center shadow-sm border border-[var(--color-main-border)]">
+              <div className="w-12 h-12 bg-white text-[var(--color-main-dark)] rounded-xl flex items-center justify-center shadow-sm border border-slate-200/60">
                 <Database className="w-6 h-6" />
               </div>
-              <h3 className="text-2xl font-extrabold text-gray-900 tracking-tight">Immutable Audit Trails</h3>
+              <h3 className="text-2xl font-extrabold text-slate-900 tracking-tight">Immutable Audit Trails</h3>
             </div>
-            <p className="text-gray-600 text-lg leading-relaxed font-medium">
+            <p className="text-slate-600 text-lg leading-relaxed font-medium">
               We operate strictly on a <strong>Deactivation over Deletion</strong> principle. Every action is logged immutably in a cryptographic ledger, ensuring absolute medical history integrity.
             </p>
           </div>
@@ -116,7 +116,7 @@ export default function ClinicsPage() {
                 </div>
                 <div className="relative h-[300px] lg:h-[400px] w-full rounded-[2rem] overflow-hidden shadow-md border border-white">
                   <Image
-                    src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?auto=format&fit=crop&w=1200&q=80"
+                    src="/images/clinics-encounter.jpg"
                     alt="Close-up of a digital medical record"
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-700"

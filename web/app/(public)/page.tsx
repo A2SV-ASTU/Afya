@@ -12,39 +12,33 @@ export default function LandingPage() {
       {/* CORE FEATURES (TOP) */}
       <section className="bg-[var(--color-canvas)] py-16">
         <div className="mx-auto max-w-[1280px] px-6 md:px-10">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="font-manrope text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
-              Empowering patients with their own health data.
-            </h2>
-            <p className="mt-4 text-lg text-gray-600">
-              A unified platform bridging the gap between clinical settings and daily patient lives, prioritizing transparency and offline reliability.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-8 md:grid-cols-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative z-20">
             {[
               {
                 icon: User,
                 title: "Patient-Centered",
-                desc: "Take charge of your daily vitals and medication schedules with intuitive tracking tools designed for your lifestyle.",
+                desc: "Take charge of your daily vitals and medication schedules with intuitive tracking tools designed for your lifestyle. Monitor your progress over time with beautiful, easy-to-read charts. Set custom reminders so you never miss a dose, and securely share your daily health journal directly with your care team.",
+                span: "md:col-span-1",
               },
               {
                 icon: Stethoscope,
                 title: "Doctor-Anchored",
-                desc: "View verified clinical encounters and prescriptions exactly as recorded by your healthcare providers.",
+                desc: "View verified clinical encounters and prescriptions exactly as recorded by your healthcare providers. Access comprehensive visit summaries, lab results, and official diagnosis records in real-time. Built on a foundation of clinical trust, ensuring the data you see is accurate, secure, and medically validated.",
+                span: "md:col-span-1 mt-0 md:mt-12",
               },
               {
                 icon: WifiOff,
                 title: "Offline-First",
-                desc: "Log vitals and check reminders even without connectivity. Data syncs seamlessly when you're back online.",
+                desc: "Log vitals and check reminders even without connectivity. Data syncs seamlessly when you're back online. Whether you are traveling or in a low-signal area, your health data remains accessible. Our robust local storage architecture ensures zero data loss, automatically backing up to the cloud the moment your connection is restored.",
+                span: "md:col-span-1",
               }
             ].map((feature, i) => (
-              <div key={i} className="rounded-2xl border border-[var(--color-main-border)] bg-white/80 backdrop-blur-sm p-8 shadow-sm transition-all hover:shadow-md hover:-translate-y-1">
-                <div className="mb-6 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-main-light)] text-[var(--color-main)]">
-                  <feature.icon className="h-6 w-6" />
+              <div key={i} className={`relative overflow-hidden rounded-3xl border border-[var(--color-main-border)] bg-white/90 backdrop-blur-xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-500 hover:-translate-y-2 hover:shadow-2xl hover:shadow-[var(--color-main)]/15 ${feature.span}`}>
+                <div className="mb-6 bg-[var(--color-main-subtle)] text-[var(--color-main)] border border-[var(--color-main-border)] p-4 rounded-2xl w-fit">
+                  <feature.icon className="h-7 w-7" strokeWidth={2.5} />
                 </div>
-                <h3 className="font-manrope text-xl font-semibold text-gray-900">{feature.title}</h3>
-                <p className="mt-3 text-base leading-relaxed text-gray-600">{feature.desc}</p>
+                <h3 className="font-manrope text-2xl font-semibold text-[var(--color-main-dark)]">{feature.title}</h3>
+                <p className="mt-4 text-base leading-relaxed text-gray-600">{feature.desc}</p>
               </div>
             ))}
           </div>
@@ -56,40 +50,44 @@ export default function LandingPage() {
         <div className="mx-auto max-w-[1280px] px-6 md:px-10">
           <div className="text-center">
             <span className="font-manrope text-sm font-semibold uppercase tracking-widest text-[var(--color-main)]">Features</span>
-            <h2 className="mt-4 font-manrope text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+            <h2 className="mt-4 font-manrope text-3xl font-bold tracking-tight text-[var(--color-main-dark)] md:text-4xl">
               Advanced Clinical Tools for a Seamless Journey
             </h2>
           </div>
 
-          <div className="mt-16 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 md:grid-rows-2 gap-4 md:gap-6 relative z-20">
             {[
               {
                 icon: FileCheck,
                 title: "Medication Adherence",
-                desc: "Smart reminders with bounded snoozing to ensure you never miss a dose, reducing clinical risk."
+                desc: "Smart reminders with bounded snoozing to ensure you never miss a dose, reducing clinical risk.",
+                span: "md:col-span-2",
               },
               {
                 icon: Activity,
                 title: "Vital Self Logging",
-                desc: "Capture your daily vitals offline. Hands sync them seamlessly for your doctor's review during your next visit."
+                desc: "Capture your daily vitals offline. Hands sync them seamlessly for your doctor's review during your next visit.",
+                span: "md:col-span-1",
               },
               {
                 icon: FileText,
                 title: "Clinical Encounters",
-                desc: "Access your complete medical history organized as verified clinic visits, providing total transparency."
+                desc: "Access your complete medical history organized as verified clinic visits, providing total transparency.",
+                span: "md:col-span-1",
               },
               {
                 icon: Calendar,
                 title: "Appointments",
-                desc: "Track upcoming visits with local device reminders, keeping your schedule organized and accessible."
+                desc: "Track upcoming visits with local device reminders, keeping your schedule organized and accessible.",
+                span: "md:col-span-2",
               }
             ].map((tool, i) => (
-              <div key={i} className="rounded-2xl border border-[var(--color-main-border)] bg-[var(--color-main-subtle)] p-6 shadow-sm transition-shadow hover:shadow-md">
-                <div className="mb-5 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-main-light)] text-[var(--color-main-dark)]">
-                  <tool.icon className="h-5 w-5" />
+              <div key={i} className={`relative overflow-hidden rounded-3xl border border-[var(--color-main-border)] bg-white/90 backdrop-blur-xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1 hover:bg-slate-50/90 hover:shadow-2xl hover:shadow-[var(--color-main)]/15 ${tool.span}`}>
+                <div className="mb-5 relative inline-flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-main-subtle)] text-[var(--color-main)] border border-[var(--color-main-border)]">
+                  <tool.icon className="h-6 w-6" strokeWidth={2} />
                 </div>
-                <h3 className="font-manrope text-lg font-semibold text-gray-900">{tool.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-600">{tool.desc}</p>
+                <h3 className="relative font-manrope text-lg font-semibold text-[var(--color-main-dark)]">{tool.title}</h3>
+                <p className="relative mt-2 text-sm leading-relaxed text-gray-600">{tool.desc}</p>
               </div>
             ))}
           </div>
@@ -122,7 +120,7 @@ export default function LandingPage() {
             {/* Right Content */}
             <div>
               <span className="font-manrope text-sm font-semibold uppercase tracking-widest text-[var(--color-main)]">Process</span>
-              <h2 className="mt-4 font-manrope text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+              <h2 className="mt-4 font-manrope text-3xl font-bold tracking-tight text-[var(--color-main-dark)] md:text-4xl">
                 Getting started is simple.
               </h2>
               <p className="mt-4 text-lg text-gray-600">
@@ -152,7 +150,7 @@ export default function LandingPage() {
                       {step.num}
                     </div>
                     <div>
-                      <h3 className="font-manrope text-xl font-semibold text-gray-900">{step.title}</h3>
+                      <h3 className="font-manrope text-xl font-semibold text-[var(--color-main-dark)]">{step.title}</h3>
                       <p className="mt-1 text-gray-600">{step.desc}</p>
                     </div>
                   </div>
@@ -206,7 +204,7 @@ export default function LandingPage() {
       {/* CTA SECTION */}
       <section className="bg-[var(--color-canvas)] py-16 border-t border-[var(--color-main-border)]">
         <div className="mx-auto max-w-3xl px-6 text-center md:px-10">
-          <h2 className="font-manrope text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+          <h2 className="font-manrope text-3xl font-bold tracking-tight text-[var(--color-main-dark)] md:text-4xl">
             Ready to experience clinical calm?
           </h2>
           <p className="mt-4 text-lg text-gray-600">
