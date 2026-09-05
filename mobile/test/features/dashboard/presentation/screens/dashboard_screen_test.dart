@@ -96,8 +96,11 @@ void main() {
       await tester.pumpWidget(createWidgetUnderTest());
 
       // Header
+      expect(find.text('Afya'), findsOneWidget);
+      expect(find.byIcon(Icons.notifications_none_rounded), findsOneWidget);
       expect(find.text('Welcome back, Alex!'), findsOneWidget);
-      expect(find.text("Here's your health overview for today."), findsOneWidget);
+      expect(
+          find.text("Here's your health overview for today."), findsOneWidget);
 
       // Empty medication
       expect(find.text("Today's Medication"), findsOneWidget);
@@ -149,7 +152,8 @@ void main() {
       expect(find.text('Clinic ID: clinic-1'), findsOneWidget);
     });
 
-    testWidgets('renders Log Vital Signs FAB and opens bottom sheet modal on tap',
+    testWidgets(
+        'renders Log Vital Signs FAB and opens bottom sheet modal on tap',
         (tester) async {
       when(() => mockDashboardCubit.state).thenReturn(
         const DashboardState(

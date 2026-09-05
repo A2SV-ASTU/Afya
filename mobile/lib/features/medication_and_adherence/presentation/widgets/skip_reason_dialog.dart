@@ -72,12 +72,12 @@ class _SkipReasonDialogState extends State<SkipReasonDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Skip Dose',
+                  'Skip this dose?',
                   style: AppTypography.titleMedium,
                 ),
                 const SizedBox(height: AppDimensions.space8),
                 Text(
-                  'Please provide a reason for skipping this dose. This helps your care team track your treatment accurately.',
+                  'Why are you skipping this dose?',
                   style: AppTypography.bodyMedium.copyWith(
                     color: AppColors.textSecondary,
                   ),
