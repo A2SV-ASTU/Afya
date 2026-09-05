@@ -14,7 +14,7 @@ interface ClinicDetailViewProps {
 
 export function ClinicDetailView({ clinicId }: ClinicDetailViewProps) {
   const router = useRouter();
-  const { clinics, doctors, deactivateClinic } = useStore();
+  const { clinics, doctors, deactivateClinic, activateClinic } = useStore();
   const [showDeactivateDialog, setShowDeactivateDialog] = useState(false);
 
   const clinic = clinics.find((c) => c.id === clinicId);
@@ -33,7 +33,11 @@ export function ClinicDetailView({ clinicId }: ClinicDetailViewProps) {
   }
 
   const handleToggleDeactivate = () => {
-    deactivateClinic(clinic.id);
+    if (clinic.status === 'active') {
+      deactivateClinic(clinic.id);
+    } else {
+      activateClinic(clinic.id);
+    }
     setShowDeactivateDialog(false);
   };
 

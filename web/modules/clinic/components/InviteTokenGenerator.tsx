@@ -21,7 +21,7 @@ export function InviteTokenGenerator({ isOpen, onClose }: InviteTokenGeneratorPr
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
 
-  const handleGenerate = (e: React.FormEvent) => {
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -31,8 +31,10 @@ export function InviteTokenGenerator({ isOpen, onClose }: InviteTokenGeneratorPr
     }
 
     try {
-      const inv = inviteDoctor(email, specialization, activeClinic.id);
-      setCreatedToken(inv.token);
+      const result = await inviteDoctor(activeClinic.id, email);
+      // Backend only returns { message }, not the token
+      // We'll show a success message instead
+      setCreatedToken('invitation_sent_successfully');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to issue invitation.');
     }
@@ -124,27 +126,15 @@ export function InviteTokenGenerator({ isOpen, onClose }: InviteTokenGeneratorPr
           </div>
 
           <div>
-            <h4 className="text-base font-bold text-slate-900">Doctor Invite Link Generated</h4>
+            <h4 className="text-base font-bold text-slate-900">Doctor Invite Sent Successfully</h4>
             <p className="text-xs text-slate-500 mt-1">
-              Token issued for <strong className="text-slate-800">{email}</strong>. Valid for 24 hours.
+              Invitation sent to <strong className="text-slate-800">{email}</strong>. The doctor will receive an email with their onboarding link.
             </p>
           </div>
 
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-2 text-left">
-            <div className="overflow-hidden">
-              <p className="text-[10px] text-slate-400 font-mono uppercase">Invite Link</p>
-              <p className="text-xs font-mono text-slate-800 truncate">
-                {`${typeof window !== 'undefined' ? window.location.origin : ''}/accept-invite?token=${createdToken}`}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handleCopyLink}
-              className="p-2 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-700 transition-colors shrink-0 cursor-pointer"
-              title="Copy to clipboard"
-            >
-              {copied ? <CheckCircle2 className="w-4 h-4 text-[#2E7D32]" /> : <Copy className="w-4 h-4" />}
-            </button>
+          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs text-emerald-800">
+            <p className="font-semibold">✓ Invitation email sent</p>
+            <p className="text-emerald-700 mt-1">The doctor will receive a 24-hour invitation link via email to complete their registration.</p>
           </div>
 
           <div className="pt-2 flex justify-center">

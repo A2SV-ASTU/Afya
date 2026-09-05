@@ -12,9 +12,53 @@ export default function DoctorDetailPage() {
   const params = useParams();
   const doctorId = (params?.doctorId as string) || '';
 
-  const { doctors, encounters, deactivateDoctor } = useStore();
+  const { doctors, encounters, activeClinic, deactivateDoctor, activateDoctor } = useStore();
   const doctor = doctors.find((d) => d.id === doctorId);
   const doctorEncounters = encounters.filter((e) => e.opened_by_doctor_id === doctorId);
+
+  console.log('[DoctorDetailPage] State:', {
+    doctorId,
+    doctor,
+    activeClinicId: activeClinic.id,
+    doctorStatus: doctor?.doctor_status,
+  });
+
+  if (!doctor) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
+        <h3 className="text-base font-bold text-slate-900">Doctor Profile Not Found</h3>
+        <Button className="mt-4" onClick={() => router.push('/clinic/doctors')}>
+          Back to Roster
+        </Button>
+      </div>
+    );
+  }
+
+  const handleToggleStatus = async () => {
+    if (!activeClinic.id || !doctor?.id) {
+      console.error('[DoctorDetailPage] Missing required IDs:', { 
+        activeClinicId: activeClinic.id, 
+        doctorId: doctor?.id 
+      });
+      return;
+    }
+    
+    console.log('[DoctorDetailPage] Toggling status:', {
+      currentStatus: doctor.doctor_status,
+      willActivate: doctor.doctor_status !== 'active',
+    });
+    
+    try {
+      if (doctor.doctor_status === 'active') {
+        await deactivateDoctor(activeClinic.id, doctor.id);
+      } else {
+        await activateDoctor(activeClinic.id, doctor.id);
+      }
+      console.log('[DoctorDetailPage] Status toggled successfully');
+    } catch (err) {
+      console.error('[DoctorDetailPage] Failed to toggle status:', err);
+    }
+  };
 
   if (!doctor) {
     return (
@@ -55,7 +99,7 @@ export default function DoctorDetailPage() {
           <Button
             variant={doctor.doctor_status === 'active' ? 'danger' : 'success'}
             size="sm"
-            onClick={() => deactivateDoctor(doctor.id)}
+            onClick={handleToggleStatus}
           >
             {doctor.doctor_status === 'active' ? 'Deactivate Doctor' : 'Reactivate Doctor'}
           </Button>
