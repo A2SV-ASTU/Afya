@@ -17,7 +17,7 @@ export default function AboutPage() {
               Empowering patients with their own health data.
             </h1>
             <p className="text-lg text-gray-600 max-w-lg leading-relaxed mt-2">
-              AfyaMind believes that true wellness begins with understanding. We are building a secure, intuitive platform that puts you at the center of your healthcare journey, ensuring your data is always in your hands.
+              Afya believes that true wellness begins with understanding. We are building a secure, intuitive platform that puts you at the center of your healthcare journey, ensuring your data is always in your hands.
             </p>
           </div>
 

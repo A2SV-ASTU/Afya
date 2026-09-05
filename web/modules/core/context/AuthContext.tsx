@@ -4,7 +4,9 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { usePathname, useRouter } from 'next/navigation';
 import { User, UserRole } from '@/types/database';
 import { authApi, extractUser, LoginPayload, RegisterPayload } from '@/lib/api/auth';
-import { isAuthPath } from '@/lib/auth-routing';
+import { ApiError } from '@/lib/api/client';
+import { clinicsApi } from '@/lib/api/clinics';
+import { isAuthPath, isPublicPath } from '@/lib/auth-routing';
 
 export interface AuthContextType {
   currentUser: User | null;
@@ -17,6 +19,50 @@ export interface AuthContextType {
   register: (payload: RegisterPayload) => Promise<User>;
   logout: (options?: { skipRemote?: boolean }) => Promise<void>;
   updateUser: (data: Parameters<typeof authApi.updateProfile>[0]) => Promise<void>;
+}
+
+export function getDeactivationStatus(user: User): { code: string; message: string } | null {
+  if (user.role === 'doctor') {
+    if (user.doctor_status === 'deactivated') {
+      return {
+        code: 'doctor_deactivated',
+        message: 'Your physician account has been deactivated by the clinic administrator. Access to the clinical workspace has been revoked. Please contact your facility administrator.',
+      };
+    }
+    if (user.clinic_status === 'deactivated') {
+      return {
+        code: 'facility_deactivated',
+        message: 'Your affiliated healthcare facility has been deactivated by system administration. Access to the clinical workspace is suspended. Please contact facility management.',
+      };
+    }
+  } else if (user.role === 'clinic_admin') {
+    if (user.clinic_status === 'deactivated') {
+      return {
+        code: 'clinic_deactivated',
+        message: 'This healthcare facility has been deactivated by the national system administrator. Access to clinic operations and patient registry is suspended. Please contact Afya Administration.',
+      };
+    }
+  }
+  return null;
+}
+
+async function verifyClinicStatusIfNeeded(user: User): Promise<{ code: string; message: string } | null> {
+  const directCheck = getDeactivationStatus(user);
+  if (directCheck) return directCheck;
+
+  // If clinic_status wasn't included on user, verify via clinic lookup if applicable
+  if ((user.role === 'clinic_admin' || user.role === 'doctor') && user.clinic_id && user.clinic_status === undefined) {
+    try {
+      const res = await clinicsApi.getById(user.clinic_id);
+      if (res?.clinic?.status === 'deactivated') {
+        user.clinic_status = 'deactivated';
+        return getDeactivationStatus(user);
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return null;
 }
 
 function setCookie(name: string, value: string, maxAgeSeconds = 86400) {
@@ -77,9 +123,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     authApi
       .getCurrentUser()
-      .then((res) => {
+      .then(async (res) => {
         if (cancelled) return;
-        applyUser(res.data);
+        const user = res.data;
+        const deactivation = await verifyClinicStatusIfNeeded(user);
+        if (deactivation) {
+          clearSession();
+          authApi.logout().catch(() => {});
+          if (!isAuthPath(pathname)) {
+            router.push(`/login?error=${encodeURIComponent(deactivation.code)}`);
+          }
+          return;
+        }
+        applyUser(user);
       })
       .catch(() => {
         if (cancelled) return;
@@ -92,12 +148,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [applyUser, clearSession]);
+  }, [applyUser, clearSession, pathname, router]);
 
   useEffect(() => {
     const onExpired = () => {
       clearSession();
-      if (!isAuthPath(pathname)) {
+      if (!isAuthPath(pathname) && !isPublicPath(pathname)) {
         router.push('/login');
       }
     };
@@ -113,6 +169,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: LoginPayload): Promise<User> => {
     const res = await authApi.login(credentials);
     const user = extractUser(res.data);
+
+    // Verify account and facility active status
+    const deactivation = await verifyClinicStatusIfNeeded(user);
+    if (deactivation) {
+      clearSession();
+      try {
+        await authApi.logout();
+      } catch {
+        // ignore
+      }
+      throw new ApiError(
+        deactivation.message,
+        deactivation.code,
+        403,
+        { role: user.role, status: 'deactivated' }
+      );
+    }
+
     applyUser(user);
     return user;
   };

@@ -908,12 +908,13 @@ export function EncounterWorkspace() {
                               {isOpen && item.status === 'active' && (
                                 <button
                                   type="button"
-                                  onClick={() => deactivatePrescriptionItem(item.id)}
+                                  onClick={() => deactivatePrescriptionItem(rx.id, item.id)}
                                   className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
                                 >
                                   Deactivate
                                 </button>
                               )}
+
                             </div>
                           ))}
                         </div>

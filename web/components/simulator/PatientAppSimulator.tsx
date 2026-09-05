@@ -88,7 +88,7 @@ export function PatientAppSimulator({ isOpen, onClose }: PatientAppSimulatorProp
                 <div className="w-6 h-6 rounded-lg bg-[#388E3C] flex items-center justify-center text-white font-bold text-xs">
                   A
                 </div>
-                <span className="font-bold text-xs text-white tracking-wide">AfyaMind Mobile</span>
+                <span className="font-bold text-xs text-white tracking-wide">Afya Mobile</span>
               </div>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#388E3C]/20 text-[#A5D6A7] font-medium border border-[#388E3C]/30">
                 Citizen App

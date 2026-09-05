@@ -14,7 +14,7 @@ export default function FeaturesPage() {
           Advanced Clinical Tools for a Seamless Health Journey
         </h1>
         <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed">
-          Discover how AfyaMind integrates medical history, vital monitoring, and medication management into a secure, highly intuitive platform designed to empower your wellness.
+          Discover how Afya integrates medical history, vital monitoring, and medication management into a secure, highly intuitive platform designed to empower your wellness.
         </p>
       </section>
 

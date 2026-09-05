@@ -32,10 +32,10 @@ export function DiagnosisPicker({ encounter, onSaved }: DiagnosisPickerProps) {
   const [notes, setNotes] = useState('Controlled under current outpatient medical protocol');
   const [isSaved, setIsSaved] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    addDiagnosis(encounter.id, {
+    await addDiagnosis(encounter.id, {
       diagnosis_text: diagnosisText,
       icd_code: icdCode,
       diagnosis_type: type,
@@ -46,6 +46,7 @@ export function DiagnosisPicker({ encounter, onSaved }: DiagnosisPickerProps) {
     if (onSaved) onSaved();
     setTimeout(() => setIsSaved(false), 3000);
   };
+
 
   const handleSelectPredefined = (item: { code: string; text: string }) => {
     setDiagnosisText(item.text);

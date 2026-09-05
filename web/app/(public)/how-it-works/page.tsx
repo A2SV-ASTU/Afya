@@ -16,7 +16,7 @@ export default function HowItWorksPage() {
                 A Seamless Clinical Workflow.
               </h1>
               <p className="text-lg text-gray-600 leading-relaxed">
-                AfyaMind reimagines the patient journey by connecting the moments between clinic visits. Our PRD v2.0 workflow guarantees data integrity while giving you absolute control.
+                Afya reimagines the patient journey by connecting the moments between clinic visits. Our PRD v2.0 workflow guarantees data integrity while giving you absolute control.
               </p>
               <div className="mt-4">
                 <a href="#timeline" className="inline-flex items-center gap-2 bg-[var(--color-main)] text-white font-semibold px-6 py-3 rounded-full hover:bg-[var(--color-main-hover)] transition-colors shadow-md hover:shadow-lg">
@@ -44,7 +44,7 @@ export default function HowItWorksPage() {
       {/* Interactive Step-by-Step Timeline Section */}
       <section id="timeline" className="py-16 max-w-7xl mx-auto px-6 md:px-10">
         <div className="text-center mb-20">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">The AfyaMind Care Journey</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">The Afya Care Journey</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             How data securely flows from your doctor&apos;s office, into your daily life, and back again.
           </p>

@@ -21,7 +21,7 @@ function ForbiddenContent() {
         <div>
           <h1 className="text-xl font-bold text-slate-900">403 Access Prohibited</h1>
           <p className="text-xs text-slate-500 mt-1">
-            This sector is restricted by AfyaMind RBAC governance protocols.
+            This sector is restricted by Afya RBAC governance protocols.
           </p>
         </div>
 

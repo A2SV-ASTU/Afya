@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { dashboardPathForRole, isAuthPath, isUserRole } from '@/lib/auth-routing';
-
-const PUBLIC_ROUTES = new Set(['/', '/about', '/how-it-works', '/features', '/clinics']);
+import { dashboardPathForRole, isAuthPath, isUserRole, PUBLIC_PATHS } from '@/lib/auth-routing';
 
 export default function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -10,7 +8,7 @@ export default function middleware(request: NextRequest) {
   const userRole = isUserRole(roleCookie) ? roleCookie : 'guest';
 
   // Explicitly whitelist public routes
-  if (PUBLIC_ROUTES.has(pathname)) {
+  if (PUBLIC_PATHS.has(pathname)) {
     return NextResponse.next();
   }
 

@@ -1,41 +1,54 @@
 import { CreateClinicInput, AdminAnalytics } from '../types';
 import { Clinic } from '@/types/database';
-import { api } from '@/modules/core/lib/api-client';
+import { clinicsApi } from '@/lib/api/clinics';
 
 export async function createClinicAction(input: CreateClinicInput): Promise<Clinic> {
-  // In pure API environment:
-  // return await api.post<Clinic>('/api/admin/clinics', input);
+  const parts = input.admin_name.trim().split(' ');
+  const admin_first_name = parts[0] || 'Clinic';
+  const admin_last_name = parts.slice(1).join(' ') || 'Admin';
 
-  // Return formatted clinic instance
-  const newClinic: Clinic = {
-    id: `cln-${Date.now()}`,
+  const res = await clinicsApi.create({
     name: input.name,
     email: input.email,
     phone: input.phone,
     address: input.address,
-    status: 'active',
+    admin_first_name,
+    admin_last_name,
+  });
+
+  return {
+    ...res,
     admin_name: input.admin_name,
     admin_email: input.email,
-    created_at: new Date().toISOString(),
     total_doctors: 0,
     active_grants_count: 0,
   };
-  return newClinic;
 }
 
-export async function toggleClinicStatusAction(clinicId: string, currentStatus: 'active' | 'deactivated'): Promise<'active' | 'deactivated'> {
-  const nextStatus = currentStatus === 'active' ? 'deactivated' : 'active';
-  // return await api.patch(`/api/admin/clinics/${clinicId}/status`, { status: nextStatus });
-  return nextStatus;
+export async function toggleClinicStatusAction(
+  clinicId: string,
+  currentStatus: 'active' | 'deactivated'
+): Promise<'active' | 'deactivated'> {
+  if (currentStatus === 'active') {
+    await clinicsApi.deactivate(clinicId);
+    return 'deactivated';
+  } else {
+    await clinicsApi.activate(clinicId);
+    return 'active';
+  }
 }
 
 export async function getAnalyticsAction(): Promise<AdminAnalytics> {
-  // return await api.get<AdminAnalytics>('/api/admin/analytics');
+  const res = await clinicsApi.list();
+  const list = res.clinics || [];
+  const activeCount = list.filter((c) => c.status === 'active').length;
+
   return {
-    totalClinics: 3,
-    activeClinics: 3,
-    totalDoctors: 8,
-    totalEncounters: 142,
-    totalGrants: 19,
+    totalClinics: list.length,
+    activeClinics: activeCount,
+    totalDoctors: 0,
+    totalEncounters: 0,
+    totalGrants: 0,
   };
 }
+

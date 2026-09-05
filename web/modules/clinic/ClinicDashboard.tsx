@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Sparkles,
 } from 'lucide-react';
+import { getAccessRequestPatientName } from '@/types/database';
 
 export function ClinicDashboard() {
   const {
@@ -186,7 +187,7 @@ export function ClinicDashboard() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900">{req.patient_name}</span>
+                          <span className="text-xs font-bold text-slate-900">{getAccessRequestPatientName(req)}</span>
                           <StatusBadge variant={req.status}>{req.status}</StatusBadge>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{req.reason}</p>

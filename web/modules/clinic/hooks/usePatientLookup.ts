@@ -1,28 +1,49 @@
 'use client';
 
 import { useState } from 'react';
-import { useStore } from '@/lib/store';
-import { Patient } from '@/types/database';
+import { accessRequestsApi } from '@/lib/api/access-requests';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { PatientLookupResponse } from '@/types/database';
 
 export function usePatientLookup() {
-  const { lookupPatientExact } = useStore();
   const [query, setQuery] = useState('');
-  const [foundPatient, setFoundPatient] = useState<Patient | null>(null);
+  const [foundPatient, setFoundPatient] = useState<PatientLookupResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [error, setError] = useState('');
 
-  const executeLookup = (searchTerm?: string) => {
-    const term = searchTerm !== undefined ? searchTerm : query;
-    if (!term.trim()) {
-      setError('Please enter a valid Patient Identifier (e.g. PAT-001, phone, or email).');
+  const executeLookup = async (searchTerm?: string) => {
+    const term = (searchTerm !== undefined ? searchTerm : query).trim();
+    if (!term) {
+      setError('Please enter a citizen email address to search.');
       return null;
     }
 
+    setIsLoading(true);
     setError('');
-    const result = lookupPatientExact(term.trim());
-    setFoundPatient(result);
-    setHasSearched(true);
-    return result;
+    setHasSearched(false);
+
+    try {
+      // 1. Live call to Go backend: GET /api/v1/patients/lookup?email=...
+      const res = await accessRequestsApi.lookupPatient(term);
+      if (res && res.id) {
+        setFoundPatient(res);
+        setHasSearched(true);
+        setIsLoading(false);
+        return res;
+      }
+      setError(`No registered citizen found with email "${term}".`);
+      setFoundPatient(null);
+      setHasSearched(true);
+      setIsLoading(false);
+      return null;
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, `No registered citizen found with email "${term}".`));
+      setFoundPatient(null);
+      setHasSearched(true);
+      setIsLoading(false);
+      return null;
+    }
   };
 
   const resetLookup = () => {
@@ -30,15 +51,18 @@ export function usePatientLookup() {
     setFoundPatient(null);
     setHasSearched(false);
     setError('');
+    setIsLoading(false);
   };
 
   return {
     query,
     setQuery,
     foundPatient,
+    isLoading,
     hasSearched,
     error,
     executeLookup,
     resetLookup,
   };
 }
+

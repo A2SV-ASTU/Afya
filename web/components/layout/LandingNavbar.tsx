@@ -9,7 +9,7 @@ export function LandingNavbar() {
           <div className="w-12 h-12 rounded-2xl bg-[#388E3C] text-white flex items-center justify-center shadow-sm">
             <Activity className="w-6 h-6" />
           </div>
-          <span className="font-manrope text-2xl font-bold tracking-tight text-slate-900">AfyaMind</span>
+          <span className="font-manrope text-2xl font-bold tracking-tight text-slate-900">Afya</span>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">

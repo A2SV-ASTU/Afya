@@ -3,7 +3,7 @@ import './globals.css';
 import { Providers } from './providers';
 
 export const metadata: Metadata = {
-  title: 'AfyaMind — Clinical Governance & Longitudinal Health Network',
+  title: 'Afya — Clinical Governance & Longitudinal Health Network',
   description:
     'MOH-accredited clinical network with bounded 5-minute patient consent grants, doctor encounter workflows, and longitudinal medical records.',
 };

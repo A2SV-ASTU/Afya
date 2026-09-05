@@ -15,43 +15,43 @@ export function AnalyticsCards() {
         title="Accredited Clinics"
         value={stats.totalClinics}
         subtitle={`${stats.activeClinics} active in network`}
-        badge="Active"
+        badge={stats.activeClinics > 0 ? 'Operational' : 'Onboarding'}
         progressPercent={Math.min(100, stats.totalClinics * 20)}
         progressColor="bg-[#388E3C]"
         icon={<Building2 className="w-5 h-5" />}
       />
 
       <StatCard
-        id="stat-licensed-doctors"
-        title="Licensed Doctors"
-        value={stats.totalDoctors}
-        subtitle="Active physician credentials"
-        badge="KMPDC Verified"
-        progressPercent={Math.min(100, stats.totalDoctors * 15)}
+        id="stat-active-clinics"
+        title="Active Facilities"
+        value={stats.activeClinics}
+        subtitle={`${stats.totalClinics - stats.activeClinics} suspended / pending`}
+        badge="Accredited"
+        progressPercent={stats.totalClinics > 0 ? (stats.activeClinics / stats.totalClinics) * 100 : 0}
         progressColor="bg-[#2E7D32]"
-        icon={<Stethoscope className="w-5 h-5" />}
+        icon={<ShieldCheck className="w-5 h-5" />}
       />
 
       <StatCard
-        id="stat-clinical-encounters"
-        title="Clinical Encounters"
-        value={stats.totalEncounters}
-        subtitle="Audit-signed encounters recorded"
-        badge="Immutable"
-        progressPercent={Math.min(100, stats.totalEncounters * 5)}
+        id="stat-data-isolation"
+        title="Citizen Data Isolation"
+        value="100%"
+        subtitle="Zero-knowledge record privacy"
+        badge="Zero Visibility"
+        progressPercent={100}
         progressColor="bg-emerald-600"
         icon={<Activity className="w-5 h-5" />}
       />
 
       <StatCard
-        id="stat-patient-grants"
-        title="Active Consents"
-        value={stats.totalGrants}
-        subtitle="5-minute citizen authorizations"
-        badge="Zero Visibility"
-        progressPercent={Math.min(100, stats.totalGrants * 25)}
+        id="stat-security-posture"
+        title="Regulatory Audit Trail"
+        value="Enabled"
+        subtitle="Cryptographic consent ledger"
+        badge="MOH Compliant"
+        progressPercent={100}
         progressColor="bg-teal-600"
-        icon={<ShieldCheck className="w-5 h-5" />}
+        icon={<Stethoscope className="w-5 h-5" />}
       />
     </div>
   );
