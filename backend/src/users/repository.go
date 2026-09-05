@@ -5,14 +5,22 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"afyamind-backend/src/database"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
-var ErrUserNotFound = errors.New("user not found")
+var (
+	ErrUserNotFound   = errors.New("user not found")
+	ErrDuplicateEmail = errors.New("email already registered")
+	ErrDuplicatePhone = errors.New("phone number already registered")
+	ErrUserConflict   = errors.New("user already exists")
+)
+
 
 type Repository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
@@ -23,6 +31,7 @@ type Repository interface {
 	UpdateProfile(ctx context.Context, id uuid.UUID, req UpdateProfileRequest) (*User, error)
 	UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error
 	DeleteAccount(ctx context.Context, id uuid.UUID) error
+	MarkEmailVerified(ctx context.Context, userID uuid.UUID) error
 }
 
 type repository struct {
@@ -33,7 +42,7 @@ func NewRepository(db database.DBTX) Repository {
 	return &repository{db: db}
 }
 
-const userSelectColumns = `u.id, u.first_name, u.last_name, u.role, u.phone, u.email, u.password_hash, u.date_of_birth, u.sex, u.blood_type, u.emergency_contact_name, u.emergency_contact_phone, u.clinic_id, c.status AS clinic_status, u.specialization, u.license_number, u.doctor_status, u.invited_by, u.created_at, u.updated_at`
+const userSelectColumns = `u.id, u.first_name, u.last_name, u.role, u.phone, u.email, u.password_hash, u.date_of_birth, u.sex, u.blood_type, u.emergency_contact_name, u.emergency_contact_phone, u.clinic_id, c.status AS clinic_status, u.specialization, u.license_number, u.doctor_status, u.invited_by, u.is_email_verified, u.email_verified_at, u.created_at, u.updated_at`
 
 type scanner interface {
 	Scan(dest ...interface{}) error
@@ -61,6 +70,8 @@ func scanUser(s scanner) (*User, error) {
 		&u.LicenseNumber,
 		&u.DoctorStatus,
 		&u.InvitedBy,
+		&u.IsEmailVerified,
+		&u.EmailVerifiedAt,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	)
@@ -102,9 +113,10 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 			first_name, last_name, role, phone, email, password_hash,
 			date_of_birth, sex, blood_type, emergency_contact_name, emergency_contact_phone,
 			clinic_id, specialization, license_number, doctor_status, invited_by,
+			is_email_verified, email_verified_at,
 			created_at, updated_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW(), NOW())
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
 		RETURNING id, created_at, updated_at
 	`
 	role := user.Role
@@ -131,15 +143,30 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 		user.LicenseNumber,
 		user.DoctorStatus,
 		user.InvitedBy,
+		user.IsEmailVerified,
+		user.EmailVerifiedAt,
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			constraintName := strings.ToLower(pqErr.Constraint + " " + pqErr.Message + " " + pqErr.Detail)
+			if strings.Contains(constraintName, "email") {
+				return ErrDuplicateEmail
+			}
+			if strings.Contains(constraintName, "phone") {
+				return ErrDuplicatePhone
+			}
+			return ErrUserConflict
+		}
 		return fmt.Errorf("failed to insert user: %w", err)
 	}
+
 
 	user.Role = role
 	return nil
 }
+
 
 func (r *repository) UpdateProfile(ctx context.Context, id uuid.UUID, req UpdateProfileRequest) (*User, error) {
 	currentUser, err := r.FindByID(ctx, id)
@@ -240,3 +267,24 @@ func (r *repository) DeleteAccount(ctx context.Context, id uuid.UUID) error {
 	}
 	return nil
 }
+
+func (r *repository) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+	query := `
+		UPDATE users
+		SET is_email_verified = TRUE, email_verified_at = NOW(), updated_at = NOW()
+		WHERE id = $1
+	`
+	res, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return fmt.Errorf("failed to mark email verified: %w", err)
+	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to check rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrUserNotFound
+	}
+	return nil
+}
+

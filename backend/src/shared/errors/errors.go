@@ -88,9 +88,21 @@ func ErrExpired(msg string) *AppError {
 	return NewAppError(http.StatusGone, "expired", msg)
 }
 
+func ErrEmailNotVerified() *AppError {
+	return NewAppError(http.StatusForbidden, "email_not_verified", "Please verify your email address before logging in")
+}
+
+func ErrInvalidOTP(msg string) *AppError {
+	if msg == "" {
+		msg = "Invalid or expired verification code"
+	}
+	return NewAppError(http.StatusBadRequest, "invalid_otp", msg)
+}
+
 func ErrInternal(msg string) *AppError {
 	if msg == "" {
 		msg = "An internal server error occurred"
 	}
 	return NewAppError(http.StatusInternalServerError, "internal_error", msg)
 }
+

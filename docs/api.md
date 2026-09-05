@@ -97,7 +97,7 @@ All error responses adhere to a consistent error schema:
 ### 1. Register Account
 - **Endpoint**: `POST /api/v1/auth/register` (alias: `POST /api/v1/auth/signup`)
 - **Auth Required**: No (Public)
-- **Description**: Registers a new patient user account and sets HttpOnly JWT cookies (`access_token` and `refresh_token`).
+- **Description**: Registers a new patient user account with `is_email_verified = false` and sends a 6-digit verification code to the registered email.
 
 #### Request Body
 ```json
@@ -117,16 +117,8 @@ All error responses adhere to a consistent error schema:
 ```json
 {
   "data": {
-    "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
-    "first_name": "Jane",
-    "last_name": "Doe",
-    "role": "patient",
-    "phone": "+254712345678",
-    "email": "jane.doe@example.com",
-    "date_of_birth": "1995-06-15T00:00:00Z",
-    "sex": "female",
-    "created_at": "2026-08-27T12:00:00Z",
-    "updated_at": "2026-08-27T12:00:00Z"
+    "message": "Registration successful. Please verify your email with the 6-digit code sent to your inbox.",
+    "email": "jane.doe@example.com"
   }
 }
 ```
@@ -135,10 +127,73 @@ All error responses adhere to a consistent error schema:
 
 ---
 
-### 2. User Login
+### 2. Verify Email OTP
+- **Endpoint**: `POST /api/v1/auth/verify-email`
+- **Auth Required**: No (Public)
+- **Description**: Verifies the patient's email address using the 6-digit OTP code and sets HttpOnly JWT cookies (`access_token` and `refresh_token`).
+
+#### Request Body
+```json
+{
+  "email": "jane.doe@example.com",
+  "otp": "123456"
+}
+```
+
+#### Responses
+- **200 OK**:
+```json
+{
+  "data": {
+    "id": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+    "first_name": "Jane",
+    "last_name": "Doe",
+    "role": "patient",
+    "phone": "+254712345678",
+    "email": "jane.doe@example.com",
+    "is_email_verified": true,
+    "date_of_birth": "1995-06-15T00:00:00Z",
+    "sex": "female",
+    "created_at": "2026-08-27T12:00:00Z",
+    "updated_at": "2026-08-27T12:05:00Z"
+  }
+}
+```
+- **400 Bad Request** (`invalid_otp` / `validation_error`): Invalid code, expired code, or max attempts exceeded.
+
+---
+
+### 3. Resend Verification OTP
+- **Endpoint**: `POST /api/v1/auth/resend-otp`
+- **Auth Required**: No (Public)
+- **Description**: Dispatches a fresh 6-digit verification code to the registered email address. Enforces a 60-second cooldown between requests.
+
+#### Request Body
+```json
+{
+  "email": "jane.doe@example.com"
+}
+```
+
+#### Responses
+- **200 OK**:
+```json
+{
+  "data": {
+    "message": "A new verification code has been sent to your email."
+  }
+}
+```
+- **400 Bad Request** (`validation_error`): Missing or invalid email.
+- **404 Not Found** (`not_found`): No user account found with this email.
+- **409 Conflict** (`conflict`): Email is already verified or 60-second resend cooldown is active.
+
+---
+
+### 4. User Login
 - **Endpoint**: `POST /api/v1/auth/login`
 - **Auth Required**: No (Public)
-- **Description**: Authenticates user via email or phone + password. Sets HttpOnly JWT cookies (`access_token` and `refresh_token`).
+- **Description**: Authenticates user via email or phone + password. Sets HttpOnly JWT cookies (`access_token` and `refresh_token`). Requires patient email to be verified before login.
 
 #### Request Body
 ```json
@@ -161,6 +216,7 @@ All error responses adhere to a consistent error schema:
       "role": "patient",
       "phone": "+254712345678",
       "email": "jane.doe@example.com",
+      "is_email_verified": true,
       "created_at": "2026-08-27T12:00:00Z",
       "updated_at": "2026-08-27T12:00:00Z"
     }
@@ -187,6 +243,8 @@ All error responses adhere to a consistent error schema:
 }
 ```
 - **401 Unauthorized** (`unauthenticated`): Invalid credentials.
+- **403 Forbidden** (`email_not_verified`): Email address has not been verified yet.
+
 
 ---
 
