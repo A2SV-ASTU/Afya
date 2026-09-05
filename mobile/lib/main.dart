@@ -30,6 +30,7 @@ Future<void> _initializeBackgroundServices() async {
     await notificationService.initialize(
       onResponse: notificationHandler.handleNotificationResponse,
     );
+    await notificationService.requestPermissions();
 
     // Run on-device dose scheduler & missed-dose startup reconciliation
     await sl<MedicationReconciliationService>().reconcile();

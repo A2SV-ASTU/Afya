@@ -14,6 +14,13 @@ abstract class MedicationLocalDataSource {
     String prescriptionItemId,
     EncounterPrescriptionStatus status,
   );
+  Future<void> updatePrescriptionTracking(
+    String prescriptionItemId,
+    bool isTrackingActive,
+  );
+  Future<EncounterPrescriptionItemModel?> getPrescriptionById(
+    String prescriptionItemId,
+  );
 
   Future<void> saveDoseRecord(LocalDoseRecordModel record);
   Future<List<LocalDoseRecordModel>> getDoseRecords({
@@ -100,6 +107,40 @@ class MedicationLocalDataSourceImpl implements MedicationLocalDataSource {
       }
     } catch (e) {
       throw CacheException('Failed to update prescription status: $e');
+    }
+  }
+
+  @override
+  Future<void> updatePrescriptionTracking(
+    String prescriptionItemId,
+    bool isTrackingActive,
+  ) async {
+    try {
+      final raw = _scheduleBox.get(prescriptionItemId);
+      if (raw != null && raw is Map) {
+        final map = Map<String, dynamic>.from(raw);
+        map['is_tracking_active'] = isTrackingActive;
+        await _scheduleBox.put(prescriptionItemId, map);
+      }
+    } catch (e) {
+      throw CacheException('Failed to update prescription tracking: $e');
+    }
+  }
+
+  @override
+  Future<EncounterPrescriptionItemModel?> getPrescriptionById(
+    String prescriptionItemId,
+  ) async {
+    try {
+      final raw = _scheduleBox.get(prescriptionItemId);
+      if (raw != null && raw is Map) {
+        return EncounterPrescriptionItemModel.fromJson(
+          Map<String, dynamic>.from(raw),
+        );
+      }
+      return null;
+    } catch (e) {
+      throw CacheException('Failed to get prescription by id: $e');
     }
   }
 
