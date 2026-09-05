@@ -66,8 +66,6 @@ export function DoctorsList() {
 
     try {
       await inviteDoctor(activeClinic.id, inviteEmail);
-      // Backend only returns { message }, not the full invitation
-      // For now, just close the modal with a success message
       setGeneratedInvite({
         token: 'invitation_sent',
         expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
@@ -77,6 +75,7 @@ export function DoctorsList() {
       console.error('Failed to send invitation:', err);
     }
   };
+
 
   const copyToClipboard = (token: string) => {
     const link = `${window.location.origin}/doctor/accept-invite?token=${token}`;
@@ -259,7 +258,7 @@ export function DoctorsList() {
           <div>
             <h3 className="text-sm font-bold text-slate-900">Pending Doctor Invitations</h3>
             <p className="text-xs text-slate-500">
-              Invitations are hard-capped to 24 hours per Section 5.1 of AfyaMind PRD.
+              Invitations are hard-capped to 24 hours per Section 5.1 of Afya PRD.
             </p>
           </div>
           <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
@@ -289,15 +288,18 @@ export function DoctorsList() {
 
                   {inv.status === 'pending' && (
                     <>
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(inv.token)}
-                        className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
-                        title="Copy Shareable Invite Link"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Copy Link</span>
-                      </button>
+                      {inv.token && (
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(inv.token!)}
+                          className="px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Copy Shareable Invite Link"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy Link</span>
+                        </button>
+                      )}
+
                       <button
                         type="button"
                         onClick={() => resendInvite(inv.id)}

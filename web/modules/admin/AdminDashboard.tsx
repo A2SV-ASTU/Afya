@@ -83,7 +83,7 @@ export function AdminDashboard() {
             Zero-Visibility Clinical Privacy Architecture
           </p>
           <p className="text-slate-400 leading-relaxed">
-            Per the AfyaMind Data Retention & RBAC Specification (Section 4), Super Admins hold platform-level institution governance only. Super Admins cannot view doctor rosters, patient records, access-request logs, or clinical history.
+            Per the Afya Data Retention & RBAC Specification (Section 4), Super Admins hold platform-level institution governance only. Super Admins cannot view doctor rosters, patient records, access-request logs, or clinical history.
           </p>
         </div>
       </div>

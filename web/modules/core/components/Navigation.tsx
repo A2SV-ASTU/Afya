@@ -15,6 +15,7 @@ import {
   Calendar,
   Layers,
   ChevronRight,
+  User,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { cn } from '../lib/utils';
@@ -57,6 +58,11 @@ export function Navigation({ onItemClick, collapsed = false }: NavigationProps) 
       href: '/admin/clinics/new',
       icon: <Building2 className="w-4 h-4" />,
     },
+    {
+      name: 'Admin Profile',
+      href: '/admin/profile',
+      icon: <User className="w-4 h-4" />,
+    },
   ];
 
   const clinicNav: NavItem[] = [
@@ -83,11 +89,6 @@ export function Navigation({ onItemClick, collapsed = false }: NavigationProps) 
       highlight: pendingRequests.length > 0,
     },
     {
-      name: 'New Access Request',
-      href: '/clinic/requests/new',
-      icon: <PlusCircle className="w-4 h-4" />,
-    },
-    {
       name: 'Active Patient Grants',
       href: '/clinic/active-access',
       icon: <ShieldCheck className="w-4 h-4" />,
@@ -99,6 +100,7 @@ export function Navigation({ onItemClick, collapsed = false }: NavigationProps) 
       icon: <Building2 className="w-4 h-4" />,
     },
   ];
+
 
   const doctorNav: NavItem[] = [
     {
@@ -122,6 +124,11 @@ export function Navigation({ onItemClick, collapsed = false }: NavigationProps) 
       href: '/doctor/appointments',
       icon: <Calendar className="w-4 h-4" />,
       badge: scheduledAppointments.length > 0 ? scheduledAppointments.length : undefined,
+    },
+    {
+      name: 'Doctor Profile',
+      href: '/doctor/profile',
+      icon: <User className="w-4 h-4" />,
     },
   ];
 

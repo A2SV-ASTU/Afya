@@ -11,6 +11,7 @@ interface CountdownBadgeProps {
 }
 
 export function CountdownBadge({ expiresAt, onExpire, className }: CountdownBadgeProps) {
+  const [mounted, setMounted] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ minutes: number; seconds: number; isExpired: boolean }>({
     minutes: 0,
     seconds: 0,
@@ -18,6 +19,7 @@ export function CountdownBadge({ expiresAt, onExpire, className }: CountdownBadg
   });
 
   useEffect(() => {
+    setMounted(true);
     const updateCountdown = () => {
       const now = new Date().getTime();
       const target = new Date(expiresAt).getTime();
@@ -39,9 +41,24 @@ export function CountdownBadge({ expiresAt, onExpire, className }: CountdownBadg
     return () => clearInterval(interval);
   }, [expiresAt, onExpire]);
 
+  if (!mounted) {
+    return (
+      <span
+        suppressHydrationWarning
+        className={cn('inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono bg-slate-100 text-slate-600', className)}
+      >
+        <Clock className="w-3 h-3 text-slate-400" />
+        <span>15:00</span>
+      </span>
+    );
+  }
+
   if (timeLeft.isExpired) {
     return (
-      <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200', className)}>
+      <span
+        suppressHydrationWarning
+        className={cn('inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200', className)}
+      >
         <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
         Expired
       </span>
@@ -52,6 +69,7 @@ export function CountdownBadge({ expiresAt, onExpire, className }: CountdownBadg
 
   return (
     <span
+      suppressHydrationWarning
       className={cn(
         'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold transition-colors',
         isLowTime
@@ -67,3 +85,4 @@ export function CountdownBadge({ expiresAt, onExpire, className }: CountdownBadg
     </span>
   );
 }
+

@@ -70,8 +70,9 @@ export function ClinicProfile() {
     setSaving(true);
 
     try {
+      const { email, ...updateFields } = formData;
       const payload = Object.fromEntries(
-        Object.entries(formData).filter(([, value]) => value !== '')
+        Object.entries(updateFields).filter(([, value]) => value !== '')
       );
       await updateUser(payload);
       setSavedSuccess(true);
@@ -184,16 +185,21 @@ export function ClinicProfile() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Email</span>
+                <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Mail className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Email Address</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">(Cannot be changed)</span>
                 </label>
                 <input
                   name="email"
                   type="email"
                   value={formData.email}
-                  onChange={handleChange}
-                  className={inputClass}
+                  readOnly
+                  disabled
+                  title="Email cannot be changed"
+                  className="w-full px-3.5 py-2.5 text-xs bg-slate-100/80 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed select-none font-medium"
                 />
               </div>
               <div className="space-y-1.5">

@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
+import { clinicsApi } from '@/lib/api/clinics';
 import { StatusBadge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import {
@@ -197,7 +198,7 @@ export function DoctorDetail() {
             <ShieldAlert className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-slate-800">
-                AfyaMind Section 8 Data Retention Principle
+                Afya Section 8 Data Retention Principle
               </p>
               <p className="text-slate-500 mt-0.5 leading-relaxed">
                 Deactivating a doctor revokes their login and encounter-writing privileges. All historical consultations, vitals, lab interpretations, and prescriptions previously authored by this physician remain permanently intact and attributed to their medical license.

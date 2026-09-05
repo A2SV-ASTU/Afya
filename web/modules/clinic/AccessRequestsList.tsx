@@ -15,7 +15,11 @@ import {
   AlertCircle,
   RotateCcw,
 } from 'lucide-react';
-import { AccessRequestStatus } from '@/types/database';
+import {
+  AccessRequestStatus,
+  getAccessRequestPatientName,
+  getAccessRequestPatientEmail,
+} from '@/types/database';
 
 export function AccessRequestsList() {
   const {
@@ -30,17 +34,28 @@ export function AccessRequestsList() {
   const [statusFilter, setStatusFilter] = useState<'all' | AccessRequestStatus>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const clinicRequests = accessRequests.filter((r) => r.clinic_id === currentUser?.clinic_id);
+  const clinicRequests = accessRequests.filter(
+    (r) => (r.clinic_id || r.requesting_clinic_id) === currentUser?.clinic_id
+  );
 
   const filteredRequests = clinicRequests.filter((req) => {
+    const patientName = getAccessRequestPatientName(req);
+    const patientEmail = getAccessRequestPatientEmail(req);
+    const reason = req.reason || '';
+    const doctorName = req.submitted_by_doctor_name || '';
+
+    const isRevoked = Boolean(req.revoked_at || req.status === 'revoked');
+    const effectiveStatus = isRevoked ? ('revoked' as const) : req.status;
+
     const matchesSearch =
-      req.patient_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.patient_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      req.submitted_by_doctor_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || req.status === statusFilter;
+      patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patientEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reason.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doctorName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || effectiveStatus === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
 
   return (
     <div id="access-requests-page" className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
@@ -129,76 +144,85 @@ export function AccessRequestsList() {
                   </td>
                 </tr>
               ) : (
-                filteredRequests.map((req) => (
-                  <tr key={req.id} id={`req-row-${req.id}`} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-4 px-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center shrink-0">
-                          {req.patient_name[0]}
+                filteredRequests.map((req) => {
+                  const patientName = getAccessRequestPatientName(req);
+                  const patientEmail = getAccessRequestPatientEmail(req);
+                  const isRevoked = Boolean(req.revoked_at || req.status === 'revoked');
+                  const effectiveStatus = isRevoked ? ('revoked' as const) : req.status;
+
+                  return (
+                    <tr key={req.id} id={`req-row-${req.id}`} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-4 px-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center shrink-0">
+                            {patientName ? patientName[0].toUpperCase() : 'P'}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900">{patientName}</p>
+                            <p className="text-[11px] text-slate-400 font-mono">
+                              {patientEmail ? `${patientEmail} • ` : ''}UUID: {req.patient_id}
+                            </p>
+                          </div>
+
                         </div>
-                        <div>
-                          <p className="font-bold text-slate-900">{req.patient_name}</p>
-                          <p className="text-[11px] text-slate-400">{req.patient_email}</p>
+                      </td>
+                      <td className="py-4 px-5 max-w-xs">
+                        <p className="text-slate-700 line-clamp-2 leading-relaxed">{req.reason}</p>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Sent {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </td>
+                      <td className="py-4 px-5">
+                        <p className="font-medium text-slate-800">{req.submitted_by_doctor_name}</p>
+                      </td>
+                      <td className="py-4 px-5">
+                        <div className="space-y-1">
+                          <StatusBadge variant={effectiveStatus}>{effectiveStatus}</StatusBadge>
+                          {effectiveStatus === 'pending' && (
+                            <div className="pt-0.5">
+                              <CountdownBadge expiresAt={req.expires_at} type="access_request" />
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-5 max-w-xs">
-                      <p className="text-slate-700 line-clamp-2 leading-relaxed">{req.reason}</p>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        Sent {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </td>
-                    <td className="py-4 px-5">
-                      <p className="font-medium text-slate-800">{req.submitted_by_doctor_name}</p>
-                    </td>
-                    <td className="py-4 px-5">
-                      <div className="space-y-1">
-                        <StatusBadge variant={req.status}>{req.status}</StatusBadge>
-                        {req.status === 'pending' && (
-                          <div className="pt-0.5">
-                            <CountdownBadge expiresAt={req.expires_at} type="access_request" />
+                      </td>
+                      <td className="py-4 px-5 text-right">
+                        {effectiveStatus === 'pending' && (
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              id={`quick-approve-${req.id}`}
+                              type="button"
+                              onClick={() => approveAccessRequest(req.id)}
+                              className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-[11px] font-semibold border border-emerald-200 transition-colors cursor-pointer"
+                              title="Simulate Patient App Approving"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              id={`quick-deny-${req.id}`}
+                              type="button"
+                              onClick={() => denyAccessRequest(req.id)}
+                              className="p-1.5 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg text-[11px] font-semibold border border-rose-200 transition-colors cursor-pointer"
+                              title="Simulate Patient App Denying"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-5 text-right">
-                      {req.status === 'pending' && (
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            id={`quick-approve-${req.id}`}
-                            type="button"
-                            onClick={() => approveAccessRequest(req.id)}
-                            className="p-1.5 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-[11px] font-semibold border border-emerald-200 transition-colors cursor-pointer"
-                            title="Simulate Patient App Approving"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            id={`quick-deny-${req.id}`}
-                            type="button"
-                            onClick={() => denyAccessRequest(req.id)}
-                            className="p-1.5 text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-lg text-[11px] font-semibold border border-rose-200 transition-colors cursor-pointer"
-                            title="Simulate Patient App Denying"
-                          >
-                            <XCircle className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
 
-                      {req.status === 'approved' && (
-                        <button
-                          id={`revoke-grant-${req.id}`}
-                          type="button"
-                          onClick={() => {
-                            if (window.confirm(`Revoke active consent grant for ${req.patient_name}?`)) {
-                              revokeAccessRequest(req.id);
-                            }
-                          }}
-                          className="px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
-                        >
-                          Revoke Grant
-                        </button>
-                      )}
+                        {effectiveStatus === 'approved' && (
+                          <button
+                            id={`revoke-grant-${req.id}`}
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`Revoke active consent grant for ${patientName}?`)) {
+                                revokeAccessRequest(req.id);
+                              }
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-medium text-slate-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg border border-slate-200 hover:border-rose-200 transition-colors cursor-pointer"
+                          >
+                            Revoke Grant
+                          </button>
+                        )}
 
                       {req.status === 'denied' || req.status === 'expired' ? (
                         <button
@@ -211,8 +235,9 @@ export function AccessRequestsList() {
                       ) : null}
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })
+            )}
             </tbody>
           </table>
         </div>

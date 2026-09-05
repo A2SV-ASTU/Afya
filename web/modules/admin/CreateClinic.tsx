@@ -52,7 +52,7 @@ export function CreateClinic() {
       navigateTo('admin-clinic-detail', { clinicId: newClinic.id });
     } catch (err: unknown) {
       let errorMessage = 'Failed to create clinic. Please try again.';
-      
+
       if (err && typeof err === 'object' && 'code' in err) {
         const errorCode = (err as { code: string }).code;
         if (errorCode === 'conflict') {
@@ -71,6 +71,7 @@ export function CreateClinic() {
       setIsSubmitting(false);
     }
   };
+
 
   return (
     <div id="create-clinic-page" className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">

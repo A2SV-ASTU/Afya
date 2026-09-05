@@ -20,11 +20,11 @@ export function AppointmentScheduler({ encounter, onSaved }: AppointmentSchedule
   const [notes, setNotes] = useState('4-week routine clinical review of BP response to Amlodipine');
   const [isSaved, setIsSaved] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const scheduledAt = `${date}T${time}:00Z`;
-    addEncounterAppointment(encounter.id, {
+    await addEncounterAppointment(encounter.id, {
       scheduled_at: scheduledAt,
       notes,
     });
@@ -33,6 +33,7 @@ export function AppointmentScheduler({ encounter, onSaved }: AppointmentSchedule
     if (onSaved) onSaved();
     setTimeout(() => setIsSaved(false), 3000);
   };
+
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">

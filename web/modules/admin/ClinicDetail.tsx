@@ -27,7 +27,7 @@ interface Clinic {
   address: string;
   status: 'active' | 'deactivated';
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
   admin_name?: string;
   admin_email?: string;
 }
@@ -82,13 +82,12 @@ export function ClinicDetail() {
     if (!clinic) return;
 
     try {
-      const endpoint = clinic.status === 'active' 
+      const endpoint = clinic.status === 'active'
         ? `/clinics/${clinic.id}/deactivate`
         : `/clinics/${clinic.id}/activate`;
-      
+
       // Import apiClient to make the call
-      const { apiClient } = await import('@/lib/api/client');
-      const result = await apiClient.patch<{ status: string }>(endpoint);
+      const { apiClient } = await import('@/lib/api/client');const result = await apiClient.patch<{ status: string }>(endpoint);
       
       // Update local state with the new status
       setClinic({ ...clinic, status: result.status as 'active' | 'deactivated' });
@@ -279,6 +278,7 @@ export function ClinicDetail() {
         onClose={() => setIsDeactivateModalOpen(false)}
         onConfirm={handleToggleActivation}
         title={isActive ? `Deactivate ${clinic.name}?` : `Reactivate ${clinic.name}?`}
+
         isDestructive={isActive}
         confirmText={isActive ? 'Yes, Deactivate Clinic' : 'Reactivate Clinic'}
         description={

@@ -21,21 +21,22 @@ export function PatientLookup() {
   const [hasSearched, setHasSearched] = useState(false);
   const [matchedPatient, setMatchedPatient] = useState<Patient | null>(null);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
 
     setHasSearched(true);
-    const result = lookupPatientExact(query);
+    const result = await lookupPatientExact(query);
     setMatchedPatient(result);
   };
 
-  const setSampleQuery = (sample: string) => {
+  const setSampleQuery = async (sample: string) => {
     setQuery(sample);
     setHasSearched(true);
-    const result = lookupPatientExact(sample);
+    const result = await lookupPatientExact(sample);
     setMatchedPatient(result);
   };
+
 
   return (
     <div id="patient-lookup-page" className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
@@ -61,7 +62,7 @@ export function PatientLookup() {
             <span>Search Single Patient Identifier</span>
           </div>
           <p className="text-xs text-slate-500 mt-0.5">
-            To prevent directory harvesting, AfyaMind disables autocomplete and partial search.
+            To prevent directory harvesting, Afya disables autocomplete and partial search.
           </p>
         </div>
 

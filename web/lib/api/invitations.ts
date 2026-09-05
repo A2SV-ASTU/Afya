@@ -1,19 +1,51 @@
 import { apiClient } from './client';
+import { User, DoctorInvitation } from '@/types/database';
 import type { Doctor } from '@/types/clinics';
 
-// POST /clinics/:clinicId/invitations -> { message: "..." }
-export async function inviteDoctor(clinicId: string, email: string): Promise<{ message: string }> {
-  return apiClient.post<{ message: string }>(`/clinics/${clinicId}/invitations`, { email });
+export interface InviteDoctorPayload {
+  email: string;
 }
 
-// POST /invitations/:token/accept -> raw doctor object
-export async function acceptInvitation(token: string, payload: {
+export interface AcceptInvitationPayload {
   first_name: string;
   last_name: string;
   phone: string;
   password: string;
-  license_number: string;
-  specialization: string;
-}): Promise<Doctor> {
-  return apiClient.post<Doctor>(`/invitations/${token}/accept`, payload);
+  license_number?: string;
+  specialization?: string;
+}
+
+export interface MessageResponse {
+  message: string;
+}
+
+export const invitationsApi = {
+  inviteDoctor: (clinicId: string, payload: InviteDoctorPayload) =>
+    apiClient<MessageResponse>(`/clinics/${clinicId}/invitations`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  listClinicInvitations: (clinicId: string) =>
+    apiClient<{ invitations: DoctorInvitation[] }>(`/clinics/${clinicId}/invitations`, {
+      method: 'GET',
+    }),
+
+  acceptInvitation: (token: string, payload: AcceptInvitationPayload) =>
+    apiClient<User>(`/invitations/${token}/accept`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+};
+
+export async function inviteDoctor(clinicId: string, email: string): Promise<MessageResponse> {
+  return invitationsApi.inviteDoctor(clinicId, { email });
+}
+
+export async function acceptInvitation(
+  token: string,
+  payload: AcceptInvitationPayload
+): Promise<Doctor> {
+  const user = await invitationsApi.acceptInvitation(token, payload);
+  return user as unknown as Doctor;
 }

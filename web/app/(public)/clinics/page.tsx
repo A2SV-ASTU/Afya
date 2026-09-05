@@ -137,7 +137,7 @@ export default function ClinicsPage() {
             Ready to modernize your clinic?
           </h2>
           <p className="relative z-10 text-[var(--color-main-light)] text-lg md:text-xl max-w-2xl mx-auto mb-10 font-medium">
-            Join leading healthcare providers using AfyaMind to streamline workflows, protect patient data, and deliver superior care.
+            Join leading healthcare providers using Afya to streamline workflows, protect patient data, and deliver superior care.
           </p>
           <div className="relative z-10 flex flex-col sm:flex-row justify-center gap-4">
             <button className="bg-[var(--color-main)] text-white font-extrabold text-lg px-8 py-4 rounded-xl hover:bg-white hover:text-[var(--color-main-dark)] transition-colors shadow-lg">

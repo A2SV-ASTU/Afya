@@ -26,10 +26,10 @@ export function PrescriptionBuilder({ encounter, onSaved }: PrescriptionBuilderP
 
   const calc = useMedicationCalculator(dose, frequency, duration);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    addPrescription(encounter.id, {
+    await addPrescription(encounter.id, {
       medication_name: medName,
       dose,
       route,
@@ -42,6 +42,7 @@ export function PrescriptionBuilder({ encounter, onSaved }: PrescriptionBuilderP
     if (onSaved) onSaved();
     setTimeout(() => setIsSaved(false), 3000);
   };
+
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">
