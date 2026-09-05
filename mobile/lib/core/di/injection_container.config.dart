@@ -109,6 +109,10 @@ import '../../features/medication_and_adherence/domain/usecases/process_missed_d
     as _i779;
 import '../../features/medication_and_adherence/domain/usecases/record_dose_adherence_usecase.dart'
     as _i851;
+import '../../features/medication_and_adherence/domain/usecases/start_medication_tracking_usecase.dart'
+    as _i1046;
+import '../../features/medication_and_adherence/domain/usecases/stop_medication_tracking_usecase.dart'
+    as _i1026;
 import '../../features/profile/data/datasources/profile_remote_data_source.dart'
     as _i847;
 import '../../features/profile/data/datasources/profile_remote_data_source_impl.dart'
@@ -206,10 +210,10 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i1036.ProfileRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i107.AuthRemoteDataSource>(
         () => _i107.AuthRemoteDataSourceImpl(gh<_i557.ApiClient>()));
-    gh.lazySingleton<_i718.AccessRequestRemoteDataSource>(
-        () => _i718.AccessRequestRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i894.ProfileRepository>(
         () => _i334.ProfileRepositoryImpl(gh<_i847.ProfileRemoteDataSource>()));
+    gh.lazySingleton<_i718.AccessRequestRemoteDataSource>(
+        () => _i718.AccessRequestRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i854.CancelPrescriptionRemindersUseCase>(
         () => _i854.CancelPrescriptionRemindersUseCase(
               gh<_i894.MedicationLocalDataSource>(),
@@ -281,6 +285,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i438.AccessRequestRepository>(() =>
         _i345.AccessRequestRepositoryImpl(
             remoteDataSource: gh<_i718.AccessRequestRemoteDataSource>()));
+    gh.lazySingleton<_i1046.StartMedicationTrackingUseCase>(
+        () => _i1046.StartMedicationTrackingUseCase(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i492.GenerateDoseScheduleUseCase>(),
+              gh<_i949.LocalAlarmScheduler>(),
+            ));
     gh.lazySingleton<_i719.ApproveAccessRequestUseCase>(() =>
         _i719.ApproveAccessRequestUseCase(gh<_i438.AccessRequestRepository>()));
     gh.lazySingleton<_i998.DenyAccessRequestUseCase>(() =>
@@ -300,6 +310,11 @@ extension GetItInjectableX on _i174.GetIt {
           loginWithPinUseCase: gh<_i519.LoginWithPinUseCase>(),
           setPinUseCase: gh<_i313.SetPinUseCase>(),
         ));
+    gh.lazySingleton<_i1026.StopMedicationTrackingUseCase>(
+        () => _i1026.StopMedicationTrackingUseCase(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i854.CancelPrescriptionRemindersUseCase>(),
+            ));
     gh.lazySingleton<_i735.MedicationRepository>(
         () => _i106.MedicationRepositoryImpl(
               remoteDataSource: gh<_i1022.MedicationRemoteDataSource>(),

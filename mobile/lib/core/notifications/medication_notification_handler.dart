@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../app/router/app_router.dart';
 import '../../features/medication_and_adherence/data/datasources/medication_local_data_source.dart';
 import '../../features/medication_and_adherence/domain/entities/local_dose_record_entity.dart';
 import '../../features/medication_and_adherence/domain/usecases/handle_snooze_usecase.dart';
+import '../../features/medication_and_adherence/presentation/widgets/dose_reminder_dialog.dart';
 import 'local_alarm_scheduler.dart';
 import 'notification_payload.dart';
 
@@ -47,10 +49,39 @@ class MedicationNotificationHandler {
       } else if (actionId == 'snooze') {
         await _handleSnoozeAction(doseId);
       } else if (actionId == 'skip') {
-        await _handleSkipAction(doseId, currentTime);
+        await _handleSkipActionWithReason(
+          doseId,
+          'skipped_via_notification',
+          currentTime,
+        );
+      } else {
+        await _showDoseReminderUI(doseId);
       }
     } catch (_) {
       // Safely ignore or handle malformed/corrupted payload without crashing
+    }
+  }
+
+  Future<void> _showDoseReminderUI(String doseId) async {
+    for (var i = 0; i < 10; i++) {
+      final context = AppRouter.rootNavigatorKey.currentContext;
+      if (context != null) {
+        final model = await _localDataSource.getDoseRecordById(doseId);
+        if (model != null && model.status == DoseStatus.pending) {
+          if (context.mounted) {
+            await DoseReminderDialog.show(
+              context,
+              doseRecord: model.toEntity(),
+              onTaken: (dose) => _handleTakeAction(dose.id, DateTime.now()),
+              onSnooze: (dose) => _handleSnoozeAction(dose.id),
+              onSkip: (dose, reason) =>
+                  _handleSkipActionWithReason(dose.id, reason, DateTime.now()),
+            );
+          }
+        }
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 300));
     }
   }
 
@@ -74,7 +105,11 @@ class MedicationNotificationHandler {
     await _handleSnoozeUseCase(doseId: doseId);
   }
 
-  Future<void> _handleSkipAction(String doseId, DateTime now) async {
+  Future<void> _handleSkipActionWithReason(
+    String doseId,
+    String reason,
+    DateTime now,
+  ) async {
     final model = await _localDataSource.getDoseRecordById(doseId);
     if (model == null || model.status != DoseStatus.pending) {
       return;
@@ -83,7 +118,7 @@ class MedicationNotificationHandler {
     final updatedModel = model.copyWith(
       status: DoseStatus.skipped,
       recordedAt: now,
-      skipReason: 'skipped_via_notification',
+      skipReason: reason,
     );
     await _localDataSource.saveDoseRecord(updatedModel);
 
