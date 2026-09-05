@@ -3,6 +3,7 @@ import 'package:injectable/injectable.dart';
 
 import '../../../../core/errors/exceptions.dart';
 import '../../../../core/errors/failures.dart';
+import '../../../clinical_history/data/models/encounter_detail_model.dart';
 import '../../../clinical_history/domain/entities/encounter_detail_entity.dart';
 import '../../domain/entities/local_dose_record_entity.dart';
 import '../../domain/repositories/medication_repository.dart';
@@ -73,9 +74,26 @@ class MedicationRepositoryImpl implements MedicationRepository {
   Future<Either<Failure, EncounterPrescriptionItemEntity>>
       completePrescriptionItem({
     required String prescriptionItemId,
+    String? prescriptionId,
   }) async {
     try {
+      String resolvedPrescriptionId = prescriptionId ?? '';
+      if (resolvedPrescriptionId.isEmpty) {
+        try {
+          final cached = await localDataSource.getCachedPrescriptions();
+          final match =
+              cached.cast<EncounterPrescriptionItemModel?>().firstWhere(
+                    (p) => p?.id == prescriptionItemId,
+                    orElse: () => null,
+                  );
+          resolvedPrescriptionId = match?.prescriptionId ?? prescriptionItemId;
+        } catch (_) {
+          resolvedPrescriptionId = prescriptionItemId;
+        }
+      }
+
       final updatedModel = await remoteDataSource.completePrescription(
+        prescriptionId: resolvedPrescriptionId,
         prescriptionItemId: prescriptionItemId,
       );
 

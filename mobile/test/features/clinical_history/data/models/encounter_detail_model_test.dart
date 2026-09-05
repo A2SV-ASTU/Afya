@@ -101,6 +101,10 @@ void main() {
       expect(model.prescriptions, hasLength(1));
       expect(model.prescriptions.first.items, hasLength(1));
       expect(
+        model.prescriptions.first.items.first.prescriptionId,
+        'pres-1',
+      );
+      expect(
         model.prescriptions.first.items.first.medicationName,
         'Metformin',
       );
@@ -214,6 +218,58 @@ void main() {
 
       expect(roundTripModel.encounter.id, model.encounter.id);
       expect(roundTripModel.vitals.first.systolicBp, 120);
+    });
+  });
+
+  group('EncounterPrescriptionItemModel', () {
+    test('fromJson parses snake_case and propagates prescription_id', () {
+      final json = {
+        'id': 'item-10',
+        'prescription_id': 'rx-99',
+        'medication_name': 'Lisinopril',
+        'dose': '10mg',
+        'route': 'oral',
+        'frequency': 'OD',
+        'duration': '30 days',
+        'status': 'active',
+        'instructions': 'Morning with water',
+        'started_at': '2026-08-28T08:00:00Z',
+      };
+
+      final model = EncounterPrescriptionItemModel.fromJson(json);
+
+      expect(model.id, 'item-10');
+      expect(model.prescriptionId, 'rx-99');
+      expect(model.medicationName, 'Lisinopril');
+      expect(model.status, EncounterPrescriptionStatus.active);
+
+      final entity = model.toEntity();
+      expect(entity.prescriptionId, 'rx-99');
+      expect(entity.id, 'item-10');
+
+      final serialized = model.toJson();
+      expect(serialized['prescription_id'], 'rx-99');
+    });
+
+    test('fromJson supports camelCase and alternative key casing defensively', () {
+      final json = {
+        'ID': 'item-20',
+        'PrescriptionID': 'rx-88',
+        'medicationName': 'Amlodipine',
+        'Dose': '5mg',
+        'Route': 'oral',
+        'Frequency': 'BD',
+        'Duration': '14 days',
+        'Status': 'completed',
+        'StartedAt': '2026-08-28T08:00:00Z',
+      };
+
+      final model = EncounterPrescriptionItemModel.fromJson(json);
+
+      expect(model.id, 'item-20');
+      expect(model.prescriptionId, 'rx-88');
+      expect(model.medicationName, 'Amlodipine');
+      expect(model.status, EncounterPrescriptionStatus.completed);
     });
   });
 }

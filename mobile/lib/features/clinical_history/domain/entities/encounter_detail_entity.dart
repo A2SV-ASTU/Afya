@@ -61,6 +61,7 @@ enum EncounterPrescriptionStatus {
 
 class EncounterPrescriptionItemEntity extends Equatable {
   final String id;
+  final String? prescriptionId;
   final String medicationName;
   final String dose;
   final String route;
@@ -69,9 +70,11 @@ class EncounterPrescriptionItemEntity extends Equatable {
   final EncounterPrescriptionStatus status;
   final String? instructions;
   final DateTime startedAt;
+  final bool isTrackingActive;
 
   const EncounterPrescriptionItemEntity({
     required this.id,
+    this.prescriptionId,
     required this.medicationName,
     required this.dose,
     required this.route,
@@ -80,11 +83,41 @@ class EncounterPrescriptionItemEntity extends Equatable {
     required this.status,
     this.instructions,
     required this.startedAt,
+    this.isTrackingActive = false,
   });
+
+  EncounterPrescriptionItemEntity copyWith({
+    String? id,
+    String? prescriptionId,
+    String? medicationName,
+    String? dose,
+    String? route,
+    String? frequency,
+    String? duration,
+    EncounterPrescriptionStatus? status,
+    String? instructions,
+    DateTime? startedAt,
+    bool? isTrackingActive,
+  }) {
+    return EncounterPrescriptionItemEntity(
+      id: id ?? this.id,
+      prescriptionId: prescriptionId ?? this.prescriptionId,
+      medicationName: medicationName ?? this.medicationName,
+      dose: dose ?? this.dose,
+      route: route ?? this.route,
+      frequency: frequency ?? this.frequency,
+      duration: duration ?? this.duration,
+      status: status ?? this.status,
+      instructions: instructions ?? this.instructions,
+      startedAt: startedAt ?? this.startedAt,
+      isTrackingActive: isTrackingActive ?? this.isTrackingActive,
+    );
+  }
 
   @override
   List<Object?> get props => [
         id,
+        prescriptionId,
         medicationName,
         dose,
         route,
@@ -93,6 +126,7 @@ class EncounterPrescriptionItemEntity extends Equatable {
         status,
         instructions,
         startedAt,
+        isTrackingActive,
       ];
 }
 
