@@ -10,7 +10,7 @@ export default function FeaturesPage() {
           <ShieldCheck className="w-4 h-4" />
           Comprehensive Care Features
         </div>
-        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 max-w-4xl mx-auto leading-tight tracking-tight">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[var(--color-main-dark)] mb-6 max-w-4xl mx-auto leading-tight tracking-tight">
           Advanced Clinical Tools for a Seamless Health Journey
         </h1>
         <p className="text-lg md:text-xl text-gray-600 max-w-3xl mx-auto mb-10 leading-relaxed">

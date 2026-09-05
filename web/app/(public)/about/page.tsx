@@ -24,7 +24,7 @@ export default function AboutPage() {
           <div className="relative h-[450px] lg:h-[550px] rounded-[2rem] w-full overflow-hidden shadow-2xl border border-[var(--color-main-border)]/50 group">
             <div className="absolute inset-0 bg-[var(--color-main)]/10 z-10 group-hover:bg-transparent transition-colors duration-500"></div>
             <Image
-              src="https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&q=80&w=1200"
+              src="/images/about-hero.png"
               alt="Modern, collaborative clinical healthcare team in a premium workspace"
               fill
               className="w-full h-full object-cover transform scale-105 group-hover:scale-100 transition-transform duration-700 ease-in-out rounded-2xl"

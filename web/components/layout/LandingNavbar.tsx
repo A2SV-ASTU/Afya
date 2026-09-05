@@ -1,15 +1,15 @@
-import { Shield, User, Download } from "lucide-react";
+import { Activity, User, Download } from "lucide-react";
 import Link from "next/link";
 
 export function LandingNavbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-[var(--color-main-border)] bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex h-20 max-w-[1280px] items-center justify-between px-6 md:px-10">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[var(--color-main)]">
-            <Shield className="h-5 w-5 text-white" />
+        <Link href="/" className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-[#388E3C] text-white flex items-center justify-center shadow-sm">
+            <Activity className="w-6 h-6" />
           </div>
-          <span className="font-manrope text-xl font-bold tracking-tight text-[var(--color-main-dark)]">AfyaMind</span>
+          <span className="font-manrope text-2xl font-bold tracking-tight text-slate-900">AfyaMind</span>
         </Link>
 
         <nav className="hidden items-center gap-8 md:flex">
