@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"net/mail"
 	"strings"
@@ -34,10 +35,10 @@ type Service interface {
 type service struct {
 	repo   Repository
 	cfg    *config.Config
-	sender *email.Sender
+	sender email.EmailSender
 }
 
-func NewService(repo Repository, cfg *config.Config, sender *email.Sender) Service {
+func NewService(repo Repository, cfg *config.Config, sender email.EmailSender) Service {
 	return &service{
 		repo:   repo,
 		cfg:    cfg,
@@ -80,7 +81,7 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, *
 		return nil, appErrors.ErrValidationError("Password must be at least 8 characters long")
 	}
 
-	// 4. Duplicate checks
+	// 4. Pre-check for duplicate email or phone (soft check)
 	existingEmailUser, err := s.repo.FindByEmail(ctx, email)
 	if err == nil && existingEmailUser != nil {
 		return nil, appErrors.ErrConflict("Email is already registered")
@@ -91,13 +92,19 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, *
 		return nil, appErrors.ErrConflict("Phone number is already registered")
 	}
 
-	// 5. Hash password
+	// 5. Check that email service is configured before creating account
+	if s.sender == nil {
+		log.Printf("ERROR: Cannot complete signup for %s — SMTP email service is not configured", email)
+		return nil, appErrors.ErrInternal("Email verification service is temporarily unavailable. Please contact support.")
+	}
+
+	// 6. Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, appErrors.ErrInternal("Failed to hash password")
 	}
 
-	// 6. Optional DOB parsing
+	// 7. Optional DOB parsing
 	var dobPtr *time.Time
 	if req.DateOfBirth != nil && *req.DateOfBirth != "" {
 		parsedDOB, err := time.Parse("2006-01-02", *req.DateOfBirth)
@@ -113,7 +120,7 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, *
 		sexPtr = &sexLower
 	}
 
-	// 7. Construct user entity (Public signup ALWAYS forces role = patient and is_email_verified = false)
+	// 8. Construct user entity (Public signup ALWAYS forces role = patient and is_email_verified = false)
 	newUser := &users.User{
 		FirstName:       firstName,
 		LastName:        lastName,
@@ -126,12 +133,21 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, *
 		IsEmailVerified: false,
 	}
 
-	// 8. Save user to DB
+	// 9. Save user to DB (handles race condition via unique constraint mapping)
 	if err := s.repo.Create(ctx, newUser); err != nil {
+		if errors.Is(err, users.ErrDuplicateEmail) {
+			return nil, appErrors.ErrConflict("Email is already registered")
+		}
+		if errors.Is(err, users.ErrDuplicatePhone) {
+			return nil, appErrors.ErrConflict("Phone number is already registered")
+		}
+		if errors.Is(err, users.ErrUserConflict) {
+			return nil, appErrors.ErrConflict("Email or phone is already registered")
+		}
 		return nil, appErrors.ErrInternal("Failed to create user account")
 	}
 
-	// 9. Generate 6-digit OTP & save verification record
+	// 10. Generate 6-digit OTP & save verification record
 	rawOTP, otpHash, err := generateOTP()
 	if err != nil {
 		return nil, appErrors.ErrInternal("Failed to generate verification code")
@@ -142,15 +158,15 @@ func (s *service) Signup(ctx context.Context, req SignupRequest) (*users.User, *
 		return nil, appErrors.ErrInternal("Failed to save verification code")
 	}
 
-	// 10. Send verification email
-	if s.sender != nil {
-		go func(e, name, otp string) {
-			_ = s.sender.SendVerificationOTP(e, name, otp)
-		}(email, firstName, rawOTP)
+	// 11. Send verification email and handle delivery failure
+	if err := s.sender.SendVerificationOTP(email, firstName, rawOTP); err != nil {
+		log.Printf("ERROR: Failed to deliver verification OTP to %s: %v", email, err)
+		return nil, appErrors.ErrInternal("Failed to send verification email. Please try again later.")
 	}
 
 	return newUser, nil
 }
+
 
 func (s *service) VerifyEmail(ctx context.Context, req VerifyEmailRequest) (*users.User, string, string, *appErrors.AppError) {
 	emailStr := strings.ToLower(strings.TrimSpace(req.Email))
@@ -229,6 +245,11 @@ func (s *service) ResendOTP(ctx context.Context, req ResendOTPRequest) *appError
 		}
 	}
 
+	if s.sender == nil {
+		log.Printf("ERROR: Cannot resend verification OTP to %s — SMTP email service is not configured", emailStr)
+		return appErrors.ErrInternal("Email verification service is temporarily unavailable. Please contact support.")
+	}
+
 	rawOTP, otpHash, err := generateOTP()
 	if err != nil {
 		return appErrors.ErrInternal("Failed to generate verification code")
@@ -239,14 +260,14 @@ func (s *service) ResendOTP(ctx context.Context, req ResendOTPRequest) *appError
 		return appErrors.ErrInternal("Failed to save verification code")
 	}
 
-	if s.sender != nil {
-		go func(e, name, otp string) {
-			_ = s.sender.SendVerificationOTP(e, name, otp)
-		}(emailStr, user.FirstName, rawOTP)
+	if err := s.sender.SendVerificationOTP(emailStr, user.FirstName, rawOTP); err != nil {
+		log.Printf("ERROR: Failed to deliver verification OTP to %s: %v", emailStr, err)
+		return appErrors.ErrInternal("Failed to send verification email. Please try again later.")
 	}
 
 	return nil
 }
+
 
 func (s *service) Login(ctx context.Context, req LoginRequest) (*users.User, string, string, *appErrors.AppError) {
 	loginStr := strings.TrimSpace(req.Email)

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,9 +20,29 @@ import (
 	"github.com/google/uuid"
 )
 
+type mockEmailSender struct {
+	sendFunc            func(to, subject, body string) error
+	sendVerificationOTP func(toEmail, recipientName, otp string) error
+}
+
+func (m *mockEmailSender) Send(to, subject, body string) error {
+	if m.sendFunc != nil {
+		return m.sendFunc(to, subject, body)
+	}
+	return nil
+}
+
+func (m *mockEmailSender) SendVerificationOTP(toEmail, recipientName, otp string) error {
+	if m.sendVerificationOTP != nil {
+		return m.sendVerificationOTP(toEmail, recipientName, otp)
+	}
+	return nil
+}
+
 type mockAuthRepo struct {
 	users         map[uuid.UUID]*users.User
 	verifications map[string]*EmailVerification
+	createFunc    func(ctx context.Context, user *users.User) error
 }
 
 func newMockAuthRepo() *mockAuthRepo {
@@ -67,6 +88,9 @@ func (m *mockAuthRepo) FindByID(ctx context.Context, id uuid.UUID) (*users.User,
 }
 
 func (m *mockAuthRepo) Create(ctx context.Context, user *users.User) error {
+	if m.createFunc != nil {
+		return m.createFunc(ctx, user)
+	}
 	if user.ID == uuid.Nil {
 		user.ID = uuid.New()
 	}
@@ -158,7 +182,8 @@ func setupTestConfig() *config.Config {
 func TestAuthService_Signup(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg, nil)
+	sender := &mockEmailSender{}
+	svc := NewService(repo, cfg, sender)
 
 	// 1. Success signup - creates unverified user and saves OTP
 	req := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
@@ -203,10 +228,118 @@ func TestAuthService_Signup(t *testing.T) {
 	}
 }
 
+func TestAuthService_Signup_RaceCondition_ReturnsConflict(t *testing.T) {
+	cfg := setupTestConfig()
+	sender := &mockEmailSender{}
+
+	testCases := []struct {
+		name    string
+		dbErr   error
+		wantMsg string
+	}{
+		{
+			name:    "Duplicate Email Race Condition",
+			dbErr:   users.ErrDuplicateEmail,
+			wantMsg: "Email is already registered",
+		},
+		{
+			name:    "Duplicate Phone Race Condition",
+			dbErr:   users.ErrDuplicatePhone,
+			wantMsg: "Phone number is already registered",
+		},
+		{
+			name:    "General User Conflict",
+			dbErr:   users.ErrUserConflict,
+			wantMsg: "Email or phone is already registered",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := newMockAuthRepo()
+			repo.createFunc = func(ctx context.Context, user *users.User) error {
+				return tc.dbErr
+			}
+			svc := NewService(repo, cfg, sender)
+
+			req := SignupRequest{
+				FirstName: "Race",
+				LastName:  "Test",
+				Phone:     "+251999888777",
+				Email:     "race@example.com",
+				Password:  "securePassword123",
+			}
+
+			_, appErr := svc.Signup(context.Background(), req)
+			if appErr == nil {
+				t.Fatal("expected error on race condition, got nil")
+			}
+			if appErr.Code != "conflict" {
+				t.Errorf("expected code conflict, got %s", appErr.Code)
+			}
+			if appErr.Message != tc.wantMsg {
+				t.Errorf("expected message %q, got %q", tc.wantMsg, appErr.Message)
+			}
+		})
+	}
+}
+
+func TestAuthService_Signup_SMTPFailures(t *testing.T) {
+	cfg := setupTestConfig()
+
+	t.Run("Sender is nil (SMTP not configured)", func(t *testing.T) {
+		repo := newMockAuthRepo()
+		svc := NewService(repo, cfg, nil)
+
+		req := SignupRequest{
+			FirstName: "Test",
+			LastName:  "User",
+			Phone:     "+251911112233",
+			Email:     "nosmtp@example.com",
+			Password:  "securePassword123",
+		}
+
+		_, appErr := svc.Signup(context.Background(), req)
+		if appErr == nil {
+			t.Fatal("expected error when SMTP is not configured, got nil")
+		}
+		if appErr.Code != "internal_error" {
+			t.Errorf("expected code internal_error, got %s", appErr.Code)
+		}
+	})
+
+	t.Run("Sender returns runtime error (SMTP down or rejected)", func(t *testing.T) {
+		repo := newMockAuthRepo()
+		sender := &mockEmailSender{
+			sendVerificationOTP: func(toEmail, recipientName, otp string) error {
+				return errors.New("smtp connection refused")
+			},
+		}
+		svc := NewService(repo, cfg, sender)
+
+		req := SignupRequest{
+			FirstName: "Test",
+			LastName:  "User",
+			Phone:     "+251911112233",
+			Email:     "smtpfail@example.com",
+			Password:  "securePassword123",
+		}
+
+		_, appErr := svc.Signup(context.Background(), req)
+		if appErr == nil {
+			t.Fatal("expected error when SMTP delivery fails, got nil")
+		}
+		if appErr.Code != "internal_error" {
+			t.Errorf("expected code internal_error, got %s", appErr.Code)
+		}
+	})
+}
+
 func TestAuthService_VerifyEmail(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg, nil)
+	sender := &mockEmailSender{}
+	svc := NewService(repo, cfg, sender)
 
 	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	user, _ := svc.Signup(context.Background(), signupReq)
@@ -248,7 +381,8 @@ func TestAuthService_VerifyEmail(t *testing.T) {
 func TestAuthService_ResendOTP(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg, nil)
+	sender := &mockEmailSender{}
+	svc := NewService(repo, cfg, sender)
 
 	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	_, _ = svc.Signup(context.Background(), signupReq)
@@ -274,10 +408,54 @@ func TestAuthService_ResendOTP(t *testing.T) {
 	}
 }
 
+func TestAuthService_ResendOTP_SMTPFailures(t *testing.T) {
+	cfg := setupTestConfig()
+
+	t.Run("Resend with nil sender", func(t *testing.T) {
+		repo := newMockAuthRepo()
+		sender := &mockEmailSender{}
+		svc := NewService(repo, cfg, sender)
+
+		signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
+		_, _ = svc.Signup(context.Background(), signupReq)
+
+		// Switch to service with nil sender and expired cooldown
+		repo.verifications["alice@example.com"].CreatedAt = time.Now().Add(-2 * time.Minute)
+		nilSenderSvc := NewService(repo, cfg, nil)
+		appErr := nilSenderSvc.ResendOTP(context.Background(), ResendOTPRequest{Email: "alice@example.com"})
+		if appErr == nil || appErr.Code != "internal_error" {
+			t.Errorf("expected internal_error for nil sender on resend, got %v", appErr)
+		}
+	})
+
+	t.Run("Resend with SMTP send error", func(t *testing.T) {
+		repo := newMockAuthRepo()
+		sender := &mockEmailSender{}
+		svc := NewService(repo, cfg, sender)
+
+		signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
+		_, _ = svc.Signup(context.Background(), signupReq)
+
+		// Set failing sender and expired cooldown
+		repo.verifications["alice@example.com"].CreatedAt = time.Now().Add(-2 * time.Minute)
+		failingSender := &mockEmailSender{
+			sendVerificationOTP: func(toEmail, recipientName, otp string) error {
+				return errors.New("smtp timeout")
+			},
+		}
+		failingSvc := NewService(repo, cfg, failingSender)
+		appErr := failingSvc.ResendOTP(context.Background(), ResendOTPRequest{Email: "alice@example.com"})
+		if appErr == nil || appErr.Code != "internal_error" {
+			t.Errorf("expected internal_error for SMTP error on resend, got %v", appErr)
+		}
+	})
+}
+
 func TestAuthService_Login(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg, nil)
+	sender := &mockEmailSender{}
+	svc := NewService(repo, cfg, sender)
 
 	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	user, _ := svc.Signup(context.Background(), signupReq)
@@ -319,7 +497,8 @@ func TestAuthService_Login(t *testing.T) {
 func TestAuthService_Refresh(t *testing.T) {
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg, nil)
+	sender := &mockEmailSender{}
+	svc := NewService(repo, cfg, sender)
 
 	signupReq := SignupRequest{FirstName: "Alice", LastName: "Smith", Phone: "+251911111111", Email: "alice@example.com", Password: "securePassword123"}
 	user, _ := svc.Signup(context.Background(), signupReq)
@@ -348,7 +527,8 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := setupTestConfig()
 	repo := newMockAuthRepo()
-	svc := NewService(repo, cfg, nil)
+	sender := &mockEmailSender{}
+	svc := NewService(repo, cfg, sender)
 	handler := NewHandler(svc, cfg)
 
 	r := gin.New()
@@ -495,4 +675,3 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 		}
 	})
 }
-

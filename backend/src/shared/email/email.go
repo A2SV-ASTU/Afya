@@ -64,7 +64,13 @@ func LoadSMTPConfig() (*SMTPConfig, error) {
 	}, nil
 }
 
-// Sender provides email sending functionality
+// EmailSender defines the interface for sending emails
+type EmailSender interface {
+	Send(to string, subject string, body string) error
+	SendVerificationOTP(toEmail, recipientName, otp string) error
+}
+
+// Sender provides email sending functionality using standard SMTP
 type Sender struct {
 	cfg *SMTPConfig
 }
@@ -73,6 +79,7 @@ type Sender struct {
 func NewSender(cfg *SMTPConfig) *Sender {
 	return &Sender{cfg: cfg}
 }
+
 
 // Send sends an email with the given subject and body to the specified recipient
 func (s *Sender) Send(to string, subject string, body string) error {

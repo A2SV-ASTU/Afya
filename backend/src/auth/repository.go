@@ -103,16 +103,17 @@ func (r *repository) UpdateUserPassword(ctx context.Context, userID uuid.UUID, n
 }
 
 func (r *repository) CreateEmailVerification(ctx context.Context, userID uuid.UUID, email, otpHash string, expiresAt time.Time) error {
-	// Clean up any existing verifications for this user/email
-	_, _ = r.db.ExecContext(ctx, `DELETE FROM email_verifications WHERE user_id = $1 OR email = $2`, userID, email)
-
 	query := `
+		WITH deleted AS (
+			DELETE FROM email_verifications WHERE user_id = $1 OR email = $2
+		)
 		INSERT INTO email_verifications (user_id, email, otp_hash, attempts, expires_at, created_at, updated_at)
 		VALUES ($1, $2, $3, 0, $4, NOW(), NOW())
 	`
 	_, err := r.db.ExecContext(ctx, query, userID, email, otpHash, expiresAt)
 	return err
 }
+
 
 func (r *repository) FindEmailVerificationByEmail(ctx context.Context, email string) (*EmailVerification, error) {
 	query := `

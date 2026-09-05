@@ -5,14 +5,22 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"afyamind-backend/src/database"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
-var ErrUserNotFound = errors.New("user not found")
+var (
+	ErrUserNotFound   = errors.New("user not found")
+	ErrDuplicateEmail = errors.New("email already registered")
+	ErrDuplicatePhone = errors.New("phone number already registered")
+	ErrUserConflict   = errors.New("user already exists")
+)
+
 
 type Repository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*User, error)
@@ -140,8 +148,20 @@ func (r *repository) Create(ctx context.Context, user *User) error {
 	).Scan(&user.ID, &user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			constraintName := strings.ToLower(pqErr.Constraint + " " + pqErr.Message + " " + pqErr.Detail)
+			if strings.Contains(constraintName, "email") {
+				return ErrDuplicateEmail
+			}
+			if strings.Contains(constraintName, "phone") {
+				return ErrDuplicatePhone
+			}
+			return ErrUserConflict
+		}
 		return fmt.Errorf("failed to insert user: %w", err)
 	}
+
 
 	user.Role = role
 	return nil
