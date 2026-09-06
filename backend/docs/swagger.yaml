@@ -112,7 +112,12 @@ definitions:
     type: object
   src_access-requests.AccessRequest:
     properties:
+      clinic_name:
+        description: Populated via JOINs — not stored in access_requests table
+        type: string
       created_at:
+        type: string
+      doctor_name:
         type: string
       expires_at:
         type: string
@@ -269,6 +274,15 @@ definitions:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
     type: object
+  src_auth.ResendOTPRequest:
+    properties:
+      email:
+        description: Registered patient email address
+        example: jane.doe@example.com
+        type: string
+    required:
+    - email
+    type: object
   src_auth.ResetPasswordRequest:
     properties:
       password:
@@ -319,6 +333,30 @@ definitions:
     - last_name
     - password
     - phone
+    type: object
+  src_auth.SignupResponse:
+    properties:
+      email:
+        example: jane.doe@example.com
+        type: string
+      message:
+        example: Registration successful. Please verify your email with the 6-digit
+          code sent to your inbox.
+        type: string
+    type: object
+  src_auth.VerifyEmailRequest:
+    properties:
+      email:
+        description: Registered patient email address
+        example: jane.doe@example.com
+        type: string
+      otp:
+        description: 6-digit verification code received via email
+        example: "123456"
+        type: string
+    required:
+    - email
+    - otp
     type: object
   src_clinical-evaluations.ClinicalEvaluation:
     properties:
@@ -1373,6 +1411,80 @@ info:
   title: AfyaMind API
   version: "1.0"
 paths:
+  /access-requests/{id}/approve:
+    post:
+      description: Patient approves a pending access request.
+      parameters:
+      - description: Access Request ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Access request approved
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.MessageEnvelope'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Not the target patient
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "404":
+          description: Request not found
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Approve an access request
+      tags:
+      - AccessRequests
+  /access-requests/{id}/deny:
+    post:
+      description: Patient denies a pending access request.
+      parameters:
+      - description: Access Request ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Access request denied
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.MessageEnvelope'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "403":
+          description: Not the target patient
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "404":
+          description: Request not found
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Deny an access request
+      tags:
+      - AccessRequests
   /appointments:
     post:
       consumes:
@@ -1577,7 +1689,7 @@ paths:
       consumes:
       - application/json
       description: |-
-        Creates a new patient account and sets HttpOnly JWT cookies (access_token + refresh_token).
+        Creates a new unverified patient account and sends a 6-digit verification code to their email.
         Also aliased at POST /auth/signup.
       parameters:
       - description: Patient registration payload
@@ -1590,13 +1702,13 @@ paths:
       - application/json
       responses:
         "201":
-          description: Account created
+          description: Account created, verification required
           schema:
             allOf:
             - $ref: '#/definitions/afyamind-backend_src_shared_response.DataEnvelope'
             - properties:
                 data:
-                  $ref: '#/definitions/afyamind-backend_src_users.UserResponse'
+                  $ref: '#/definitions/src_auth.SignupResponse'
               type: object
         "400":
           description: Validation error
@@ -1607,6 +1719,41 @@ paths:
           schema:
             $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
       summary: Register a new patient account
+      tags:
+      - Auth
+  /auth/resend-otp:
+    post:
+      consumes:
+      - application/json
+      description: Resends a fresh 6-digit verification code to the patient's registered
+        email (rate-limited).
+      parameters:
+      - description: Email address payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_auth.ResendOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Verification code sent
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.MessageEnvelope'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "404":
+          description: User not found
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "409":
+          description: Email already verified or cooldown active
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      summary: Resend email verification code
       tags:
       - Auth
   /auth/reset-password:
@@ -1634,6 +1781,75 @@ paths:
           schema:
             $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
       summary: Reset user password
+      tags:
+      - Auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Creates a new unverified patient account and sends a 6-digit verification code to their email.
+        Also aliased at POST /auth/signup.
+      parameters:
+      - description: Patient registration payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_auth.SignupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Account created, verification required
+          schema:
+            allOf:
+            - $ref: '#/definitions/afyamind-backend_src_shared_response.DataEnvelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/src_auth.SignupResponse'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "409":
+          description: Email or phone already in use
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      summary: Register a new patient account
+      tags:
+      - Auth
+  /auth/verify-email:
+    post:
+      consumes:
+      - application/json
+      description: Verifies patient email address using 6-digit OTP code and sets
+        HttpOnly JWT cookies.
+      parameters:
+      - description: Email and OTP verification payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/src_auth.VerifyEmailRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Email verified and authenticated
+          schema:
+            allOf:
+            - $ref: '#/definitions/afyamind-backend_src_shared_response.DataEnvelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/afyamind-backend_src_users.UserResponse'
+              type: object
+        "400":
+          description: Invalid or expired OTP
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      summary: Verify patient email address
       tags:
       - Auth
   /clinics:
@@ -2816,6 +3032,92 @@ paths:
       summary: Confirm password reset
       tags:
       - MagicLinks
+  /patient/access-requests/active:
+    get:
+      description: Returns pending (non-expired) access requests directed at the patient.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Pending access requests
+          schema:
+            allOf:
+            - $ref: '#/definitions/afyamind-backend_src_shared_response.DataEnvelope'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/src_access-requests.AccessRequest'
+                  type: array
+              type: object
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List pending access requests for the authenticated patient
+      tags:
+      - AccessRequests
+  /patient/grants:
+    get:
+      description: Returns approved, non-revoked access requests (grants) for the
+        patient.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Active grants
+          schema:
+            allOf:
+            - $ref: '#/definitions/afyamind-backend_src_shared_response.DataEnvelope'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/src_access-requests.AccessRequest'
+                  type: array
+              type: object
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: List active grants for the authenticated patient
+      tags:
+      - AccessRequests
+  /patient/grants/{clinicId}/revoke:
+    post:
+      description: Patient revokes a previously approved access request from a clinic.
+      parameters:
+      - description: Clinic ID
+        in: path
+        name: clinicId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Grant revoked
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.MessageEnvelope'
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "401":
+          description: Not authenticated
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+        "404":
+          description: No active grant found
+          schema:
+            $ref: '#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope'
+      security:
+      - BearerAuth: []
+      summary: Revoke a clinic grant (patient-initiated)
+      tags:
+      - AccessRequests
   /patients/{patientId}/appointments:
     get:
       description: Retrieves all scheduled/past appointments for a specific patient.
@@ -2937,9 +3239,8 @@ paths:
       - Encounters
   /patients/{patientId}/prescriptions:
     get:
-      description: Returns all prescriptions across all encounters for a given patient,
-        ordered by most recent first. Patient (self) or doctor with active access
-        grant only. Supports pagination.
+      description: Returns all prescriptions across all encounters for a given patient.
+        Supports pagination. Patient (self) or doctor with active access grant only.
       parameters:
       - description: Patient ID
         in: path

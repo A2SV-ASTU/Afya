@@ -18,9 +18,11 @@ class CompletePrescriptionUseCase {
 
   Future<Either<Failure, EncounterPrescriptionItemEntity>> call({
     required String prescriptionItemId,
+    String? prescriptionId,
   }) async {
     final result = await repository.completePrescriptionItem(
       prescriptionItemId: prescriptionItemId,
+      prescriptionId: prescriptionId,
     );
 
     return result.fold(

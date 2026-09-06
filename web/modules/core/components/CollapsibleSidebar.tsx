@@ -37,7 +37,7 @@ export function CollapsibleSidebar() {
               </div>
               <div className="overflow-hidden">
                 <span className="text-base font-extrabold text-slate-900 leading-none block">
-                  AfyaMind
+                  Afya
                 </span>
                 <span className="text-[9px] text-[#2E7D32] font-bold uppercase tracking-wider block pt-0.5">
                   Clinical Network
@@ -128,8 +128,8 @@ export function CollapsibleSidebar() {
             </p>
           </div>
         )}
-        <div className="flex items-center justify-center">
-          <LogoutButton showConfirmation={true} />
+        <div className="w-full">
+          <LogoutButton collapsed={collapsed} showConfirmation={true} />
         </div>
 
         <div className="flex items-center justify-center">

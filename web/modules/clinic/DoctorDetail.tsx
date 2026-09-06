@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { useStore } from '@/lib/store';
+import { clinicsApi } from '@/lib/api/clinics';
 import { StatusBadge } from '@/components/ui/Badge';
 import { ConfirmDialog } from '@/components/ui/Modal';
 import {
@@ -18,12 +19,11 @@ import {
 } from 'lucide-react';
 
 export function DoctorDetail() {
-  const { doctors, clinics, viewParams, deactivateDoctor, navigateTo } = useStore();
+  const { doctors, activeClinic, viewParams, deactivateDoctor, activateDoctor, navigateTo } = useStore();
   const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
 
   const doctorId = viewParams.doctorId || doctors[0]?.id;
   const doctor = doctors.find((d) => d.id === doctorId) || doctors[0];
-  const clinic = clinics.find((c) => c.id === doctor?.clinic_id) || clinics[0];
 
   if (!doctor) {
     return (
@@ -40,6 +40,19 @@ export function DoctorDetail() {
   }
 
   const isActive = doctor.doctor_status === 'active';
+
+  const handleToggleStatus = async () => {
+    if (!activeClinic.id || !doctor.id) {
+      console.error('[DoctorDetail] Missing IDs:', { activeClinicId: activeClinic.id, doctorId: doctor.id });
+      return;
+    }
+    
+    if (isActive) {
+      await deactivateDoctor(activeClinic.id, doctor.id);
+    } else {
+      await activateDoctor(activeClinic.id, doctor.id);
+    }
+  };
 
   return (
     <div id="doctor-detail-page" className="p-6 md:p-8 max-w-4xl mx-auto space-y-6">
@@ -134,7 +147,7 @@ export function DoctorDetail() {
                   <Building2 className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="text-slate-400 block text-[11px]">Affiliated Institution</span>
-                    <span className="font-semibold text-slate-800">{clinic.name}</span>
+                    <span className="font-semibold text-slate-800">{activeClinic.name || 'Current Clinic'}</span>
                   </div>
                 </div>
               </div>
@@ -185,7 +198,7 @@ export function DoctorDetail() {
             <ShieldAlert className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
               <p className="font-semibold text-slate-800">
-                AfyaMind Section 8 Data Retention Principle
+                Afya Section 8 Data Retention Principle
               </p>
               <p className="text-slate-500 mt-0.5 leading-relaxed">
                 Deactivating a doctor revokes their login and encounter-writing privileges. All historical consultations, vitals, lab interpretations, and prescriptions previously authored by this physician remain permanently intact and attributed to their medical license.
@@ -199,7 +212,7 @@ export function DoctorDetail() {
       <ConfirmDialog
         isOpen={isDeactivateModalOpen}
         onClose={() => setIsDeactivateModalOpen(false)}
-        onConfirm={() => deactivateDoctor(doctor.id)}
+        onConfirm={handleToggleStatus}
         title={isActive ? `Deactivate Dr. ${doctor.last_name}?` : `Reactivate Dr. ${doctor.last_name}?`}
         isDestructive={isActive}
         confirmText={isActive ? 'Yes, Deactivate Physician' : 'Reactivate Physician'}

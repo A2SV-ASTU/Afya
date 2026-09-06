@@ -189,6 +189,11 @@ func (m *mockUserRepo) DeleteAccount(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+func (m *mockUserRepo) MarkEmailVerified(ctx context.Context, id uuid.UUID) error {
+	return nil
+}
+
+
 func TestCreateAccessRequest_PopulatesPatient(t *testing.T) {
 	repo := newMockRepository()
 	userRepo := newMockUserRepo()

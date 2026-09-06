@@ -177,6 +177,7 @@ void main() {
         () async {
       final completedModel = EncounterPrescriptionItemModel(
         id: prescriptionItemId,
+        prescriptionId: 'rx-123',
         medicationName: 'Amoxicillin',
         dose: '500mg',
         route: 'oral',
@@ -187,7 +188,11 @@ void main() {
         startedAt: DateTime.parse('2026-08-28T08:00:00Z'),
       );
 
+      when(() => mockLocalDataSource.getCachedPrescriptions())
+          .thenAnswer((_) async => [completedModel]);
+
       when(() => mockRemoteDataSource.completePrescription(
+            prescriptionId: any(named: 'prescriptionId'),
             prescriptionItemId: prescriptionItemId,
           )).thenAnswer((_) async => completedModel);
 
@@ -209,6 +214,11 @@ void main() {
         },
       );
 
+      verify(() => mockRemoteDataSource.completePrescription(
+            prescriptionId: 'rx-123',
+            prescriptionItemId: prescriptionItemId,
+          )).called(1);
+
       verify(() => mockLocalDataSource.updatePrescriptionStatus(
             prescriptionItemId,
             EncounterPrescriptionStatus.completed,
@@ -218,7 +228,11 @@ void main() {
     test(
         'remote PATCH failure: returns ServerFailure and does not falsely update local cache',
         () async {
+      when(() => mockLocalDataSource.getCachedPrescriptions())
+          .thenAnswer((_) async => []);
+
       when(() => mockRemoteDataSource.completePrescription(
+            prescriptionId: any(named: 'prescriptionId'),
             prescriptionItemId: prescriptionItemId,
           )).thenThrow(const ServerException('Unauthorized', code: '401'));
 

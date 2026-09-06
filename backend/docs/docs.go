@@ -22,6 +22,122 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/access-requests/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Patient approves a pending access request.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "Approve an access request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Access Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Access request approved",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Not the target patient",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Request not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/access-requests/{id}/deny": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Patient denies a pending access request.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "Deny an access request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Access Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Access request denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Not the target patient",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Request not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/appointments": {
             "post": {
                 "security": [
@@ -337,7 +453,7 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "Creates a new patient account and sets HttpOnly JWT cookies (access_token + refresh_token).\nAlso aliased at POST /auth/signup.",
+                "description": "Creates a new unverified patient account and sends a 6-digit verification code to their email.\nAlso aliased at POST /auth/signup.",
                 "consumes": [
                     "application/json"
                 ],
@@ -361,7 +477,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "201": {
-                        "description": "Account created",
+                        "description": "Account created, verification required",
                         "schema": {
                             "allOf": [
                                 {
@@ -371,7 +487,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/afyamind-backend_src_users.UserResponse"
+                                            "$ref": "#/definitions/src_auth.SignupResponse"
                                         }
                                     }
                                 }
@@ -386,6 +502,58 @@ const docTemplate = `{
                     },
                     "409": {
                         "description": "Email or phone already in use",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/resend-otp": {
+            "post": {
+                "description": "Resends a fresh 6-digit verification code to the patient's registered email (rate-limited).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Resend email verification code",
+                "parameters": [
+                    {
+                        "description": "Email address payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_auth.ResendOTPRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Verification code sent",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already verified or cooldown active",
                         "schema": {
                             "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
@@ -426,6 +594,116 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/signup": {
+            "post": {
+                "description": "Creates a new unverified patient account and sends a 6-digit verification code to their email.\nAlso aliased at POST /auth/signup.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register a new patient account",
+                "parameters": [
+                    {
+                        "description": "Patient registration payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_auth.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Account created, verification required",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/src_auth.SignupResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "Email or phone already in use",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-email": {
+            "post": {
+                "description": "Verifies patient email address using 6-digit OTP code and sets HttpOnly JWT cookies.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify patient email address",
+                "parameters": [
+                    {
+                        "description": "Email and OTP verification payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_auth.VerifyEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email verified and authenticated",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/afyamind-backend_src_users.UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or expired OTP",
                         "schema": {
                             "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
@@ -2251,6 +2529,150 @@ const docTemplate = `{
                 }
             }
         },
+        "/patient/access-requests/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns pending (non-expired) access requests directed at the patient.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "List pending access requests for the authenticated patient",
+                "responses": {
+                    "200": {
+                        "description": "Pending access requests",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/src_access-requests.AccessRequest"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patient/grants": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns approved, non-revoked access requests (grants) for the patient.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "List active grants for the authenticated patient",
+                "responses": {
+                    "200": {
+                        "description": "Active grants",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/src_access-requests.AccessRequest"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patient/grants/{clinicId}/revoke": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Patient revokes a previously approved access request from a clinic.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "Revoke a clinic grant (patient-initiated)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clinic ID",
+                        "name": "clinicId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant revoked",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "No active grant found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/patients/lookup": {
             "get": {
                 "security": [
@@ -2649,7 +3071,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Returns all prescriptions across all encounters for a given patient, ordered by most recent first. Patient (self) or doctor with active access grant only. Supports pagination.",
+                "description": "Returns all prescriptions across all encounters for a given patient. Supports pagination. Patient (self) or doctor with active access grant only.",
                 "produces": [
                     "application/json"
                 ],
@@ -3400,7 +3822,14 @@ const docTemplate = `{
         "src_access-requests.AccessRequest": {
             "type": "object",
             "properties": {
+                "clinic_name": {
+                    "description": "Populated via JOINs — not stored in access_requests table",
+                    "type": "string"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "doctor_name": {
                     "type": "string"
                 },
                 "expires_at": {
@@ -3626,6 +4055,19 @@ const docTemplate = `{
                 }
             }
         },
+        "src_auth.ResendOTPRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "description": "Registered patient email address",
+                    "type": "string",
+                    "example": "jane.doe@example.com"
+                }
+            }
+        },
         "src_auth.ResetPasswordRequest": {
             "type": "object",
             "required": [
@@ -3689,6 +4131,38 @@ const docTemplate = `{
                     "description": "Biological sex: \"male\" or \"female\" (optional)",
                     "type": "string",
                     "example": "female"
+                }
+            }
+        },
+        "src_auth.SignupResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "jane.doe@example.com"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Registration successful. Please verify your email with the 6-digit code sent to your inbox."
+                }
+            }
+        },
+        "src_auth.VerifyEmailRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "otp"
+            ],
+            "properties": {
+                "email": {
+                    "description": "Registered patient email address",
+                    "type": "string",
+                    "example": "jane.doe@example.com"
+                },
+                "otp": {
+                    "description": "6-digit verification code received via email",
+                    "type": "string",
+                    "example": "123456"
                 }
             }
         },

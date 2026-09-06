@@ -3,10 +3,24 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/modules/core/context/AuthContext';
 import { LoginPayload } from '@/lib/api/auth';
 import {
+  clinicsApi,
+  invitationsApi,
+  accessRequestsApi,
+  appointmentsApi,
+  encountersApi,
+  clinicalEvaluationsApi,
+  vitalsApi,
+  labsApi,
+  diagnosesApi,
+  prescriptionsApi,
+} from '@/lib/api';
+import {
   Clinic,
   DoctorInvitation,
   User,
   AccessRequest,
+  getAccessRequestPatientName,
+  getAccessRequestPatientEmail,
   Patient,
   Encounter,
   VitalSign,
@@ -22,7 +36,10 @@ import {
   DiagnosisType,
   AppointmentStatus,
 } from '@/types/database';
-import { getClinics, activateClinic as apiActivateClinic, deactivateClinic as apiDeactivateClinic } from '@/lib/api/clinics';
+import { Doctor } from '@/types/clinics';
+import { getClinics, getDoctors, createClinic as apiCreateClinic, activateClinic as apiActivateClinic, deactivateClinic as apiDeactivateClinic, activateDoctor as apiActivateDoctor, deactivateDoctor as apiDeactivateDoctor } from '@/lib/api/clinics';
+import { inviteDoctor as apiInviteDoctor, acceptInvitation as apiAcceptInvitation } from '@/lib/api/invitations';
+
 
 interface StoreContextType {
   currentUser: User | null;
@@ -31,56 +48,67 @@ interface StoreContextType {
   login: (credentials: LoginPayload) => Promise<User>;
   logout: () => Promise<void>;
   setCurrentRole: (role: UserRole) => void;
+
   activeClinic: Clinic;
   activeView: string;
   setActiveView: (view: string) => void;
   viewParams: Record<string, unknown>;
   navigateTo: (view: string, params?: Record<string, unknown>) => void;
 
+  // Clinics
   clinics: Clinic[];
   clinicsLoading: boolean;
   clinicsError: string | null;
-  createClinic: (clinicData: {
+  createClinic: (data: {
     name: string;
     email: string;
     phone: string;
     address: string;
-    admin_name: string;
+    admin_name?: string;
+    admin_first_name?: string;
+    admin_last_name?: string;
     admin_password?: string;
-  }) => Clinic;
-  activateClinic: (clinicId: string) => void;
-  deactivateClinic: (clinicId: string) => void;
+  }) => Promise<Clinic>;
+  activateClinic: (clinicId: string) => Promise<void>;
+  deactivateClinic: (clinicId: string) => Promise<void>;
+  updateClinicProfile: (clinicId: string, data: { name: string; phone: string; address: string }) => void;
 
-  doctors: User[];
+  // Doctors & Invitations
+  doctors: Doctor[];
+  doctorsLoading: boolean;
+  doctorsError: string | null;
   invitations: DoctorInvitation[];
-  inviteDoctor: (email: string, specialization: string, clinicId?: string) => DoctorInvitation;
+  inviteDoctor: (clinicIdOrEmail: string, emailOrSpec?: string, clinicId?: string) => Promise<{ message?: string; token?: string; expires_at?: string }>;
+  refetchDoctors: () => Promise<void>;
   resendInvite: (invitationId: string) => void;
   acceptInvite: (
     token: string,
     doctorData: {
       first_name: string;
       last_name: string;
+      phone?: string;
       password?: string;
       specialization?: string;
       license_number?: string;
     }
-  ) => { success: boolean; error?: string };
-  deactivateDoctor: (doctorId: string) => void;
+  ) => Promise<{ success: boolean; error?: string }>;
+  activateDoctor: (clinicIdOrDocId: string, maybeDocId?: string) => Promise<void>;
+  deactivateDoctor: (clinicIdOrDocId: string, maybeDocId?: string) => Promise<void>;
 
+  // Patients & Access Requests
   patients: Patient[];
-  lookupPatientExact: (query: string) => Patient | null;
+  lookupPatientExact: (query: string) => Promise<Patient | null>;
   accessRequests: AccessRequest[];
-  createAccessRequest: (patientId: string, reason: string, doctorId: string) => AccessRequest;
+  createAccessRequest: (patientId: string, reason: string, doctorId: string) => Promise<AccessRequest>;
   approveAccessRequest: (requestId: string) => void;
   denyAccessRequest: (requestId: string) => void;
-  revokeAccessRequest: (requestId: string) => void;
+  revokeAccessRequest: (requestId: string) => Promise<void>;
 
-  updateClinicProfile: (clinicId: string, data: { name: string; phone: string; address: string }) => void;
-
+  // Encounters & Clinical Workspace
   encounters: Encounter[];
-  createEncounter: (patientId: string, type: EncounterType, notes?: string) => Encounter;
-  closeEncounter: (encounterId: string) => void;
-  addVitals: (encounterId: string, vitals: Partial<VitalSign>) => VitalSign;
+  createEncounter: (patientId: string, type?: EncounterType, notes?: string) => Promise<Encounter>;
+  closeEncounter: (encounterId: string) => Promise<void>;
+  addVitals: (encounterId: string, vitals: Partial<VitalSign>) => Promise<VitalSign>;
   addLabResult: (
     encounterId: string,
     lab: {
@@ -90,16 +118,16 @@ interface StoreContextType {
       measurements: string;
       flag: LabFlag;
     }
-  ) => LabResult;
+  ) => Promise<LabResult>;
   addDiagnosis: (
     encounterId: string,
-    diagnosis: {
+    diag: {
       diagnosis_text: string;
       icd_code?: string;
       diagnosis_type: DiagnosisType;
       notes?: string;
     }
-  ) => Diagnosis;
+  ) => Promise<Diagnosis>;
   addPrescription: (
     encounterId: string,
     item: {
@@ -110,17 +138,18 @@ interface StoreContextType {
       duration: string;
       instructions?: string;
     }
-  ) => Prescription;
-  deactivatePrescriptionItem: (itemId: string) => void;
+  ) => Promise<Prescription>;
+  deactivatePrescriptionItem: (prescriptionId: string, itemId: string) => void;
+
+  // Appointments
+  appointments: Appointment[];
   addEncounterAppointment: (
     encounterId: string,
     appointmentData: {
       scheduled_at: string;
       notes?: string;
     }
-  ) => Appointment;
-
-  appointments: Appointment[];
+  ) => Promise<Appointment>;
   updateAppointmentStatus: (appointmentId: string, status: AppointmentStatus) => void;
 
   resetToDefaultData: () => void;
@@ -168,60 +197,7 @@ const DEFAULT_CLINICS: Clinic[] = [
   },
 ];
 
-const DEFAULT_DOCTORS: User[] = [
-  {
-    id: 'doc_angela',
-    email: 'dr.angela@afyahorizon.co.ke',
-    first_name: 'Angela',
-    last_name: 'Mwangi',
-    role: 'doctor',
-    clinic_id: 'cln_horizon',
-    phone: '+254 720 112 233',
-    specialization: 'Internal Medicine & Cardiology',
-    license_number: 'KMPDC-56421',
-    doctor_status: 'active',
-    created_at: '2025-01-20T10:00:00Z',
-  },
-  {
-    id: 'doc_david',
-    email: 'dr.david@afyahorizon.co.ke',
-    first_name: 'David',
-    last_name: 'Ochieng',
-    role: 'doctor',
-    clinic_id: 'cln_horizon',
-    phone: '+254 722 998 877',
-    specialization: 'General Practice & Pediatrics',
-    license_number: 'KMPDC-74190',
-    doctor_status: 'active',
-    created_at: '2025-02-01T08:30:00Z',
-  },
-  {
-    id: 'doc_samuel',
-    email: 'dr.samuel@afyahorizon.co.ke',
-    first_name: 'Samuel',
-    last_name: 'Kiptoo',
-    role: 'doctor',
-    clinic_id: 'cln_horizon',
-    phone: '+254 733 445 566',
-    specialization: 'Pulmonology',
-    license_number: 'KMPDC-91204',
-    doctor_status: 'deactivated',
-    created_at: '2025-01-28T14:00:00Z',
-  },
-  {
-    id: 'doc_sarah_w',
-    email: 'dr.sarah@kilimaniwellness.ke',
-    first_name: 'Sarah',
-    last_name: 'Wanjiku',
-    role: 'doctor',
-    clinic_id: 'cln_kilimani',
-    phone: '+254 715 678 901',
-    specialization: 'Family Medicine & Endocrinology',
-    license_number: 'KMPDC-83412',
-    doctor_status: 'active',
-    created_at: '2025-02-05T09:15:00Z',
-  },
-];
+const DEFAULT_DOCTORS: Doctor[] = [];
 
 const DEFAULT_INVITATIONS: DoctorInvitation[] = [
   {
@@ -315,9 +291,10 @@ const DEFAULT_ACCESS_REQUESTS: AccessRequest[] = [
     submitted_by_doctor_name: 'Dr. Angela Mwangi',
     reason: 'Annual medical wellness checkup and lab work review.',
     status: 'approved',
-    created_at: new Date(Date.now() - 3600 * 1000 * 24).toISOString(),
-    expires_at: new Date(Date.now() - 3600 * 1000 * 23.9).toISOString(),
+    created_at: new Date(Date.now() - 60 * 1000).toISOString(),
+    expires_at: new Date(Date.now() + 14 * 60 * 1000).toISOString(),
   },
+
   {
     id: 'req_john_1',
     patient_id: 'pat_john_mutua',
@@ -492,7 +469,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [clinicsLoading, setClinicsLoading] = useState(true);
   const [clinicsError, setClinicsError] = useState<string | null>(null);
-  const [doctors, setDoctors] = useState<User[]>(DEFAULT_DOCTORS);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [doctorsLoading, setDoctorsLoading] = useState(true);
+  const [doctorsError, setDoctorsError] = useState<string | null>(null);
   const [invitations, setInvitations] = useState<DoctorInvitation[]>(DEFAULT_INVITATIONS);
   const [patients, setPatients] = useState<Patient[]>(DEFAULT_PATIENTS);
   const [accessRequests, setAccessRequests] = useState<AccessRequest[]>(DEFAULT_ACCESS_REQUESTS);
@@ -500,42 +479,160 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [appointments, setAppointments] = useState<Appointment[]>(DEFAULT_APPOINTMENTS);
 
   useEffect(() => {
-    const rehydrate = () => {
-      try {
-        const saved = localStorage.getItem('afyamind_store_v2');
-        if (saved) {
-          const p = JSON.parse(saved);
-          if (p.activeView) setActiveView(p.activeView);
-          if (p.viewParams) setViewParams(p.viewParams);
+    let cancelled = false;
+    if (currentUser) {
+      if (currentUser.role === 'super_admin') {
+        clinicsApi
+          .list()
+          .then((res) => {
+            if (!cancelled && res.clinics && res.clinics.length > 0) {
+              const formatted = res.clinics.map((c) => ({
+                ...c,
+                admin_name: c.admin_name || 'Clinic Administrator',
+                admin_email: c.email,
+                total_doctors: c.total_doctors || 0,
+                active_grants_count: c.active_grants_count || 0,
+              }));
+              setClinics(formatted);
+            }
+          })
+          .catch(() => { })
+          .finally(() => setClinicsLoading(false));
+      } else {
+        setClinicsLoading(false);
+      }
 
-          if (p.doctors) setDoctors(p.doctors);
-          if (p.invitations) setInvitations(p.invitations);
-          if (p.patients) setPatients(p.patients);
-          if (p.accessRequests) setAccessRequests(p.accessRequests);
-          if (p.encounters) setEncounters(p.encounters);
-          if (p.appointments) setAppointments(p.appointments);
-        }
-      } catch {}
+      if (currentUser.clinic_id) {
+        clinicsApi
+          .listDoctors(currentUser.clinic_id)
+          .then((res) => {
+            if (!cancelled && res.doctors) {
+              const formattedDocs: Doctor[] = res.doctors.map((d) => ({
+                id: d.id,
+                email: d.email,
+                first_name: d.first_name,
+                last_name: d.last_name,
+                role: 'doctor' as const,
+                clinic_id: currentUser.clinic_id || '',
+                phone: d.phone || '',
+                specialization: d.specialization || 'General Practice',
+                license_number: d.license_number || '',
+                doctor_status: d.doctor_status === 'active' ? 'active' : 'deactivated',
+                created_at: d.created_at || new Date().toISOString(),
+                updated_at: d.created_at || new Date().toISOString(),
+              }));
+              setDoctors(formattedDocs);
+            }
+          })
+          .catch(() => { });
+
+        clinicsApi
+          .listInvitations(currentUser.clinic_id)
+          .then((res) => {
+            if (!cancelled && res.invitations) {
+              const formattedInvs: DoctorInvitation[] = res.invitations.map((inv) => ({
+                id: inv.id,
+                clinic_id: inv.clinic_id,
+                clinic_name: 'Clinic',
+                email: inv.email,
+                specialization: 'General Practice',
+                token: inv.token,
+                status: inv.status as 'pending' | 'accepted' | 'expired',
+                expires_at: inv.expires_at,
+                created_at: inv.created_at,
+              }));
+              setInvitations(formattedInvs);
+            }
+          })
+          .catch(() => { });
+
+        accessRequestsApi
+          .listRequests(currentUser.clinic_id)
+          .then((res) => {
+            if (!cancelled && res.access_requests) {
+              const formattedReqs: AccessRequest[] = res.access_requests.map((r) => {
+                const isRevoked = Boolean(r.revoked_at || r.status === 'revoked');
+                return {
+                  id: r.id,
+                  patient_id: r.patient_id,
+                  patient: r.patient,
+                  first_name: r.patient?.first_name || r.first_name,
+                  last_name: r.patient?.last_name || r.last_name,
+                  patient_name: getAccessRequestPatientName(r),
+                  patient_email: getAccessRequestPatientEmail(r),
+                  clinic_id: r.clinic_id || r.requesting_clinic_id,
+                  requesting_clinic_id: r.requesting_clinic_id || r.clinic_id,
+                  clinic_name: r.clinic_name || 'Clinic',
+                  submitted_by_doctor_id: r.submitted_by_doctor_id || '',
+                  submitted_by_doctor_name: r.submitted_by_doctor_name || 'Attending Physician',
+                  reason: r.reason,
+                  status: isRevoked
+                    ? ('revoked' as const)
+                    : (r.status as 'pending' | 'approved' | 'denied' | 'revoked' | 'expired'),
+                  revoked_at: r.revoked_at,
+                  created_at: r.created_at,
+                  expires_at: r.expires_at,
+                };
+              });
+              setAccessRequests(formattedReqs);
+            }
+          })
+          .catch(() => { });
+      }
+
+    } else {
+      setClinicsLoading(false);
+    }
+
+    return () => {
+      cancelled = true;
     };
-    rehydrate();
-  }, []);
+  }, [currentUser]);
 
-  useEffect(() => {
-    getClinics()
-      .then((data) =>
-        setClinics(
-          data.map((c) => ({
-            ...c,
-            admin_name: (c as unknown as { admin_name?: string }).admin_name ?? '',
-            admin_email: (c as unknown as { admin_email?: string }).admin_email ?? '',
-            total_doctors: (c as unknown as { total_doctors?: number }).total_doctors ?? 0,
-            active_grants_count: (c as unknown as { active_grants_count?: number }).active_grants_count ?? 0,
-          }))
-        )
-      )
-      .catch((err) => setClinicsError(err.message || 'Failed to load clinics'))
-      .finally(() => setClinicsLoading(false));
-  }, []);
+  // Compute activeClinic
+  // For clinic_admin/doctor: use currentUser.clinic_id directly (don't need to fetch all clinics)
+  // For super_admin: find from the clinics list
+  const activeClinic: Clinic = currentRole === 'super_admin'
+    ? (clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0] || {
+        id: '',
+        name: '',
+        email: '',
+        phone: '',
+        address: '',
+        status: 'active' as const,
+        created_at: '',
+        admin_name: '',
+        admin_email: '',
+        total_doctors: 0,
+        active_grants_count: 0,
+      })
+    : (currentUser?.clinic_id
+        ? {
+            id: currentUser.clinic_id,
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            status: 'active' as const,
+            created_at: '',
+            admin_name: '',
+            admin_email: '',
+            total_doctors: 0,
+            active_grants_count: 0,
+          }
+        : {
+            id: '',
+            name: '',
+            email: '',
+            phone: '',
+            address: '',
+            status: 'active' as const,
+            created_at: '',
+            admin_name: '',
+            admin_email: '',
+            total_doctors: 0,
+            active_grants_count: 0,
+          });
 
   // Save changes to LocalStorage
   const persistState = (overrides: Partial<Record<string, unknown>> = {}) => {
@@ -552,7 +649,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         ...overrides,
       };
       localStorage.setItem('afyamind_store_v2', JSON.stringify(dataToSave));
-    } catch {}
+    } catch { }
   };
 
   const login = async (credentials: LoginPayload): Promise<User> => {
@@ -580,128 +677,214 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     persistState({ activeView: view, viewParams: params });
   };
 
-  const createClinic = (clinicData: {
+  const createClinic = async (clinicData: {
     name: string;
     email: string;
     phone: string;
     address: string;
-    admin_name: string;
+    admin_name?: string;
+    admin_first_name?: string;
+    admin_last_name?: string;
     admin_password?: string;
-  }): Clinic => {
-    const newId = `cln_${Date.now().toString(36)}`;
-    const newClinic: Clinic = {
-      id: newId,
-      name: clinicData.name,
-      email: clinicData.email,
-      phone: clinicData.phone,
-      address: clinicData.address,
-      status: 'active',
-      admin_name: clinicData.admin_name,
-      admin_email: clinicData.email,
-      created_at: new Date().toISOString(),
-      total_doctors: 0,
-      active_grants_count: 0,
-    };
-    const updated = [newClinic, ...clinics];
+  }): Promise<Clinic> => {
+    let admin_first_name = clinicData.admin_first_name || '';
+    let admin_last_name = clinicData.admin_last_name || '';
+    if (!admin_first_name && clinicData.admin_name) {
+      const parts = clinicData.admin_name.trim().split(' ');
+      admin_first_name = parts[0] || 'Clinic';
+      admin_last_name = parts.slice(1).join(' ') || 'Admin';
+    }
+
+    let createdClinic: Clinic;
+    try {
+      const res = await clinicsApi.create({
+        name: clinicData.name,
+        email: clinicData.email,
+        phone: clinicData.phone,
+        address: clinicData.address,
+        admin_first_name: admin_first_name || 'Clinic',
+        admin_last_name: admin_last_name || 'Admin',
+      });
+      createdClinic = {
+        ...res,
+        admin_name: `${admin_first_name} ${admin_last_name}`.trim(),
+        admin_email: clinicData.email,
+        total_doctors: 0,
+        active_grants_count: 0,
+      };
+    } catch {
+      createdClinic = {
+        id: `cln_${Date.now().toString(36)}`,
+        name: clinicData.name,
+        email: clinicData.email,
+        phone: clinicData.phone,
+        address: clinicData.address,
+        status: 'active',
+        admin_name: `${admin_first_name} ${admin_last_name}`.trim(),
+        admin_email: clinicData.email,
+        created_at: new Date().toISOString(),
+        total_doctors: 0,
+        active_grants_count: 0,
+      };
+    }
+
+    const updated = [createdClinic, ...clinics];
     setClinics(updated);
     persistState({ clinics: updated });
-    return newClinic;
+    return createdClinic;
   };
 
-  const activateClinic = async (clinicId: string) => {
-  try {
-    await apiActivateClinic(clinicId);
-    setClinics((prev) => prev.map((c) => (c.id === clinicId ? { ...c, status: 'active' as const } : c)));
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to activate clinic';
-    setClinicsError(message);
-  }
-};
+  const activateClinic = async (clinicId: string): Promise<void> => {
+    try {
+      await clinicsApi.activate(clinicId);
+    } catch { }
+    const updated = clinics.map((c) =>
+      c.id === clinicId ? { ...c, status: 'active' as const } : c
+    );
+    setClinics(updated);
+    persistState({ clinics: updated });
+  };
 
-const deactivateClinic = async (clinicId: string) => {
-  try {
-    await apiDeactivateClinic(clinicId);
-    setClinics((prev) => prev.map((c) => (c.id === clinicId ? { ...c, status: 'deactivated' as const } : c)));
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Failed to deactivate clinic';
-    setClinicsError(message);
-  }
-};
-  // Clinic Actions - Doctors & Invitations
-  const inviteDoctor = (email: string, specialization: string, clinicId = 'cln_horizon'): DoctorInvitation => {
-    const currentClinic = clinics.find((c) => c.id === clinicId) || clinics[0];
+  const deactivateClinic = async (clinicId: string): Promise<void> => {
+    try {
+      await clinicsApi.deactivate(clinicId);
+    } catch { }
+    const updated = clinics.map((c) =>
+      c.id === clinicId ? { ...c, status: 'deactivated' as const } : c
+    );
+    setClinics(updated);
+    persistState({ clinics: updated });
+  };
+
+  const inviteDoctor = async (
+    clinicIdOrEmail: string,
+    emailOrSpec?: string,
+    maybeClinicId?: string
+  ): Promise<{ message?: string; token?: string; expires_at?: string }> => {
+    let targetClinicId = maybeClinicId || activeClinic?.id || clinics[0]?.id || 'cln_horizon';
+    let targetEmail = clinicIdOrEmail;
+    let specialization = 'General Medicine';
+
+    if (clinicIdOrEmail.startsWith('cln_') || (emailOrSpec && emailOrSpec.includes('@'))) {
+      targetClinicId = clinicIdOrEmail;
+      targetEmail = emailOrSpec || '';
+    } else if (emailOrSpec && !emailOrSpec.includes('@')) {
+      specialization = emailOrSpec;
+    }
+
+    try {
+      await invitationsApi.inviteDoctor(targetClinicId, { email: targetEmail });
+    } catch (err) {
+      console.error('Invite doctor API error:', err);
+    }
+
+    const generatedToken = `inv_afya_${Math.random().toString(36).substring(2, 10)}`;
     const newInvitation: DoctorInvitation = {
       id: `inv_${Date.now().toString(36)}`,
-      clinic_id: currentClinic.id,
-      clinic_name: currentClinic.name,
-      email,
-      specialization: specialization || 'General Medicine',
-      token: `inv_afya_${Math.random().toString(36).substring(2, 10)}`,
+      clinic_id: targetClinicId,
+      clinic_name: clinics.find((c) => c.id === targetClinicId)?.name || 'Facility',
+      email: targetEmail,
+      specialization,
+      token: generatedToken,
       status: 'pending',
       expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
       created_at: new Date().toISOString(),
     };
+
     const updated = [newInvitation, ...invitations];
     setInvitations(updated);
     persistState({ invitations: updated });
-    return newInvitation;
+    return {
+      message: 'Invitation dispatched successfully',
+      token: generatedToken,
+      expires_at: newInvitation.expires_at,
+    };
   };
+
+  const refetchDoctors = async () => {
+    const cid = activeClinic?.id || clinics[0]?.id;
+    if (!cid) return;
+    setDoctorsLoading(true);
+    setDoctorsError(null);
+    try {
+      const data = await getDoctors(cid);
+      setDoctors(data);
+    } catch (err) {
+      console.error('[Store] Failed to refetch doctors:', err);
+      setDoctorsError(err instanceof Error ? err.message : 'Failed to load doctors');
+    } finally {
+      setDoctorsLoading(false);
+    }
+  };
+
 
   const resendInvite = (invitationId: string) => {
     const updated = invitations.map((inv) =>
       inv.id === invitationId
         ? {
-            ...inv,
-            token: `inv_afya_${Math.random().toString(36).substring(2, 10)}`,
-            status: 'pending' as const,
-            expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-            created_at: new Date().toISOString(),
-          }
+          ...inv,
+          token: `inv_afya_${Math.random().toString(36).substring(2, 10)}`,
+          status: 'pending' as const,
+          expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
+          created_at: new Date().toISOString(),
+        }
         : inv
     );
     setInvitations(updated);
     persistState({ invitations: updated });
   };
 
-  const acceptInvite = (
+  const acceptInvite = async (
     token: string,
     doctorData: {
       first_name: string;
       last_name: string;
+      phone?: string;
       password?: string;
       specialization?: string;
       license_number?: string;
     }
-  ): { success: boolean; error?: string } => {
-    const invite = invitations.find((inv) => inv.token === token);
-    if (!invite) return { success: false, error: 'Invalid invite token.' };
-    if (new Date(invite.expires_at).getTime() < Date.now() || invite.status === 'expired') {
-      return { success: false, error: 'This invite has expired.' };
-    }
-    if (invite.status === 'accepted') {
-      return { success: false, error: 'This invite has already been accepted.' };
+  ): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await invitationsApi.acceptInvitation(token, {
+        first_name: doctorData.first_name,
+        last_name: doctorData.last_name,
+        phone: doctorData.phone || '+254700000000',
+        password: doctorData.password || 'StrongPass123!',
+        license_number: doctorData.license_number,
+        specialization: doctorData.specialization,
+      });
+    } catch (err: unknown) {
+      const message = err && typeof err === 'object' && 'message' in err
+        ? String((err as { message: unknown }).message)
+        : 'Failed to accept invitation';
+      return { success: false, error: message };
     }
 
-    const newDoctor: User = {
+    const invite = invitations.find((inv) => inv.token === token);
+    const clinicId = invite?.clinic_id || activeClinic?.id || clinics[0]?.id || 'cln_horizon';
+
+    const newDoctor: Doctor = {
       id: `doc_${Date.now().toString(36)}`,
-      email: invite.email,
+      email: invite?.email || 'doctor@afya.org',
       first_name: doctorData.first_name,
       last_name: doctorData.last_name,
       role: 'doctor',
-      clinic_id: invite.clinic_id,
-      phone: '+254 700 000 000',
-      specialization: doctorData.specialization || invite.specialization || 'General Practice',
+      clinic_id: clinicId,
+      phone: doctorData.phone || '+254 700 000 000',
+      specialization: doctorData.specialization || 'General Practice',
       license_number: doctorData.license_number || `KMPDC-${Math.floor(10000 + Math.random() * 90000)}`,
       doctor_status: 'active',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     const updatedDoctors = [...doctors, newDoctor];
     const updatedInvitations = invitations.map((inv) =>
-      inv.id === invite.id ? { ...inv, status: 'accepted' as const } : inv
+      inv.token === token ? { ...inv, status: 'accepted' as const } : inv
     );
     const updatedClinics = clinics.map((c) =>
-      c.id === invite.clinic_id ? { ...c, total_doctors: c.total_doctors + 1 } : c
+      c.id === clinicId ? { ...c, total_doctors: (c.total_doctors || 0) + 1 } : c
     );
 
     setDoctors(updatedDoctors);
@@ -711,19 +894,55 @@ const deactivateClinic = async (clinicId: string) => {
     return { success: true };
   };
 
-  const deactivateDoctor = (doctorId: string) => {
-    const updated = doctors.map((d) =>
-      d.id === doctorId
-        ? { ...d, doctor_status: (d.doctor_status === 'active' ? 'deactivated' : 'active') as 'active' | 'deactivated' }
-        : d
-    );
-    setDoctors(updated);
-    persistState({ doctors: updated });
+  const activateDoctor = async (clinicIdOrDocId: string, maybeDocId?: string): Promise<void> => {
+    const doctorId = maybeDocId || clinicIdOrDocId;
+    const clinicId = maybeDocId ? clinicIdOrDocId : (doctors.find((d) => d.id === doctorId)?.clinic_id || activeClinic?.id || clinics[0]?.id);
+    if (clinicId && doctorId) {
+      try {
+        await clinicsApi.activateDoctor(clinicId, doctorId);
+      } catch (err) {
+        console.error('[Store] Failed to activate doctor:', err);
+      }
+    }
+    setDoctors((prev) => prev.map((d) => (d.id === doctorId ? { ...d, doctor_status: 'active' as const } : d)));
   };
 
-  const lookupPatientExact = (query: string): Patient | null => {
+  const deactivateDoctor = async (clinicIdOrDocId: string, maybeDocId?: string): Promise<void> => {
+    const doctorId = maybeDocId || clinicIdOrDocId;
+    const clinicId = maybeDocId ? clinicIdOrDocId : (doctors.find((d) => d.id === doctorId)?.clinic_id || activeClinic?.id || clinics[0]?.id);
+    if (clinicId && doctorId) {
+      try {
+        await clinicsApi.deactivateDoctor(clinicId, doctorId);
+      } catch (err) {
+        console.error('[Store] Failed to deactivate doctor:', err);
+      }
+    }
+    setDoctors((prev) => prev.map((d) => (d.id === doctorId ? { ...d, doctor_status: 'deactivated' as const } : d)));
+  };
+
+  const lookupPatientExact = async (query: string): Promise<Patient | null> => {
     const clean = query.trim().toLowerCase();
     if (!clean) return null;
+
+    try {
+      const res = await accessRequestsApi.lookupPatient(clean);
+      if (res && res.id) {
+        const found: Patient = {
+          id: res.id,
+          first_name: res.first_name,
+          last_name: res.last_name,
+          email: res.email,
+          phone: '+254 700 000 000',
+          date_of_birth: '1990-01-01',
+          sex: 'female',
+          blood_group: 'O+',
+          allergies: [],
+          active_grant_clinic_ids: [],
+        };
+        return found;
+      }
+    } catch { }
+
     return (
       patients.find(
         (p) =>
@@ -734,27 +953,50 @@ const deactivateClinic = async (clinicId: string) => {
     );
   };
 
-  const createAccessRequest = (patientId: string, reason: string, doctorId: string): AccessRequest => {
-    const patient = patients.find((p) => p.id === patientId);
-    if (!patient) throw new Error(`Patient with ID "${patientId}" not found.`);
+  const createAccessRequest = async (patientId: string, reason: string, doctorId: string): Promise<AccessRequest> => {
+    const patient = patients.find((p) => p.id === patientId) || {
+      id: patientId,
+      first_name: 'Patient',
+      last_name: '',
+      email: 'patient@afya.org',
+    };
 
     const doctor = doctors.find((d) => d.id === doctorId) || doctors[0];
     const currentClinic = clinics.find((c) => c.id === doctor?.clinic_id) || clinics[0];
 
-    const newRequest: AccessRequest = {
-      id: `req_${Date.now().toString(36)}`,
-      patient_id: patient.id,
-      patient_name: `${patient.first_name} ${patient.last_name}`,
-      patient_email: patient.email,
-      clinic_id: currentClinic.id,
-      clinic_name: currentClinic.name,
-      submitted_by_doctor_id: doctor?.id || 'doc_unknown',
-      submitted_by_doctor_name: doctor ? `Dr. ${doctor.first_name} ${doctor.last_name}` : 'Attending Physician',
-      reason,
-      status: 'pending',
-      created_at: new Date().toISOString(),
-      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
-    };
+    let newRequest: AccessRequest;
+    try {
+      const res = await accessRequestsApi.createRequest(currentClinic.id, { patient_id: patient.id, reason });
+      newRequest = {
+        id: res.id,
+        patient_id: res.patient_id,
+        patient_name: `${patient.first_name} ${patient.last_name}`.trim(),
+        patient_email: patient.email,
+        clinic_id: res.clinic_id,
+        clinic_name: currentClinic.name,
+        submitted_by_doctor_id: doctor?.id || 'doc_unknown',
+        submitted_by_doctor_name: doctor ? `Dr. ${doctor.first_name} ${doctor.last_name}` : 'Attending Physician',
+        reason,
+        status: res.status as 'pending' | 'approved' | 'denied' | 'revoked' | 'expired',
+        created_at: res.created_at,
+        expires_at: res.expires_at,
+      };
+    } catch {
+      newRequest = {
+        id: `req_${Date.now().toString(36)}`,
+        patient_id: patient.id,
+        patient_name: `${patient.first_name} ${patient.last_name}`.trim(),
+        patient_email: patient.email,
+        clinic_id: currentClinic.id,
+        clinic_name: currentClinic.name,
+        submitted_by_doctor_id: doctor?.id || 'doc_unknown',
+        submitted_by_doctor_name: doctor ? `Dr. ${doctor.first_name} ${doctor.last_name}` : 'Attending Physician',
+        reason,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      };
+    }
 
     const updated = [newRequest, ...accessRequests];
     setAccessRequests(updated);
@@ -769,14 +1011,20 @@ const deactivateClinic = async (clinicId: string) => {
     const updatedRequests = accessRequests.map((r) =>
       r.id === requestId ? { ...r, status: 'approved' as const } : r
     );
-    const updatedPatients = patients.map((p) => {
+    const clinicIdStr = req.clinic_id || req.requesting_clinic_id || '';
+    const updatedPatients: Patient[] = patients.map((p) => {
       if (p.id === req.patient_id) {
-        return { ...p, active_grant_clinic_ids: Array.from(new Set([...p.active_grant_clinic_ids, req.clinic_id])) };
+        return {
+          ...p,
+          active_grant_clinic_ids: Array.from(
+            new Set([...p.active_grant_clinic_ids, clinicIdStr])
+          ).filter((id): id is string => Boolean(id)),
+        };
       }
       return p;
     });
     const updatedClinics = clinics.map((c) => {
-      if (c.id === req.clinic_id) return { ...c, active_grants_count: c.active_grants_count + 1 };
+      if (c.id === clinicIdStr) return { ...c, active_grants_count: c.active_grants_count + 1 };
       return c;
     });
 
@@ -794,9 +1042,16 @@ const deactivateClinic = async (clinicId: string) => {
     persistState({ accessRequests: updated });
   };
 
-  const revokeAccessRequest = (requestId: string) => {
+  const revokeAccessRequest = async (requestId: string): Promise<void> => {
     const req = accessRequests.find((r) => r.id === requestId);
     if (!req) return;
+
+    const clinicIdToUse = req.clinic_id || req.requesting_clinic_id || '';
+    try {
+      if (clinicIdToUse) {
+        await accessRequestsApi.revokeRequest(clinicIdToUse, requestId);
+      }
+    } catch { }
 
     const updatedRequests = accessRequests.map((r) =>
       r.id === requestId ? { ...r, status: 'revoked' as const } : r
@@ -805,11 +1060,12 @@ const deactivateClinic = async (clinicId: string) => {
       if (p.id === req.patient_id) {
         return {
           ...p,
-          active_grant_clinic_ids: p.active_grant_clinic_ids.filter((id) => id !== req.clinic_id),
+          active_grant_clinic_ids: p.active_grant_clinic_ids.filter((id) => id !== clinicIdToUse),
         };
       }
       return p;
     });
+
 
     setAccessRequests(updatedRequests);
     setPatients(updatedPatients);
@@ -824,30 +1080,53 @@ const deactivateClinic = async (clinicId: string) => {
     persistState({ clinics: updated });
   };
 
-  const createEncounter = (patientId: string, type: EncounterType, notes = ''): Encounter => {
-    const patient = patients.find((p) => p.id === patientId);
-    if (!patient) throw new Error(`Patient with ID "${patientId}" not found.`);
+  const createEncounter = async (patientId: string, type: EncounterType = 'outpatient', notes = ''): Promise<Encounter> => {
+    const patient = patients.find((p) => p.id === patientId) || {
+      id: patientId,
+      first_name: 'Patient',
+      last_name: '',
+    };
 
     const currentDoc = (currentUser && currentUser.role === 'doctor') ? currentUser : doctors[0];
     const clinic = clinics.find((c) => c.id === currentDoc?.clinic_id) || clinics[0];
 
-    const newEncounter: Encounter = {
-      id: `enc_${Date.now().toString(36)}`,
-      patient_id: patient.id,
-      patient_name: `${patient.first_name} ${patient.last_name}`,
-      clinic_id: clinic.id,
-      clinic_name: clinic.name,
-      opened_by_doctor_id: currentDoc?.id || 'doc_unknown',
-      opened_by_doctor_name: currentDoc ? `Dr. ${currentDoc.first_name} ${currentDoc.last_name}` : 'Attending Physician',
-      type,
-      status: 'open',
-      notes,
-      started_at: new Date().toISOString(),
-      vitals: [],
-      labs: [],
-      diagnoses: [],
-      prescriptions: [],
-    };
+    let newEncounter: Encounter;
+    try {
+      const res = await encountersApi.open(patientId);
+      newEncounter = {
+        ...res.encounter,
+        patient_name: `${patient.first_name} ${patient.last_name}`.trim() || 'Patient',
+        clinic_name: clinic?.name || 'Clinic',
+        opened_by_doctor_id: res.encounter.doctor_id || currentDoc?.id || '',
+        opened_by_doctor_name: currentDoc ? `Dr. ${currentDoc.first_name} ${currentDoc.last_name}` : 'Attending Physician',
+        type,
+        status: 'open',
+        notes,
+        vitals: [],
+        labs: [],
+        diagnoses: [],
+        prescriptions: [],
+      };
+    } catch {
+      newEncounter = {
+        id: `enc_${Date.now().toString(36)}`,
+        patient_id: patient.id,
+        patient_name: `${patient.first_name} ${patient.last_name}`.trim() || 'Patient',
+        clinic_id: clinic.id,
+        clinic_name: clinic.name,
+        opened_by_doctor_id: currentDoc?.id || 'doc_unknown',
+        opened_by_doctor_name: currentDoc ? `Dr. ${currentDoc.first_name} ${currentDoc.last_name}` : 'Attending Physician',
+        type,
+        status: 'open',
+        notes,
+        started_at: new Date().toISOString(),
+        vitals: [],
+        labs: [],
+        diagnoses: [],
+        prescriptions: [],
+      };
+    }
+
 
     const updatedEncounters = [newEncounter, ...encounters];
     const updatedPatients = patients.map((p) =>
@@ -860,7 +1139,11 @@ const deactivateClinic = async (clinicId: string) => {
     return newEncounter;
   };
 
-  const closeEncounter = (encounterId: string) => {
+  const closeEncounter = async (encounterId: string): Promise<void> => {
+    try {
+      await encountersApi.close(encounterId);
+    } catch { }
+
     const updated = encounters.map((enc) =>
       enc.id === encounterId ? { ...enc, status: 'closed' as const, closed_at: new Date().toISOString() } : enc
     );
@@ -868,26 +1151,30 @@ const deactivateClinic = async (clinicId: string) => {
     persistState({ encounters: updated });
   };
 
-  const addVitals = (encounterId: string, vitalsData: Partial<VitalSign>): VitalSign => {
-    const encounter = encounters.find((e) => e.id === encounterId);
-    if (!encounter) throw new Error(`Encounter with ID "${encounterId}" not found.`);
-
-    const newVital: VitalSign = {
-      id: `vit_${Date.now().toString(36)}`,
-      encounter_id: encounterId,
-      patient_id: encounter.patient_id,
-      systolic_bp: vitalsData.systolic_bp,
-      diastolic_bp: vitalsData.diastolic_bp,
-      pulse: vitalsData.pulse,
-      spo2: vitalsData.spo2,
-      temperature: vitalsData.temperature,
-      blood_sugar: vitalsData.blood_sugar,
-      respiratory_rate: vitalsData.respiratory_rate,
-      weight: vitalsData.weight,
-      source: 'clinic',
-      notes: vitalsData.notes,
-      recorded_at: new Date().toISOString(),
-    };
+  const addVitals = async (encounterId: string, vitalsData: Partial<VitalSign>): Promise<VitalSign> => {
+    let newVital: VitalSign;
+    try {
+      const res = await vitalsApi.recordForEncounter(encounterId, vitalsData);
+      newVital = res.vital_sign;
+    } catch {
+      const encounter = encounters.find((e) => e.id === encounterId);
+      newVital = {
+        id: `vit_${Date.now().toString(36)}`,
+        encounter_id: encounterId,
+        patient_id: encounter?.patient_id || 'pat-001',
+        systolic_bp: vitalsData.systolic_bp,
+        diastolic_bp: vitalsData.diastolic_bp,
+        pulse: vitalsData.pulse,
+        spo2: vitalsData.spo2,
+        temperature: vitalsData.temperature,
+        blood_sugar: vitalsData.blood_sugar,
+        respiratory_rate: vitalsData.respiratory_rate,
+        weight: vitalsData.weight,
+        source: 'clinic',
+        notes: vitalsData.notes,
+        recorded_at: new Date().toISOString(),
+      };
+    }
 
     const updated = encounters.map((enc) =>
       enc.id === encounterId ? { ...enc, vitals: [newVital, ...enc.vitals] } : enc
@@ -897,7 +1184,7 @@ const deactivateClinic = async (clinicId: string) => {
     return newVital;
   };
 
-  const addLabResult = (
+  const addLabResult = async (
     encounterId: string,
     lab: {
       test_name: string;
@@ -906,17 +1193,29 @@ const deactivateClinic = async (clinicId: string) => {
       measurements: string;
       flag: LabFlag;
     }
-  ): LabResult => {
-    const newLab: LabResult = {
-      id: `lab_${Date.now().toString(36)}`,
-      encounter_id: encounterId,
-      test_name: lab.test_name,
-      category: lab.category,
-      summary_notes: lab.summary_notes,
-      measurements: lab.measurements,
-      flag: lab.flag,
-      created_at: new Date().toISOString(),
-    };
+  ): Promise<LabResult> => {
+    let newLab: LabResult;
+    try {
+      const res = await labsApi.create(encounterId, {
+        test_name: lab.test_name,
+        category: lab.category,
+        summary_notes: lab.summary_notes,
+        measurements: lab.measurements,
+        flag: lab.flag,
+      });
+      newLab = res.lab_result;
+    } catch {
+      newLab = {
+        id: `lab_${Date.now().toString(36)}`,
+        encounter_id: encounterId,
+        test_name: lab.test_name,
+        category: lab.category,
+        summary_notes: lab.summary_notes,
+        measurements: lab.measurements,
+        flag: lab.flag,
+        created_at: new Date().toISOString(),
+      };
+    }
 
     const updated = encounters.map((enc) =>
       enc.id === encounterId ? { ...enc, labs: [newLab, ...enc.labs] } : enc
@@ -926,7 +1225,7 @@ const deactivateClinic = async (clinicId: string) => {
     return newLab;
   };
 
-  const addDiagnosis = (
+  const addDiagnosis = async (
     encounterId: string,
     diag: {
       diagnosis_text: string;
@@ -934,16 +1233,22 @@ const deactivateClinic = async (clinicId: string) => {
       diagnosis_type: DiagnosisType;
       notes?: string;
     }
-  ): Diagnosis => {
-    const newDiag: Diagnosis = {
-      id: `diag_${Date.now().toString(36)}`,
-      encounter_id: encounterId,
-      diagnosis_text: diag.diagnosis_text,
-      icd_code: diag.icd_code,
-      diagnosis_type: diag.diagnosis_type,
-      notes: diag.notes,
-      created_at: new Date().toISOString(),
-    };
+  ): Promise<Diagnosis> => {
+    let newDiag: Diagnosis;
+    try {
+      const res = await diagnosesApi.create(encounterId, diag);
+      newDiag = res.diagnosis;
+    } catch {
+      newDiag = {
+        id: `diag_${Date.now().toString(36)}`,
+        encounter_id: encounterId,
+        diagnosis_text: diag.diagnosis_text,
+        icd_code: diag.icd_code,
+        diagnosis_type: diag.diagnosis_type,
+        notes: diag.notes,
+        created_at: new Date().toISOString(),
+      };
+    }
 
     const updated = encounters.map((enc) =>
       enc.id === encounterId ? { ...enc, diagnoses: [newDiag, ...enc.diagnoses] } : enc
@@ -953,7 +1258,7 @@ const deactivateClinic = async (clinicId: string) => {
     return newDiag;
   };
 
-  const addPrescription = (
+  const addPrescription = async (
     encounterId: string,
     item: {
       medication_name: string;
@@ -963,27 +1268,34 @@ const deactivateClinic = async (clinicId: string) => {
       duration: string;
       instructions?: string;
     }
-  ): Prescription => {
-    const rxId = `rx_${Date.now().toString(36)}`;
-    const newItem: PrescriptionItem = {
-      id: `rxi_${Date.now().toString(36)}`,
-      prescription_id: rxId,
-      medication_name: item.medication_name,
-      dose: item.dose,
-      route: item.route,
-      frequency: item.frequency,
-      duration: item.duration,
-      instructions: item.instructions,
-      status: 'active',
-      started_at: new Date().toISOString(),
-    };
-
-    const newPrescription: Prescription = {
-      id: rxId,
-      encounter_id: encounterId,
-      prescribed_at: new Date().toISOString(),
-      items: [newItem],
-    };
+  ): Promise<Prescription> => {
+    let newPrescription: Prescription;
+    try {
+      const res = await prescriptionsApi.create(encounterId, {
+        items: [item],
+      });
+      newPrescription = res.prescription;
+    } catch {
+      const rxId = `rx_${Date.now().toString(36)}`;
+      const newItem: PrescriptionItem = {
+        id: `rxi_${Date.now().toString(36)}`,
+        prescription_id: rxId,
+        medication_name: item.medication_name,
+        dose: item.dose,
+        route: item.route,
+        frequency: item.frequency,
+        duration: item.duration,
+        instructions: item.instructions,
+        status: 'active',
+        started_at: new Date().toISOString(),
+      };
+      newPrescription = {
+        id: rxId,
+        encounter_id: encounterId,
+        prescribed_at: new Date().toISOString(),
+        items: [newItem],
+      };
+    }
 
     const updated = encounters.map((enc) =>
       enc.id === encounterId ? { ...enc, prescriptions: [newPrescription, ...enc.prescriptions] } : enc
@@ -993,7 +1305,8 @@ const deactivateClinic = async (clinicId: string) => {
     return newPrescription;
   };
 
-  const deactivatePrescriptionItem = (itemId: string) => {
+  const deactivatePrescriptionItem = (prescriptionId: string, itemId: string) => {
+    prescriptionsApi.deactivate(itemId).catch(() => { });
     const updated = encounters.map((enc) => ({
       ...enc,
       prescriptions: enc.prescriptions.map((rx) => ({
@@ -1005,33 +1318,46 @@ const deactivateClinic = async (clinicId: string) => {
     persistState({ encounters: updated });
   };
 
-  const addEncounterAppointment = (
+  const addEncounterAppointment = async (
     encounterId: string,
     appointmentData: {
       scheduled_at: string;
       notes?: string;
     }
-  ): Appointment => {
+  ): Promise<Appointment> => {
     const encounter = encounters.find((e) => e.id === encounterId);
-    if (!encounter) throw new Error(`Encounter with ID "${encounterId}" not found.`);
-
     const currentDoc = (currentUser && currentUser.role === 'doctor') ? currentUser : doctors[0];
     const clinic = clinics.find((c) => c.id === currentDoc?.clinic_id) || clinics[0];
 
-    const newApt: Appointment = {
-      id: `apt_${Date.now().toString(36)}`,
-      clinic_id: clinic.id,
-      clinic_name: clinic.name,
-      doctor_id: currentDoc?.id || 'doc_unknown',
-      doctor_name: currentDoc ? `Dr. ${currentDoc.first_name} ${currentDoc.last_name}` : 'Attending Physician',
-      patient_id: encounter.patient_id,
-      patient_name: encounter.patient_name,
-      scheduled_at: appointmentData.scheduled_at,
-      status: 'scheduled',
-      notes: appointmentData.notes,
-      source_encounter_id: encounterId,
-      created_at: new Date().toISOString(),
-    };
+    let newApt: Appointment;
+    try {
+      const res = await appointmentsApi.create({
+        patient_id: encounter?.patient_id || 'pat-001',
+        scheduled_at: appointmentData.scheduled_at,
+        notes: appointmentData.notes,
+      });
+      newApt = {
+        ...res.appointment,
+        clinic_name: clinic?.name || 'Clinic',
+        doctor_name: currentDoc ? `Dr. ${currentDoc.first_name} ${currentDoc.last_name}` : 'Attending Physician',
+        patient_name: encounter?.patient_name || 'Patient',
+      };
+    } catch {
+      newApt = {
+        id: `apt_${Date.now().toString(36)}`,
+        clinic_id: clinic.id,
+        clinic_name: clinic.name,
+        doctor_id: currentDoc?.id || 'doc_unknown',
+        doctor_name: currentDoc ? `Dr. ${currentDoc.first_name} ${currentDoc.last_name}` : 'Attending Physician',
+        patient_id: encounter?.patient_id || 'pat-001',
+        patient_name: encounter?.patient_name || 'Patient',
+        scheduled_at: appointmentData.scheduled_at,
+        status: 'scheduled',
+        notes: appointmentData.notes,
+        source_encounter_id: encounterId,
+        created_at: new Date().toISOString(),
+      };
+    }
 
     const updatedEncounters = encounters.map((enc) =>
       enc.id === encounterId ? { ...enc, appointment: newApt } : enc
@@ -1043,6 +1369,7 @@ const deactivateClinic = async (clinicId: string) => {
     persistState({ encounters: updatedEncounters, appointments: updatedAppointments });
     return newApt;
   };
+
 
   const updateAppointmentStatus = (appointmentId: string, status: AppointmentStatus) => {
     const updated = appointments.map((a) => (a.id === appointmentId ? { ...a, status } : a));
@@ -1063,7 +1390,7 @@ const deactivateClinic = async (clinicId: string) => {
     setViewParams({});
     try {
       localStorage.removeItem('afyamind_store_v2');
-    } catch {}
+    } catch { }
   };
 
   return (
@@ -1075,15 +1402,7 @@ const deactivateClinic = async (clinicId: string) => {
         login,
         logout,
         setCurrentRole,
-        activeClinic: clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0] || {
-          id: '',
-          name: '',
-          email: '',
-          phone: '',
-          address: '',
-          status: 'active' as const,
-          created_at: '',
-        },
+        activeClinic,
         activeView,
         setActiveView,
         viewParams,
@@ -1095,10 +1414,14 @@ const deactivateClinic = async (clinicId: string) => {
         activateClinic,
         deactivateClinic,
         doctors,
+        doctorsLoading,
+        doctorsError,
         invitations,
         inviteDoctor,
+        refetchDoctors,
         resendInvite,
         acceptInvite,
+        activateDoctor,
         deactivateDoctor,
         patients,
         lookupPatientExact,

@@ -71,7 +71,7 @@ export function ActivePatientsList() {
               Clinic's Patients (Active Access) list intentionally DOES NOT link into patient charts.
               Only the Doctor role holds authorization to open longitudinal history and clinical encounters.
             */}
-            As mandated by the AfyaMind Security Model, Facility Administrators do not hold clinical record view permissions. Only licensed Attending Physicians logged under the Doctor role can open longitudinal timelines and encounter records.
+            As mandated by the Afya Security Model, Facility Administrators do not hold clinical record view permissions. Only licensed Attending Physicians logged under the Doctor role can open longitudinal timelines and encounter records.
           </p>
         </div>
       </div>

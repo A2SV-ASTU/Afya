@@ -126,6 +126,8 @@ func (mu *mockUserRepo) UpdatePassword(ctx context.Context, id uuid.UUID, passwo
 	return nil
 }
 func (mu *mockUserRepo) DeleteAccount(ctx context.Context, id uuid.UUID) error { return nil }
+func (mu *mockUserRepo) MarkEmailVerified(ctx context.Context, id uuid.UUID) error { return nil }
+
 
 func TestEncounterService_Lifecycle(t *testing.T) {
 	repo := newMockRepository()

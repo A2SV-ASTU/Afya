@@ -56,17 +56,14 @@ void main() {
     mockDashboardCubit = MockDashboardCubit();
     mockVitalsSyncBloc = MockVitalsSyncBloc();
 
-    // Mock the current BLoC state.
     when(() => mockVitalsSyncBloc.state).thenReturn(
       VitalsInitial(),
     );
 
-    // BlocListener needs a non-null stream.
     when(() => mockVitalsSyncBloc.stream).thenAnswer(
       (_) => const Stream<VitalsSyncState>.empty(),
     );
 
-    // DashboardScreen gets VitalsSyncBloc from GetIt.
     final sl = GetIt.instance;
 
     if (sl.isRegistered<VitalsSyncBloc>()) {
@@ -155,6 +152,16 @@ void main() {
 
         // Header
         expect(
+          find.text('Afya'),
+          findsOneWidget,
+        );
+
+        expect(
+          find.byIcon(Icons.notifications_none_rounded),
+          findsOneWidget,
+        );
+
+        expect(
           find.text('Welcome back, Alex!'),
           findsOneWidget,
         );
@@ -172,7 +179,7 @@ void main() {
 
         expect(
           find.text(
-            'No reminders buzzing yet — your dose schedule will land here once it\'s set.',
+            "No reminders buzzing yet — your dose schedule will land here once it's set.",
           ),
           findsOneWidget,
         );
@@ -268,9 +275,7 @@ void main() {
           createWidgetUnderTest(),
         );
 
-        // ------------------------------------------
-        // 1. Verify dashboard button exists
-        // ------------------------------------------
+        // Verify dashboard button exists.
         expect(
           find.text('Log Vital Signs'),
           findsOneWidget,
@@ -281,27 +286,20 @@ void main() {
           findsOneWidget,
         );
 
-        // ------------------------------------------
-        // 2. Tap Log Vital Signs
-        // ------------------------------------------
+        // Tap Log Vital Signs.
         await tester.tap(
           find.text('Log Vital Signs'),
         );
 
-        // Let the dialog build.
         await tester.pumpAndSettle();
 
-        // ------------------------------------------
-        // 3. Verify the actual dialog opened
-        // ------------------------------------------
+        // Verify dialog opened.
         expect(
           find.byType(VitalSignInputDialog),
           findsOneWidget,
         );
 
-        // ------------------------------------------
-        // 4. Verify Save Reading button exists
-        // ------------------------------------------
+        // Verify Save Reading button exists.
         expect(
           find.text('Save Reading'),
           findsOneWidget,

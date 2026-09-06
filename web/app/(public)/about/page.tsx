@@ -17,14 +17,14 @@ export default function AboutPage() {
               Empowering patients with their own health data.
             </h1>
             <p className="text-lg text-gray-600 max-w-lg leading-relaxed mt-2">
-              AfyaMind believes that true wellness begins with understanding. We are building a secure, intuitive platform that puts you at the center of your healthcare journey, ensuring your data is always in your hands.
+              Afya believes that true wellness begins with understanding. We are building a secure, intuitive platform that puts you at the center of your healthcare journey, ensuring your data is always in your hands.
             </p>
           </div>
 
           <div className="relative h-[450px] lg:h-[550px] rounded-[2rem] w-full overflow-hidden shadow-2xl border border-[var(--color-main-border)]/50 group">
             <div className="absolute inset-0 bg-[var(--color-main)]/10 z-10 group-hover:bg-transparent transition-colors duration-500"></div>
             <Image
-              src="https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&q=80&w=1200"
+              src="/images/about-hero.png"
               alt="Modern, collaborative clinical healthcare team in a premium workspace"
               fill
               className="w-full h-full object-cover transform scale-105 group-hover:scale-100 transition-transform duration-700 ease-in-out rounded-2xl"

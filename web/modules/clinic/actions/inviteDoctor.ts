@@ -35,7 +35,7 @@ export async function sendAccessRequestAction(input: AccessRequestInput): Promis
     id: `req-${Date.now()}`,
     patient_id: input.patientId,
     patient_name: 'Selected Patient',
-    patient_email: 'patient@afyamind.org',
+    patient_email: 'patient@afya.org',
     clinic_id: 'cln-01',
     clinic_name: 'St. Jude Healthcare Centre',
     submitted_by_doctor_id: input.doctorId,

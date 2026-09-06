@@ -19,6 +19,18 @@ export function dashboardPathForRole(role: string | undefined): string {
   }
 }
 
+export const PUBLIC_PATHS = new Set([
+  '/',
+  '/about',
+  '/how-it-works',
+  '/features',
+  '/clinics',
+]);
+
+export function isPublicPath(pathname: string): boolean {
+  return PUBLIC_PATHS.has(pathname);
+}
+
 export function isAuthPath(pathname: string): boolean {
   return AUTH_PATHS.has(pathname);
 }

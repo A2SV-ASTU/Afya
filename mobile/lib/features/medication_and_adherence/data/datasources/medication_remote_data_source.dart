@@ -13,7 +13,8 @@ abstract class MedicationRemoteDataSource {
   });
 
   Future<EncounterPrescriptionItemModel> completePrescription({
-    required String prescriptionItemId,
+    required String prescriptionId,
+    String? prescriptionItemId,
   });
 }
 
@@ -48,7 +49,18 @@ class MedicationRemoteDataSourceImpl implements MedicationRemoteDataSource {
           final flattened = <dynamic>[];
           for (final rx in prescriptions) {
             if (rx is Map<String, dynamic> && rx['items'] is List) {
-              flattened.addAll(rx['items'] as List<dynamic>);
+              final parentRxId = rx['id'] ?? rx['ID'];
+              for (final itm in rx['items'] as List<dynamic>) {
+                if (itm is Map) {
+                  final itmMap = Map<String, dynamic>.from(itm);
+                  if (parentRxId != null) {
+                    itmMap['prescription_id'] ??= parentRxId;
+                  }
+                  flattened.add(itmMap);
+                } else {
+                  flattened.add(itm);
+                }
+              }
             }
           }
           items = flattened;
@@ -83,11 +95,15 @@ class MedicationRemoteDataSourceImpl implements MedicationRemoteDataSource {
 
   @override
   Future<EncounterPrescriptionItemModel> completePrescription({
-    required String prescriptionItemId,
+    required String prescriptionId,
+    String? prescriptionItemId,
   }) async {
     try {
       final response = await _dio.patch(
-        ApiEndpoints.completePrescription(prescriptionItemId),
+        ApiEndpoints.completePrescription(prescriptionId),
+        data: prescriptionItemId != null
+            ? {'item_ids': [prescriptionItemId]}
+            : null,
       );
 
       final data = response.data;
@@ -95,16 +111,18 @@ class MedicationRemoteDataSourceImpl implements MedicationRemoteDataSource {
         final payload = data['data'] is Map<String, dynamic>
             ? data['data'] as Map<String, dynamic>
             : data;
-        if (payload.containsKey('medication_name')) {
+        if (payload.containsKey('medication_name') ||
+            payload.containsKey('medicationName')) {
           return EncounterPrescriptionItemModel.fromJson(
             Map<String, dynamic>.from(payload),
           );
         }
       }
 
-      // If backend returns a message or 200/204 without full item body, return synthetic updated model
+      // If backend returns a message or {"status": "completed"} without full item body, return synthetic updated model
       return EncounterPrescriptionItemModel(
-        id: prescriptionItemId,
+        id: prescriptionItemId ?? prescriptionId,
+        prescriptionId: prescriptionId,
         medicationName: '',
         dose: '',
         route: '',

@@ -17,7 +17,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
           <div className="h-12 w-12 rounded-2xl bg-teal-500 flex items-center justify-center font-bold text-slate-950 text-2xl shadow-xl shadow-teal-500/20 mb-3">
             A
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">AfyaMind</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Afya</h1>
           <p className="text-xs ">Unified EMR & Clinic Network</p>
         </div>
 
@@ -31,7 +31,7 @@ export function AuthLayout({ children, title, subtitle }: AuthLayoutProps) {
         </div>
 
         <p className="text-center text-xs text-slate-500 mt-8">
-          &copy; {new Date().getFullYear()} AfyaMind EMR. Secure end-to-end medical records.
+          &copy; {new Date().getFullYear()} Afya EMR. Secure end-to-end medical records.
         </p>
       </div>
     </div>

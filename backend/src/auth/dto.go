@@ -49,3 +49,24 @@ type ResetPasswordRequest struct {
 	// The new password to set (minimum 8 characters)
 	Password string `json:"password" binding:"required,min=8" example:"NewSecurePass123!"`
 }
+
+// VerifyEmailRequest is the request body for POST /auth/verify-email.
+type VerifyEmailRequest struct {
+	// Registered patient email address
+	Email string `json:"email" binding:"required,email" example:"jane.doe@example.com"`
+	// 6-digit verification code received via email
+	OTP string `json:"otp" binding:"required,len=6" example:"123456"`
+}
+
+// ResendOTPRequest is the request body for POST /auth/resend-otp.
+type ResendOTPRequest struct {
+	// Registered patient email address
+	Email string `json:"email" binding:"required,email" example:"jane.doe@example.com"`
+}
+
+// SignupResponse is returned upon successful patient registration.
+type SignupResponse struct {
+	Message string `json:"message" example:"Registration successful. Please verify your email with the 6-digit code sent to your inbox."`
+	Email   string `json:"email" example:"jane.doe@example.com"`
+}
+

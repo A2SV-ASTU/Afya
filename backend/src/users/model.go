@@ -45,7 +45,12 @@ type User struct {
 	LicenseNumber  *string       `json:"license_number,omitempty"`
 	DoctorStatus   *DoctorStatus `json:"doctor_status,omitempty"`
 	InvitedBy      *uuid.UUID    `json:"invited_by,omitempty"`
+	// Email verification status
+	IsEmailVerified bool       `json:"is_email_verified"`
+	EmailVerifiedAt *time.Time `json:"email_verified_at,omitempty"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+
