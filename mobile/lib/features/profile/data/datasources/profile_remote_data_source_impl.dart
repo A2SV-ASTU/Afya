@@ -1,4 +1,5 @@
 import 'package:injectable/injectable.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
 import '../../../../core/network/api_client.dart';
@@ -15,29 +16,45 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   Future<ProfileModel> getProfile() async {
     final response = await apiClient.dio.get(ApiEndpoints.userMe);
 
-    return ProfileModel.fromJson(response.data);
+    final data = response.data['data'] as Map<String, dynamic>;
+
+    return ProfileModel.fromJson(data);
   }
 
   @override
   Future<ProfileModel> updateDemographics({
     required String firstName,
     required String lastName,
+    String? email,
     String? phone,
     String? gender,
     DateTime? dateOfBirth,
+    String? bloodType,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
   }) async {
     final response = await apiClient.dio.patch(
       ApiEndpoints.userMe,
       data: {
         'first_name': firstName,
         'last_name': lastName,
+        'email': email,
         'phone': phone,
-        'gender': gender,
-        'date_of_birth': dateOfBirth?.toIso8601String(),
+        'sex': gender,
+        'date_of_birth': dateOfBirth == null
+            ? null
+            : DateFormat('yyyy-MM-dd').format(dateOfBirth),
+
+        // Medical / Emergency Information
+        'blood_type': bloodType,
+        'emergency_contact_name': emergencyContactName,
+        'emergency_contact_phone': emergencyContactPhone,
       },
     );
 
-    return ProfileModel.fromJson(response.data);
+    final data = response.data['data'] as Map<String, dynamic>;
+
+    return ProfileModel.fromJson(data);
   }
 
   @override

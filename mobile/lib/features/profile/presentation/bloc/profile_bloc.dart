@@ -57,8 +57,14 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         firstName: event.firstName,
         lastName: event.lastName,
         phone: event.phone,
+        email: event.email,
         gender: event.gender,
         dateOfBirth: event.dateOfBirth,
+
+        // Medical / Emergency Information
+        bloodType: event.bloodType,
+        emergencyContactName: event.emergencyContactName,
+        emergencyContactPhone: event.emergencyContactPhone,
       );
 
       emit(ProfileUpdated(profile));

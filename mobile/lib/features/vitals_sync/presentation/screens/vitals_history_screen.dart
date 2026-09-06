@@ -353,13 +353,7 @@ class _VitalsHistoryScreenState extends State<VitalsHistoryScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
 
-        leading: IconButton(
-          icon: const Icon(
-            Icons.menu,
-            color: Colors.black87,
-          ),
-          onPressed: () {},
-        ),
+        
 
         title: const Text(
           'Afya',

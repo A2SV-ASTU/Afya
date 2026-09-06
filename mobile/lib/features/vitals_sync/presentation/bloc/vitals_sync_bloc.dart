@@ -30,10 +30,11 @@ class VitalsSyncBloc extends Bloc<VitalsSyncEvent, VitalsSyncState> {
         await saveVital(event.vital);
 
         emit(
-          const VitalSavedOffline(
-            message: 'Vital saved offline',
-          ),
-        );
+  VitalSavedOffline(
+    message: 'Vital saved offline',
+    vital: event.vital,
+  ),
+);
       } catch (e) {
         emit(VitalsError(e.toString()));
       }

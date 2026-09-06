@@ -36,6 +36,13 @@ void main() {
   late MockHistory history;
   late MockGetPendingVitals getPendingVitals;
 
+  final testVital = VitalSignEntity(
+    clientId: '1',
+    pulse: 80,
+    source: 'patient',
+    recordedAt: testRecordedAt,
+  );
+
   setUpAll(() {
     registerFallbackValue(
       VitalSignEntity(
@@ -78,19 +85,13 @@ void main() {
     },
     act: (bloc) {
       bloc.add(
-        SaveVitalEvent(
-          VitalSignEntity(
-            clientId: '1',
-            pulse: 80,
-            source: 'patient',
-            recordedAt: testRecordedAt,
-          ),
-        ),
+        SaveVitalEvent(testVital),
       );
     },
     expect: () => [
-      const VitalSavedOffline(
+      VitalSavedOffline(
         message: 'Vital saved offline',
+        vital: testVital,
       ),
     ],
   );
@@ -118,8 +119,9 @@ void main() {
     expect: () => [
       VitalsSyncing(),
       const VitalsSynced(
-  uploaded: 3,
-),
+        uploaded: 3,
+      ),
     ],
   );
 }
+
