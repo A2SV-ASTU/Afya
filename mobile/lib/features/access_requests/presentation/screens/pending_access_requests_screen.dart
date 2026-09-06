@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/di/injection_container.dart';
 import '../bloc/pending_access_requests_bloc.dart';
 import '../widgets/access_request_card.dart';
@@ -43,6 +44,22 @@ class _PendingAccessRequestsViewState extends State<PendingAccessRequestsView> {
             fontSize: 18,
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              context.push('/profile/active-grants');
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFF014F24),
+              textStyle: const TextStyle(
+                fontFamily: 'Inter',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            child: const Text('View Grants'),
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: BlocConsumer<PendingAccessRequestsBloc, PendingAccessRequestsState>(
         listener: (context, state) {
