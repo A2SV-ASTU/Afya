@@ -9,7 +9,8 @@ import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/afya_error_view.dart';
 import '../../../../core/widgets/afya_loading_indicator.dart';
 import '../../../medication_and_adherence/domain/entities/local_dose_record_entity.dart';
-import '../../../medication_and_adherence/presentation/widgets/log_action_sheet.dart';
+import '../../../medication_and_adherence/presentation/screens/all_medications_screen.dart';
+import '../../../medication_and_adherence/presentation/screens/prescription_detail_screen.dart';
 import '../../../medication_and_adherence/presentation/widgets/today_schedule_card.dart';
 import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
@@ -25,20 +26,25 @@ class DashboardScreen extends StatelessWidget {
     LocalDoseRecordEntity dose,
     DashboardState state,
   ) {
-    final cubit = context.read<DashboardCubit>();
     final matchingRx = state.cachedPrescriptions
         .where((r) => r.id == dose.prescriptionItemId)
         .firstOrNull;
 
-    LogActionSheet.show(
-      context,
-      doseRecord: dose,
-      route: matchingRx?.route,
-      instructions: matchingRx?.instructions,
-      onTaken: (d) => cubit.markDoseTaken(d),
-      onSnooze: (d) => cubit.snoozeDose(d),
-      onSkip: (d, reason) => cubit.skipDose(d, reason),
-    );
+    if (matchingRx != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => PrescriptionDetailScreen(
+            prescription: matchingRx,
+            doctorName: 'Dr. Sarah Kamau',
+            clinicName: 'Nairobi West Hospital',
+          ),
+        ),
+      ).then((_) {
+        if (context.mounted) {
+          context.read<DashboardCubit>().loadDashboard(forceRefresh: true);
+        }
+      });
+    }
   }
 
 
@@ -203,14 +209,27 @@ class DashboardScreen extends StatelessWidget {
                     // 2. Today's Medication Section
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Text(
                           "Today's Medication",
                           style: AppTypography.titleMedium,
                         ),
-                        if (state.todayDoses.isNotEmpty)
+                        if (state.todayDoses.length > 3)
                           GestureDetector(
-                            onTap: () => context.go(RoutePaths.history),
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const AllMedicationsScreen(),
+                                ),
+                              ).then((_) {
+                                if (context.mounted) {
+                                  context
+                                      .read<DashboardCubit>()
+                                      .loadDashboard(forceRefresh: true);
+                                }
+                              });
+                            },
                             child: Text(
                               'View All',
                               style: AppTypography.caption.copyWith(
@@ -223,7 +242,7 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: AppDimensions.space12),
                     TodayScheduleCard(
-                      doses: state.todayDoses,
+                      doses: state.todayDoses.take(3).toList(),
                       title: null,
                       emptyMessage:
                           'No reminders buzzing yet — your dose schedule will land here once it\'s set.',
