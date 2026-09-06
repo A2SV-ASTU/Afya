@@ -1,11 +1,14 @@
 import '../../features/vitals_sync/presentation/bloc/vitals_sync_bloc.dart';
 import '../../features/vitals_sync/presentation/screens/vitals_history_screen.dart';
+import '../../features/chat/presentation/cubit/chat_cubit.dart';
+import '../../features/chat/presentation/screens/chat_screen.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../features/medication_and_adherence/presentation/screens/all_medications_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../core/di/injection_container.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
@@ -39,6 +42,8 @@ final GlobalKey<NavigatorState> _profileNavigatorKey =
 
 @lazySingleton
 class AppRouter {
+  static GlobalKey<NavigatorState> get rootNavigatorKey => _rootNavigatorKey;
+
   late final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: RoutePaths.splash,
@@ -92,6 +97,13 @@ class AppRouter {
         },
       ),
 
+      // Standalone All Medications Route
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: RoutePaths.allMedications,
+        builder: (context, state) => const AllMedicationsScreen(),
+      ),
+
       // Persistent Tab Navigation Shell
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
@@ -126,7 +138,10 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: RoutePaths.chat,
-                builder: (context, state) => const ChatPlaceholderScreen(),
+                builder: (context, state) => BlocProvider(
+                  create: (context) => sl<ChatCubit>()..loadHistory(),
+                  child: const ChatScreen(),
+                ),
               ),
             ],
           ),

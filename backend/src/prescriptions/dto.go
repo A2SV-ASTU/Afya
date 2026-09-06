@@ -5,7 +5,8 @@ type CreatePrescriptionItemRequest struct {
 	Dose           string                `json:"dose"            binding:"required"`
 	Route          PrescriptionRoute     `json:"route"           binding:"required"`
 	Frequency      PrescriptionFrequency `json:"frequency"       binding:"required"`
-	Duration       string                `json:"duration"        binding:"required"`
+	DurationValue  int                   `json:"duration_value" binding:"required,gt=0"`
+	DurationUnit   DurationUnit          `json:"duration_unit"  binding:"required,oneof=day week month year"`
 	Instructions   *string               `json:"instructions"`
 }
 
@@ -19,7 +20,8 @@ type UpdatePrescriptionItemRequest struct {
 	Dose           string                `json:"dose"            binding:"required"`
 	Route          PrescriptionRoute     `json:"route"           binding:"required"`
 	Frequency      PrescriptionFrequency `json:"frequency"       binding:"required"`
-	Duration       string                `json:"duration"        binding:"required"`
+	DurationValue  int                   `json:"duration_value" binding:"required,gt=0"`
+	DurationUnit   DurationUnit          `json:"duration_unit"  binding:"required,oneof=day week month year"`
 	Instructions   *string               `json:"instructions"`
 }
 

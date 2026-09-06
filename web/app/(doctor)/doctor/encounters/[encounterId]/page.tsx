@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+
 import {
   ArrowLeft,
   Activity,
@@ -15,6 +16,8 @@ import {
   Building2,
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
+import { encountersApi } from '@/lib/api/encounters';
+import { Encounter, EncounterType } from '@/types/database';
 import { Button } from '@/modules/core/ui/Button';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
 import { EncounterTabs } from '@/modules/clinical-workspace/components/EncounterTabs';
@@ -35,8 +38,58 @@ export default function EncounterWorkspacePage() {
   const { encounters, closeEncounter } = useStore();
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('vitals');
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [liveEncounter, setLiveEncounter] = useState<Encounter | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const encounter = encounters.find((e) => e.id === encounterId);
+  useEffect(() => {
+    let cancelled = false;
+    if (encounterId) {
+      encountersApi
+        .getById(encounterId)
+        .then((res) => {
+          if (!cancelled && res) {
+            const enc = res.encounter || (res as unknown as Encounter);
+            setLiveEncounter({
+              id: enc.id,
+              patient_id: enc.patient_id,
+              patient_name: res.patient_name || enc.patient_name || 'Patient',
+              clinic_id: enc.clinic_id || '',
+              clinic_name: res.clinic_name || enc.clinic_name || 'Clinic',
+              opened_by_doctor_id: enc.opened_by_doctor_id || enc.doctor_id || '',
+              opened_by_doctor_name: res.doctor_name || enc.opened_by_doctor_name || 'Attending Physician',
+              type: (enc.type as EncounterType) || 'outpatient',
+              status: (enc.status as 'open' | 'closed') || 'open',
+              notes: enc.notes || '',
+              started_at: enc.started_at || enc.created_at || new Date().toISOString(),
+              closed_at: enc.closed_at,
+              vitals: res.vitals || enc.vitals || [],
+              labs: res.labs || enc.labs || [],
+              diagnoses: res.diagnoses || enc.diagnoses || [],
+              prescriptions: res.prescriptions || enc.prescriptions || [],
+            });
+            setIsLoading(false);
+
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setIsLoading(false);
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [encounterId]);
+
+  const encounter = liveEncounter || encounters.find((e) => e.id === encounterId);
+
+  if (!encounter && isLoading) {
+    return (
+      <div className="p-12 text-center bg-white rounded-3xl border border-slate-200">
+        <div className="w-8 h-8 border-3 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs text-slate-500">Loading clinical encounter chart from backend...</p>
+      </div>
+    );
+  }
 
   if (!encounter) {
     return (
@@ -52,10 +105,12 @@ export default function EncounterWorkspacePage() {
 
   const isClosed = encounter.status === 'closed';
 
-  const handleConfirmClose = () => {
-    closeEncounter(encounter.id);
+  const handleConfirmClose = async () => {
+    await closeEncounter(encounter.id);
+    setLiveEncounter((prev) => (prev ? { ...prev, status: 'closed', closed_at: new Date().toISOString() } : prev));
     setShowCloseModal(false);
   };
+
 
   return (
     <div className="space-y-6">

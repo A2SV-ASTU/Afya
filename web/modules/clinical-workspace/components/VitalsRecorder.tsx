@@ -26,10 +26,10 @@ export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    addVitals(encounter.id, {
+    await addVitals(encounter.id, {
       systolic_bp: systolic ? parseInt(systolic, 10) : undefined,
       diastolic_bp: diastolic ? parseInt(diastolic, 10) : undefined,
       pulse: pulse ? parseInt(pulse, 10) : undefined,
@@ -45,6 +45,7 @@ export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
     if (onSaved) onSaved();
     setTimeout(() => setIsSaved(false), 3000);
   };
+
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">

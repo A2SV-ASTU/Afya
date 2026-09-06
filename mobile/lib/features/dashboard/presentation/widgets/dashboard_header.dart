@@ -23,48 +23,23 @@ class DashboardHeader extends StatelessWidget {
     return 'Welcome back!';
   }
 
-  String get _initials {
-    final first = user?.firstName.trim() ?? '';
-    final last = user?.lastName.trim() ?? '';
-    if (first.isNotEmpty && last.isNotEmpty) {
-      return '${first[0]}${last[0]}'.toUpperCase();
-    } else if (first.isNotEmpty) {
-      return first[0].toUpperCase();
-    }
-    return 'A';
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Top row: Brand / Avatar + Notification bell
+        // Top bar: "Afya" brand title + Notification bell
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: AppColors.primaryLight,
-                  child: Text(
-                    _initials,
-                    style: AppTypography.caption.copyWith(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppDimensions.space8),
-                Text(
-                  'Afya Healthcare',
-                  style: AppTypography.caption.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-              ],
+            Text(
+              'Afya',
+              style: AppTypography.displayLarge.copyWith(
+                color: AppColors.tealPrimary,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
             ),
             IconButton(
               icon: const Icon(
@@ -72,11 +47,13 @@ class DashboardHeader extends StatelessWidget {
                 color: AppColors.textPrimary,
                 size: 24,
               ),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
               onPressed: onNotificationTap,
             ),
           ],
         ),
-        const SizedBox(height: AppDimensions.space16),
+        const SizedBox(height: AppDimensions.space24),
 
         // Welcome Title
         Text(

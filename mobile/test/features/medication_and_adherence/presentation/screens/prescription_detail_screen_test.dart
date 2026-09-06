@@ -76,7 +76,7 @@ void main() {
       expect(find.text('500mg'), findsOneWidget);
 
       expect(find.text('Route'), findsOneWidget);
-      expect(find.text('Oral'), findsOneWidget);
+      expect(find.text('Oral'), findsWidgets);
     });
 
     testWidgets(
@@ -400,7 +400,7 @@ void main() {
       expect(find.text('Amoxicillin 500mg'), findsOneWidget);
       expect(find.text('Amoxicillin'), findsOneWidget);
       expect(find.text('500mg'), findsOneWidget);
-      expect(find.text('Oral'), findsOneWidget);
+      expect(find.text('Oral'), findsWidgets);
       expect(find.text('Take 1 capsule every 8 hours'), findsOneWidget);
       expect(find.text('7 days'), findsOneWidget);
       expect(

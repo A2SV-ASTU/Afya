@@ -16,6 +16,11 @@ import 'package:injectable/injectable.dart' as _i526;
 
 import '../../app/router/app_router.dart' as _i180;
 import '../../app/router/route_guards.dart' as _i469;
+import '../../features/chat/data/datasources/chat_local_data_source.dart' as _i990;
+import '../../features/chat/data/datasources/gemini_remote_data_source.dart' as _i991;
+import '../../features/chat/data/repositories/chat_repository_impl.dart' as _i992;
+import '../../features/chat/domain/repositories/chat_repository.dart' as _i993;
+import '../../features/chat/presentation/cubit/chat_cubit.dart' as _i994;
 import '../../features/access_requests/data/datasources/access_request_remote_data_source.dart'
     as _i718;
 import '../../features/access_requests/data/repositories/access_request_repository_impl.dart'
@@ -104,6 +109,10 @@ import '../../features/medication_and_adherence/domain/usecases/process_missed_d
     as _i779;
 import '../../features/medication_and_adherence/domain/usecases/record_dose_adherence_usecase.dart'
     as _i851;
+import '../../features/medication_and_adherence/domain/usecases/start_medication_tracking_usecase.dart'
+    as _i1046;
+import '../../features/medication_and_adherence/domain/usecases/stop_medication_tracking_usecase.dart'
+    as _i1026;
 import '../../features/profile/data/datasources/profile_remote_data_source.dart'
     as _i847;
 import '../../features/profile/data/datasources/profile_remote_data_source_impl.dart'
@@ -205,6 +214,7 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i718.AccessRequestRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i894.ProfileRepository>(
         () => _i334.ProfileRepositoryImpl(gh<_i847.ProfileRemoteDataSource>()));
+
     gh.lazySingleton<_i854.CancelPrescriptionRemindersUseCase>(
         () => _i854.CancelPrescriptionRemindersUseCase(
               gh<_i894.MedicationLocalDataSource>(),
@@ -276,6 +286,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i438.AccessRequestRepository>(() =>
         _i345.AccessRequestRepositoryImpl(
             remoteDataSource: gh<_i718.AccessRequestRemoteDataSource>()));
+    gh.lazySingleton<_i1046.StartMedicationTrackingUseCase>(
+        () => _i1046.StartMedicationTrackingUseCase(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i492.GenerateDoseScheduleUseCase>(),
+              gh<_i949.LocalAlarmScheduler>(),
+            ));
     gh.lazySingleton<_i719.ApproveAccessRequestUseCase>(() =>
         _i719.ApproveAccessRequestUseCase(gh<_i438.AccessRequestRepository>()));
     gh.lazySingleton<_i998.DenyAccessRequestUseCase>(() =>
@@ -295,6 +311,11 @@ extension GetItInjectableX on _i174.GetIt {
           loginWithPinUseCase: gh<_i519.LoginWithPinUseCase>(),
           setPinUseCase: gh<_i313.SetPinUseCase>(),
         ));
+    gh.lazySingleton<_i1026.StopMedicationTrackingUseCase>(
+        () => _i1026.StopMedicationTrackingUseCase(
+              gh<_i894.MedicationLocalDataSource>(),
+              gh<_i854.CancelPrescriptionRemindersUseCase>(),
+            ));
     gh.lazySingleton<_i735.MedicationRepository>(
         () => _i106.MedicationRepositoryImpl(
               remoteDataSource: gh<_i1022.MedicationRemoteDataSource>(),
@@ -373,6 +394,16 @@ extension GetItInjectableX on _i174.GetIt {
         ));
     gh.factory<_i584.AppointmentsCubit>(() => _i584.AppointmentsCubit(
         getAppointmentsUseCase: gh<_i702.GetAppointmentsUseCase>()));
+    gh.lazySingleton<_i990.ChatLocalDataSource>(
+        () => _i990.ChatLocalDataSourceImpl());
+    gh.lazySingleton<_i991.GeminiRemoteDataSource>(
+        () => _i991.GeminiRemoteDataSourceImpl());
+    gh.lazySingleton<_i993.ChatRepository>(() => _i992.ChatRepositoryImpl(
+          localDataSource: gh<_i990.ChatLocalDataSource>(),
+          remoteDataSource: gh<_i991.GeminiRemoteDataSource>(),
+        ));
+    gh.factory<_i994.ChatCubit>(
+        () => _i994.ChatCubit(repository: gh<_i993.ChatRepository>()));
     return this;
   }
 }

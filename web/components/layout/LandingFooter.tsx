@@ -10,7 +10,7 @@ export function LandingFooter() {
           <div className="md:col-span-2">
             <Link href="/" className="flex items-center gap-2">
               <Shield className="h-6 w-6 text-[var(--color-main)]" />
-              <span className="font-manrope text-xl font-bold text-[var(--color-main-dark)]">AfyaMind</span>
+              <span className="font-manrope text-xl font-bold text-[var(--color-main-dark)]">Afya</span>
             </Link>
             <p className="mt-4 max-w-sm text-sm leading-relaxed text-gray-600">
               Transforming healthcare transparency through AI-driven record accessibility and patient-centric design.
@@ -20,7 +20,7 @@ export function LandingFooter() {
           <div>
             <h4 className="font-manrope font-semibold text-gray-900">Contact</h4>
             <ul className="mt-4 space-y-2 text-sm text-gray-600">
-              <li>support@afyamind.com</li>
+              <li>support@afya.com</li>
               <li>+251 911 000 000</li>
             </ul>
           </div>
@@ -37,7 +37,7 @@ export function LandingFooter() {
 
         <div className="mt-16 flex flex-col items-center justify-between border-t border-[var(--color-main-light)] pt-8 sm:flex-row">
           <p className="text-xs text-gray-500">
-            © 2026 AfyaMind. All rights reserved.
+            © 2026 Afya. All rights reserved.
           </p>
           <p className="mt-4 text-xs text-gray-500 sm:mt-0">
             An AI For Healing Project • Built with Transparency

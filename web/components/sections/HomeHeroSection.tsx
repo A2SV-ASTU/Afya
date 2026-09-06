@@ -8,7 +8,7 @@ export function HomeHeroSection() {
         <img
           src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&q=80&w=2000"
           alt="Secure clinical workspace"
-          className="h-full w-full object-cover opacity-[0.12] mix-blend-multiply"
+          className="h-full w-full object-cover opacity-60 mix-blend-multiply"
         />
         <div className="absolute inset-0 bg-gradient-to-b from-[var(--color-canvas)]/30 via-transparent to-[var(--color-canvas)]" />
       </div>

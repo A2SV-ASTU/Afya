@@ -45,4 +45,16 @@ func RegisterRoutes(r *gin.RouterGroup, handler *Handler, jwtSecret string) {
 			handler.DeactivatePrescription,
 		)
 	}
+
+	// Patient-scoped prescription history
+	patientRx := r.Group("/patients/:patientId/prescriptions")
+	patientRx.Use(middleware.RequireAuth(jwtSecret))
+	{
+		patientRx.GET("",
+			middleware.RequireRole("doctor", "patient"),
+			accessrequests.AccessGuard(sharedAuth.DB),
+			handler.ListPatientPrescriptions,
+		)
+	}
 }
+

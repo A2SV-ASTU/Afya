@@ -7,6 +7,11 @@ class PatientProfileEntity {
   final DateTime? dateOfBirth;
   final String? gender;
 
+  // Medical / Emergency Information
+  final String? bloodType;
+  final String? emergencyContactName;
+  final String? emergencyContactPhone;
+
   const PatientProfileEntity({
     required this.id,
     required this.firstName,
@@ -15,5 +20,8 @@ class PatientProfileEntity {
     this.phone,
     this.dateOfBirth,
     this.gender,
+    this.bloodType,
+    this.emergencyContactName,
+    this.emergencyContactPhone,
   });
 }

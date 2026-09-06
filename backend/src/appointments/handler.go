@@ -94,3 +94,48 @@ func (h *Handler) GetPatientAppointments(c *gin.Context) {
 
 	response.List(c, http.StatusOK, "appointments", appointments)
 }
+
+// UpdateAppointmentStatus godoc
+//
+//	@Summary		Update appointment status
+//	@Description	Updates the status of an appointment (e.g. attended, missed, cancelled). Requires doctor role.
+//	@Tags			Appointments
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id		path		string										true	"Appointment UUID"
+//	@Param			body	body		appointments.UpdateAppointmentStatusRequest	true	"New appointment status"
+//	@Success		200		{object}	response.DataEnvelope{data=appointments.Appointment}	"Appointment updated"
+//	@Failure		400		{object}	response.ErrorEnvelope						"Validation/ID error"
+//	@Failure		401		{object}	response.ErrorEnvelope						"Not authenticated"
+//	@Failure		403		{object}	response.ErrorEnvelope						"Forbidden role"
+//	@Failure		404		{object}	response.ErrorEnvelope						"Appointment not found"
+//	@Router			/appointments/{id}/status [patch]
+func (h *Handler) UpdateAppointmentStatus(c *gin.Context) {
+	user, err := auth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	apptIDParam := c.Param("id")
+	apptID, err := uuid.Parse(apptIDParam)
+	if err != nil {
+		response.SendError(c, errors.ErrValidationError("invalid appointment ID"))
+		return
+	}
+
+	var req UpdateAppointmentStatusRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.SendError(c, errors.ErrValidationError(""))
+		return
+	}
+
+	appt, err := h.service.UpdateAppointmentStatus(c.Request.Context(), user, apptID, req)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	response.JSON(c, http.StatusOK, gin.H{"appointment": appt})
+}

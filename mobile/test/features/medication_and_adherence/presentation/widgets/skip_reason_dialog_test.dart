@@ -23,11 +23,9 @@ void main() {
         ),
       );
 
-      expect(find.text('Skip Dose'), findsOneWidget);
+      expect(find.text('Skip this dose?'), findsOneWidget);
       expect(
-        find.text(
-          'Please provide a reason for skipping this dose. This helps your care team track your treatment accurately.',
-        ),
+        find.text('Why are you skipping this dose?'),
         findsOneWidget,
       );
       expect(find.text('Reason for skipping'), findsOneWidget);

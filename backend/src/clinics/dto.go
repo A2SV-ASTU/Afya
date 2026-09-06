@@ -47,3 +47,9 @@ type InvitationResponse struct {
 	AcceptedAt *time.Time `json:"accepted_at"`
 	CreatedAt  time.Time  `json:"created_at"`
 }
+
+// UpdateDoctorProfileRequest is the request body for PATCH /clinics/:clinicId/doctors/:doctorId.
+type UpdateDoctorProfileRequest struct {
+	Specialization *string `json:"specialization,omitempty" example:"Cardiology"`
+	LicenseNumber  *string `json:"license_number,omitempty" example:"LIC-98765"`
+}

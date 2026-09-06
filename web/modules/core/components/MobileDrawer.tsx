@@ -27,7 +27,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
             <div className="w-8 h-8 rounded-lg bg-[#388E3C] flex items-center justify-center text-white font-bold text-sm">
               <Activity className="w-4 h-4" />
             </div>
-            <span className="font-bold text-base text-slate-900">AfyaMind</span>
+            <span className="font-bold text-base text-slate-900">Afya</span>
           </div>
           <button
             type="button"

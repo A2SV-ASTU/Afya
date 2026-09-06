@@ -45,16 +45,17 @@ export function NewAccessRequest() {
     expires_at: string;
   } | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!reason.trim() || !patient) return;
 
-    const req = createAccessRequest(patient.id, reason, submittingDoctorId);
+    const req = await createAccessRequest(patient.id, reason, submittingDoctorId);
     setSubmittedRequest({
       id: req.id,
       expires_at: req.expires_at,
     });
   };
+
 
   return (
     <div id="new-access-request-page" className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">

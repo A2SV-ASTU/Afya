@@ -106,14 +106,19 @@ export default function NewEncounterPage() {
     }
   };
 
-  const handleStart = (e: React.FormEvent) => {
+  const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!patientId || !selectedPatient) return;
 
     setIsSubmitting(true);
-    const newEnc = createEncounter(patientId, type, chiefComplaint);
-    router.push(`/doctor/encounters/${newEnc.id}`);
+    try {
+      const newEnc = await createEncounter(patientId, type, chiefComplaint);
+      router.push(`/doctor/encounters/${newEnc.id}`);
+    } catch {
+      setIsSubmitting(false);
+    }
   };
+
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 select-none">

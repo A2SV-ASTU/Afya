@@ -19,21 +19,23 @@ import (
 
 type mockPrescriptionRepo struct {
 	// stubbed returns
-	encounterStatus          string
-	encounterStatusErr       error
+	encounterStatus           string
+	encounterStatusErr        error
 	encounterIDByPrescription uuid.UUID
-	encounterIDErr           error
-	createWithItemsErr       error
-	listByEncounterResult    []Prescription
-	listByEncounterErr       error
-	findItemsResult          []PrescriptionItem
-	findItemsErr             error
-	findByIDResult           *Prescription
-	findByIDErr              error
-	updateNotesErr           error
-	replaceItemsErr          error
-	updateItemStatusErr      error
-	updateAllActiveItemsErr  error
+	encounterIDErr            error
+	createWithItemsErr        error
+	listByEncounterResult     []Prescription
+	listByEncounterErr        error
+	listByPatientResult       []Prescription
+	listByPatientErr          error
+	findItemsResult           []PrescriptionItem
+	findItemsErr              error
+	findByIDResult            *Prescription
+	findByIDErr               error
+	updateNotesErr            error
+	replaceItemsErr           error
+	updateItemStatusErr       error
+	updateAllActiveItemsErr   error
 }
 
 func (m *mockPrescriptionRepo) FindEncounterStatus(ctx context.Context, encounterID uuid.UUID) (string, error) {
@@ -83,6 +85,10 @@ func (m *mockPrescriptionRepo) UpdateAllActiveItemsStatus(ctx context.Context, p
 	return m.updateAllActiveItemsErr
 }
 
+func (m *mockPrescriptionRepo) ListByPatientID(ctx context.Context, patientID uuid.UUID, limit, offset int) ([]Prescription, int, error) {
+	return m.listByPatientResult, len(m.listByPatientResult), m.listByPatientErr
+}
+
 // ---------------------------------------------------------------------------
 // noopTx is a test-safe transaction function that calls fn directly with a
 // nil DBTX. This is safe because mockPrescriptionRepo ignores the tx argument.
@@ -110,7 +116,8 @@ func TestCreatePrescription(t *testing.T) {
 				Dose:           "500mg",
 				Route:          RouteOral,
 				Frequency:      FreqTDS,
-				Duration:       "7 days",
+				DurationValue: 7,
+				DurationUnit:  DurationUnitDay,
 			},
 		},
 	}
@@ -304,14 +311,16 @@ func TestUpdatePrescription(t *testing.T) {
 			expectedError: sharedErr.ErrNotFound("prescription").Error(),
 		},
 		{
-			name: "closed encounter is rejected on update",
+			name: "closed encounter prescription update is allowed",
 			user: &auth.UserContext{ID: doctorID, Role: "doctor"},
 			repo: &mockPrescriptionRepo{
 				encounterIDByPrescription: encounterID,
 				encounterStatus:          "closed",
+				findByIDResult:           updatedPrescription,
+				findItemsResult:          []PrescriptionItem{},
 			},
 			req:           UpdatePrescriptionRequest{Notes: &newNotes},
-			expectedError: sharedErr.ErrConflict("encounter is closed; no further edits allowed").Error(),
+			expectedError: "",
 		},
 	}
 

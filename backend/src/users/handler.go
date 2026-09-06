@@ -126,18 +126,25 @@ func (h *Handler) ChangePassword(c *gin.Context) {
 // DeleteMe godoc
 //
 //	@Summary		Delete current user account
-//	@Description	Permanently deletes the authenticated user's account. This action is irreversible.
+//	@Description	Permanently deletes the authenticated user's account (not allowed for super_admin role).
 //	@Tags			Users
 //	@Produce		json
 //	@Security		BearerAuth
 //	@Success		200	{object}	response.MessageEnvelope	"Account deleted"
 //	@Failure		401	{object}	response.ErrorEnvelope		"Not authenticated"
+//	@Failure		403	{object}	response.ErrorEnvelope		"Forbidden for super_admin role"
 //	@Failure		500	{object}	response.ErrorEnvelope		"Internal error"
 //	@Router			/users/me [delete]
 func (h *Handler) DeleteMe(c *gin.Context) {
 	userID, ok := middleware.GetUserID(c)
 	if !ok {
 		response.RespondAppError(c, appErrors.ErrUnauthenticated())
+		return
+	}
+
+	role, ok := middleware.GetUserRole(c)
+	if ok && role == string(RoleSuperAdmin) {
+		response.RespondAppError(c, appErrors.ErrForbiddenRole())
 		return
 	}
 

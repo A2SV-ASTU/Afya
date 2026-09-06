@@ -24,6 +24,7 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 	clinicAdminGroup := clinicsGroup.Group("/:clinicId/doctors/:doctorId")
 	clinicAdminGroup.Use(middleware.RequireRole("clinic_admin"))
 	{
+		clinicAdminGroup.PATCH("", handler.UpdateDoctorProfile)
 		clinicAdminGroup.PATCH("/deactivate", handler.DeactivateDoctor)
 		clinicAdminGroup.PATCH("/activate", handler.ActivateDoctor)
 	}

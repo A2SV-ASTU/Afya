@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { useStore } from '@/lib/store';
 import { StatCard } from '@/components/ui/StatCard';
 import { StatusBadge } from '@/components/ui/Badge';
@@ -18,6 +19,7 @@ import {
   AlertCircle,
   Sparkles,
 } from 'lucide-react';
+import { getAccessRequestPatientName } from '@/types/database';
 
 export function ClinicDashboard() {
   const {
@@ -109,7 +111,7 @@ export function ClinicDashboard() {
       </div>
 
       {/* Hero Quick Action Banner */}
-      <div className="bg-gradient-to-r from-[#1B5E20] via-[#2E7D32] to-[#388E3C] p-6 md:p-8 rounded-3xl text-white shadow-lg shadow-[#388E3C]/15 relative overflow-hidden">
+      <div className="bg-linear-to-r from-[#1B5E20] via-[#2E7D32] to-[#388E3C] p-6 md:p-8 rounded-3xl text-white shadow-lg shadow-[#388E3C]/15 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1 max-w-xl">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 text-white/90 text-xs font-semibold rounded-full backdrop-blur-xs mb-2">
@@ -185,7 +187,7 @@ export function ClinicDashboard() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900">{req.patient_name}</span>
+                          <span className="text-xs font-bold text-slate-900">{getAccessRequestPatientName(req)}</span>
                           <StatusBadge variant={req.status}>{req.status}</StatusBadge>
                         </div>
                         <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{req.reason}</p>
@@ -210,14 +212,13 @@ export function ClinicDashboard() {
           <div className="space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <h3 className="text-base font-bold text-slate-900">Physicians on Roster</h3>
-              <button
+              <Link
                 id="manage-doctors-link"
-                type="button"
-                onClick={() => navigateTo('clinic-doctors')}
+                href="/clinic/doctors"
                 className="text-xs font-semibold text-[#2E7D32] hover:text-[#1B5E20] cursor-pointer"
               >
                 Manage
-              </button>
+              </Link>
             </div>
 
             <div className="space-y-2.5">
@@ -239,15 +240,14 @@ export function ClinicDashboard() {
             </div>
           </div>
 
-          <button
+          <Link
             id="sidebar-invite-physician-btn"
-            type="button"
-            onClick={() => navigateTo('clinic-doctors', { openInvite: true })}
+            href="/clinic/doctors"
             className="w-full py-2.5 bg-[#E8F5E9] text-[#2E7D32] hover:bg-[#C8E6C9] font-semibold rounded-xl text-xs border border-[#C8E6C9] transition-colors flex items-center justify-center gap-2 cursor-pointer mt-4"
           >
             <UserPlus className="w-3.5 h-3.5 text-[#388E3C]" />
             <span>Invite New Physician</span>
-          </button>
+          </Link>
         </div>
       </div>
     </div>

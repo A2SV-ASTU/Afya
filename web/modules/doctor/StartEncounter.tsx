@@ -120,11 +120,11 @@ export function StartEncounter() {
     }
   };
 
-  const handleStart = (e: React.FormEvent) => {
+  const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPatientId || !selectedPatient) return;
 
-    const newEncounter = createEncounter(
+    const newEncounter = await createEncounter(
       selectedPatient.id,
       encounterType,
       chiefComplaint
@@ -132,6 +132,7 @@ export function StartEncounter() {
 
     navigateTo('doctor-encounter-workspace', { encounterId: newEncounter.id });
   };
+
 
   return (
     <div id="start-encounter-page" className="p-6 md:p-8 max-w-3xl mx-auto space-y-6 select-none">

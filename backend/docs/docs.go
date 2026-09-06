@@ -22,6 +22,122 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/access-requests/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Patient approves a pending access request.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "Approve an access request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Access Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Access request approved",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Not the target patient",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Request not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/access-requests/{id}/deny": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Patient denies a pending access request.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "Deny an access request",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Access Request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Access request denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Not the target patient",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Request not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/appointments": {
             "post": {
                 "security": [
@@ -47,7 +163,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/appointments.CreateAppointmentRequest"
+                            "$ref": "#/definitions/src_appointments.CreateAppointmentRequest"
                         }
                     }
                 ],
@@ -57,13 +173,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/appointments.Appointment"
+                                            "$ref": "#/definitions/src_appointments.Appointment"
                                         }
                                     }
                                 }
@@ -73,13 +189,95 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/appointments/{id}/status": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates the status of an appointment (e.g. attended, missed, cancelled). Requires doctor role.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Appointments"
+                ],
+                "summary": "Update appointment status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Appointment UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New appointment status",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_appointments.UpdateAppointmentStatusRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Appointment updated",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/src_appointments.Appointment"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation/ID error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden role",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Appointment not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -105,7 +303,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.ForgotPasswordRequest"
+                            "$ref": "#/definitions/src_auth.ForgotPasswordRequest"
                         }
                     }
                 ],
@@ -113,13 +311,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Request processed successfully",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -145,7 +343,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.LoginRequest"
+                            "$ref": "#/definitions/src_auth.LoginRequest"
                         }
                     }
                 ],
@@ -155,13 +353,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/users.UserResponse"
+                                            "$ref": "#/definitions/afyamind-backend_src_users.UserResponse"
                                         }
                                     }
                                 }
@@ -171,13 +369,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Invalid credentials",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -202,13 +400,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Logged out",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -233,7 +431,7 @@ const docTemplate = `{
                         "name": "body",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/auth.RefreshRequest"
+                            "$ref": "#/definitions/src_auth.RefreshRequest"
                         }
                     }
                 ],
@@ -241,13 +439,13 @@ const docTemplate = `{
                     "200": {
                         "description": "Token refreshed",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "401": {
                         "description": "Missing or invalid refresh token",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -255,7 +453,7 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "Creates a new patient account and sets HttpOnly JWT cookies (access_token + refresh_token).\nAlso aliased at POST /auth/signup.",
+                "description": "Creates a new unverified patient account and sends a 6-digit verification code to their email.\nAlso aliased at POST /auth/signup.",
                 "consumes": [
                     "application/json"
                 ],
@@ -273,23 +471,23 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.SignupRequest"
+                            "$ref": "#/definitions/src_auth.SignupRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Account created",
+                        "description": "Account created, verification required",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/users.UserResponse"
+                                            "$ref": "#/definitions/src_auth.SignupResponse"
                                         }
                                     }
                                 }
@@ -299,13 +497,65 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "409": {
                         "description": "Email or phone already in use",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/resend-otp": {
+            "post": {
+                "description": "Resends a fresh 6-digit verification code to the patient's registered email (rate-limited).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Resend email verification code",
+                "parameters": [
+                    {
+                        "description": "Email address payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_auth.ResendOTPRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Verification code sent",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "User not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already verified or cooldown active",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -331,7 +581,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/auth.ResetPasswordRequest"
+                            "$ref": "#/definitions/src_auth.ResetPasswordRequest"
                         }
                     }
                 ],
@@ -339,13 +589,123 @@ const docTemplate = `{
                     "200": {
                         "description": "Password has been reset successfully",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/signup": {
+            "post": {
+                "description": "Creates a new unverified patient account and sends a 6-digit verification code to their email.\nAlso aliased at POST /auth/signup.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Register a new patient account",
+                "parameters": [
+                    {
+                        "description": "Patient registration payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_auth.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Account created, verification required",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/src_auth.SignupResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "409": {
+                        "description": "Email or phone already in use",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/verify-email": {
+            "post": {
+                "description": "Verifies patient email address using 6-digit OTP code and sets HttpOnly JWT cookies.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Verify patient email address",
+                "parameters": [
+                    {
+                        "description": "Email and OTP verification payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_auth.VerifyEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Email verified and authenticated",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/afyamind-backend_src_users.UserResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid or expired OTP",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -372,7 +732,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
@@ -380,7 +740,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/clinics.Clinic"
+                                                "$ref": "#/definitions/src_clinics.Clinic"
                                             }
                                         }
                                     }
@@ -391,13 +751,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "No clinics found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -426,7 +786,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/clinics.CreateClinicRequest"
+                            "$ref": "#/definitions/src_clinics.CreateClinicRequest"
                         }
                     }
                 ],
@@ -434,25 +794,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Clinic created successfully",
                         "schema": {
-                            "$ref": "#/definitions/clinics.Clinic"
+                            "$ref": "#/definitions/src_clinics.Clinic"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "409": {
                         "description": "Clinic email already registered or status conflict",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -488,13 +848,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/clinics.Clinic"
+                                            "$ref": "#/definitions/src_clinics.Clinic"
                                         }
                                     }
                                 }
@@ -504,13 +864,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -552,7 +912,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
@@ -560,7 +920,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/accessrequests.AccessRequest"
+                                                "$ref": "#/definitions/src_access-requests.AccessRequest"
                                             }
                                         }
                                     }
@@ -571,19 +931,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden — unauthorized for clinic",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -619,7 +979,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/accessrequests.CreateAccessRequestRequest"
+                            "$ref": "#/definitions/src_access-requests.CreateAccessRequestRequest"
                         }
                     }
                 ],
@@ -627,25 +987,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Access request created",
                         "schema": {
-                            "$ref": "#/definitions/accessrequests.AccessRequest"
+                            "$ref": "#/definitions/src_access-requests.AccessRequest"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Patient not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -686,31 +1046,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Access request revoked",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden — unauthorized for clinic",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "409": {
                         "description": "Request not currently active/approved",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -744,25 +1104,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Clinic activated successfully",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Clinic not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -796,25 +1156,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Clinic deactivated successfully",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Invalid UUID format",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Clinic not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -850,7 +1210,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
@@ -858,7 +1218,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/clinics.DoctorResponse"
+                                                "$ref": "#/definitions/src_clinics.DoctorResponse"
                                             }
                                         }
                                     }
@@ -869,13 +1229,90 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/clinics/{clinicId}/doctors/{doctorId}": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Updates a doctor's specialization and/or license number in the specified clinic. Clinic admin only.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Clinics"
+                ],
+                "summary": "Update doctor specialization and/or license number",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clinic ID",
+                        "name": "clinicId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Doctor ID",
+                        "name": "doctorId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Doctor profile update payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src_clinics.UpdateDoctorProfileRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Doctor profile updated successfully",
+                        "schema": {
+                            "$ref": "#/definitions/src_clinics.DoctorResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden — unauthorized for clinic",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "Doctor not found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -916,31 +1353,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Doctor activated successfully",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden — unauthorized for clinic",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Doctor not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -981,31 +1418,31 @@ const docTemplate = `{
                     "200": {
                         "description": "Doctor deactivated successfully",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden — unauthorized for clinic",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Doctor not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1041,7 +1478,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
@@ -1049,7 +1486,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/clinics.InvitationResponse"
+                                                "$ref": "#/definitions/src_clinics.InvitationResponse"
                                             }
                                         }
                                     }
@@ -1060,13 +1497,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1102,7 +1539,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/invitations.CreateInvitationRequest"
+                            "$ref": "#/definitions/src_invitations.CreateInvitationRequest"
                         }
                     }
                 ],
@@ -1110,25 +1547,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Invitation created successfully",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Unauthorized to invite",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1162,19 +1599,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Encounter details",
                         "schema": {
-                            "$ref": "#/definitions/encounters.AggregatedEncounterResponse"
+                            "$ref": "#/definitions/src_encounters.AggregatedEncounterResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid Encounter ID",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1208,19 +1645,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Clinical evaluation details",
                         "schema": {
-                            "$ref": "#/definitions/clinicalevaluations.ClinicalEvaluationResponse"
+                            "$ref": "#/definitions/src_clinical-evaluations.ClinicalEvaluationResponse"
                         }
                     },
                     "400": {
                         "description": "Validation/ID error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1256,7 +1693,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/clinicalevaluations.CreateClinicalEvaluationRequest"
+                            "$ref": "#/definitions/src_clinical-evaluations.CreateClinicalEvaluationRequest"
                         }
                     }
                 ],
@@ -1264,19 +1701,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Clinical evaluation created",
                         "schema": {
-                            "$ref": "#/definitions/clinicalevaluations.ClinicalEvaluationResponse"
+                            "$ref": "#/definitions/src_clinical-evaluations.ClinicalEvaluationResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1310,19 +1747,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Encounter marked closed",
                         "schema": {
-                            "$ref": "#/definitions/encounters.EncounterResponse"
+                            "$ref": "#/definitions/src_encounters.EncounterResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid Encounter ID",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1358,32 +1795,32 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/diagnoses.Diagnosis"
+                                "$ref": "#/definitions/src_diagnoses.Diagnosis"
                             }
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Encounter not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1419,7 +1856,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/diagnoses.CreateDiagnosisRequest"
+                            "$ref": "#/definitions/src_diagnoses.CreateDiagnosisRequest"
                         }
                     }
                 ],
@@ -1427,37 +1864,37 @@ const docTemplate = `{
                     "201": {
                         "description": "Diagnosis created successfully",
                         "schema": {
-                            "$ref": "#/definitions/diagnoses.Diagnosis"
+                            "$ref": "#/definitions/src_diagnoses.Diagnosis"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Encounter not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "409": {
                         "description": "Encounter is closed",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1493,32 +1930,32 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/labs.LabResult"
+                                "$ref": "#/definitions/src_labs.LabResult"
                             }
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Encounter not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1554,7 +1991,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/labs.CreateLabResultRequest"
+                            "$ref": "#/definitions/src_labs.CreateLabResultRequest"
                         }
                     }
                 ],
@@ -1562,37 +1999,37 @@ const docTemplate = `{
                     "201": {
                         "description": "Lab Result created successfully",
                         "schema": {
-                            "$ref": "#/definitions/labs.LabResult"
+                            "$ref": "#/definitions/src_labs.LabResult"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Encounter not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "409": {
                         "description": "Encounter is closed",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1628,20 +2065,20 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/encounters.MedicalHistoryResponse"
+                                "$ref": "#/definitions/src_encounters.MedicalHistoryResponse"
                             }
                         }
                     },
                     "400": {
                         "description": "Invalid Encounter ID",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1677,26 +2114,26 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/prescriptions.PrescriptionResponse"
+                                "$ref": "#/definitions/src_prescriptions.PrescriptionResponse"
                             }
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden / Access denied",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1732,7 +2169,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/prescriptions.CreatePrescriptionRequest"
+                            "$ref": "#/definitions/src_prescriptions.CreatePrescriptionRequest"
                         }
                     }
                 ],
@@ -1740,25 +2177,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Prescription created successfully",
                         "schema": {
-                            "$ref": "#/definitions/prescriptions.PrescriptionResponse"
+                            "$ref": "#/definitions/src_prescriptions.PrescriptionResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden role / Access denied",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1796,7 +2233,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vitals.RecordEncounterVitalsRequest"
+                            "$ref": "#/definitions/src_vitals.RecordEncounterVitalsRequest"
                         }
                     }
                 ],
@@ -1804,25 +2241,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Vital signs recorded successfully",
                         "schema": {
-                            "$ref": "#/definitions/vitals.VitalSign"
+                            "$ref": "#/definitions/src_vitals.VitalSign"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden role / Access denied",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -1855,7 +2292,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/invitations.AcceptInvitationRequest"
+                            "$ref": "#/definitions/src_invitations.AcceptInvitationRequest"
                         }
                     }
                 ],
@@ -1863,25 +2300,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Doctor account created",
                         "schema": {
-                            "$ref": "#/definitions/users.UserResponse"
+                            "$ref": "#/definitions/afyamind-backend_src_users.UserResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "409": {
                         "description": "Invitation already used or revoked",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "410": {
                         "description": "Invalid or expired token",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2092,6 +2529,150 @@ const docTemplate = `{
                 }
             }
         },
+        "/patient/access-requests/active": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns pending (non-expired) access requests directed at the patient.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "List pending access requests for the authenticated patient",
+                "responses": {
+                    "200": {
+                        "description": "Pending access requests",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/src_access-requests.AccessRequest"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patient/grants": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns approved, non-revoked access requests (grants) for the patient.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "List active grants for the authenticated patient",
+                "responses": {
+                    "200": {
+                        "description": "Active grants",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/src_access-requests.AccessRequest"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patient/grants/{clinicId}/revoke": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Patient revokes a previously approved access request from a clinic.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AccessRequests"
+                ],
+                "summary": "Revoke a clinic grant (patient-initiated)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Clinic ID",
+                        "name": "clinicId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Grant revoked",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "404": {
+                        "description": "No active grant found",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
         "/patients/lookup": {
             "get": {
                 "security": [
@@ -2120,25 +2701,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Patient found",
                         "schema": {
-                            "$ref": "#/definitions/accessrequests.PatientLookupResponse"
+                            "$ref": "#/definitions/src_access-requests.PatientLookupResponse"
                         }
                     },
                     "400": {
                         "description": "Missing email query parameter",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "Patient not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2173,20 +2754,20 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/vitals.VitalSign"
+                                "$ref": "#/definitions/src_vitals.VitalSign"
                             }
                         }
                     },
                     "400": {
                         "description": "Validation / parsing error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2217,7 +2798,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vitals.AckVitalsRequest"
+                            "$ref": "#/definitions/src_vitals.AckVitalsRequest"
                         }
                     }
                 ],
@@ -2234,13 +2815,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2271,7 +2852,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vitals.SyncVitalsRequest"
+                            "$ref": "#/definitions/src_vitals.SyncVitalsRequest"
                         }
                     }
                 ],
@@ -2279,19 +2860,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Sync results with status",
                         "schema": {
-                            "$ref": "#/definitions/vitals.SyncVitalsResponse"
+                            "$ref": "#/definitions/src_vitals.SyncVitalsResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2333,7 +2914,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
@@ -2341,7 +2922,7 @@ const docTemplate = `{
                                         "data": {
                                             "type": "array",
                                             "items": {
-                                                "$ref": "#/definitions/appointments.Appointment"
+                                                "$ref": "#/definitions/src_appointments.Appointment"
                                             }
                                         }
                                     }
@@ -2352,13 +2933,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation/ID error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2409,7 +2990,7 @@ const docTemplate = `{
                                 "encounters": {
                                     "type": "array",
                                     "items": {
-                                        "$ref": "#/definitions/encounters.Encounter"
+                                        "$ref": "#/definitions/src_encounters.Encounter"
                                     }
                                 },
                                 "limit": {
@@ -2427,13 +3008,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Invalid Patient ID",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2465,19 +3046,100 @@ const docTemplate = `{
                     "201": {
                         "description": "Encounter created successfully",
                         "schema": {
-                            "$ref": "#/definitions/encounters.EncounterResponse"
+                            "$ref": "#/definitions/src_encounters.EncounterResponse"
                         }
                     },
                     "400": {
                         "description": "Invalid Patient ID",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    }
+                }
+            }
+        },
+        "/patients/{patientId}/prescriptions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns all prescriptions across all encounters for a given patient. Supports pagination. Patient (self) or doctor with active access grant only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Prescriptions"
+                ],
+                "summary": "List all prescriptions for a patient",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Patient ID",
+                        "name": "patientId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default: 20)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Paginated list of prescriptions",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "limit": {
+                                    "type": "integer"
+                                },
+                                "page": {
+                                    "type": "integer"
+                                },
+                                "prescriptions": {
+                                    "type": "array",
+                                    "items": {
+                                        "$ref": "#/definitions/src_prescriptions.PrescriptionResponse"
+                                    }
+                                },
+                                "total": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "401": {
+                        "description": "Not authenticated",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden / Access denied",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2531,26 +3193,26 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/vitals.VitalSign"
+                                "$ref": "#/definitions/src_vitals.VitalSign"
                             }
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden / No access grant",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2588,7 +3250,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/prescriptions.UpdatePrescriptionRequest"
+                            "$ref": "#/definitions/src_prescriptions.UpdatePrescriptionRequest"
                         }
                     }
                 ],
@@ -2596,25 +3258,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Prescription updated successfully",
                         "schema": {
-                            "$ref": "#/definitions/prescriptions.PrescriptionResponse"
+                            "$ref": "#/definitions/src_prescriptions.PrescriptionResponse"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden / Access denied",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2651,7 +3313,7 @@ const docTemplate = `{
                         "name": "body",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/prescriptions.CompletePrescriptionRequest"
+                            "$ref": "#/definitions/src_prescriptions.CompletePrescriptionRequest"
                         }
                     }
                 ],
@@ -2668,19 +3330,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden / Access denied",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2723,19 +3385,19 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "403": {
                         "description": "Forbidden / Access denied",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2762,13 +3424,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/users.UserResponse"
+                                            "$ref": "#/definitions/src_users.UserResponse"
                                         }
                                     }
                                 }
@@ -2778,13 +3440,13 @@ const docTemplate = `{
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "404": {
                         "description": "User not found",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2795,7 +3457,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Permanently deletes the authenticated user's account. This action is irreversible.",
+                "description": "Permanently deletes the authenticated user's account (not allowed for super_admin role).",
                 "produces": [
                     "application/json"
                 ],
@@ -2807,19 +3469,25 @@ const docTemplate = `{
                     "200": {
                         "description": "Account deleted",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden for super_admin role",
+                        "schema": {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "500": {
                         "description": "Internal error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2848,7 +3516,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/users.UpdateProfileRequest"
+                            "$ref": "#/definitions/src_users.UpdateProfileRequest"
                         }
                     }
                 ],
@@ -2858,13 +3526,13 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.DataEnvelope"
+                                    "$ref": "#/definitions/afyamind-backend_src_shared_response.DataEnvelope"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/users.UserResponse"
+                                            "$ref": "#/definitions/src_users.UserResponse"
                                         }
                                     }
                                 }
@@ -2874,13 +3542,13 @@ const docTemplate = `{
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2911,7 +3579,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/users.ChangePasswordRequest"
+                            "$ref": "#/definitions/src_users.ChangePasswordRequest"
                         }
                     }
                 ],
@@ -2919,19 +3587,19 @@ const docTemplate = `{
                     "200": {
                         "description": "Password updated",
                         "schema": {
-                            "$ref": "#/definitions/response.MessageEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageEnvelope"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated or wrong current password",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2962,7 +3630,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/vitals.LogPatientVitalRequest"
+                            "$ref": "#/definitions/src_vitals.LogPatientVitalRequest"
                         }
                     }
                 ],
@@ -2970,19 +3638,19 @@ const docTemplate = `{
                     "201": {
                         "description": "Vital signs logged successfully",
                         "schema": {
-                            "$ref": "#/definitions/vitals.VitalSign"
+                            "$ref": "#/definitions/src_vitals.VitalSign"
                         }
                     },
                     "400": {
                         "description": "Validation error",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     },
                     "401": {
                         "description": "Not authenticated",
                         "schema": {
-                            "$ref": "#/definitions/response.ErrorEnvelope"
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorEnvelope"
                         }
                     }
                 }
@@ -2990,10 +3658,178 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "accessrequests.AccessRequest": {
+        "afyamind-backend_src_shared_response.DataEnvelope": {
+            "description": "Standard API success response",
             "type": "object",
             "properties": {
+                "data": {
+                    "description": "The response payload - structure varies per endpoint"
+                }
+            }
+        },
+        "afyamind-backend_src_shared_response.ErrorBody": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "afyamind-backend_src_shared_response.ErrorEnvelope": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/afyamind-backend_src_shared_response.ErrorBody"
+                }
+            }
+        },
+        "afyamind-backend_src_shared_response.MessageBody": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "Operation completed successfully"
+                }
+            }
+        },
+        "afyamind-backend_src_shared_response.MessageEnvelope": {
+            "description": "Simple message response",
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "Human-readable status message",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/afyamind-backend_src_shared_response.MessageBody"
+                        }
+                    ]
+                }
+            }
+        },
+        "afyamind-backend_src_users.DoctorStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "deactivated"
+            ],
+            "x-enum-varnames": [
+                "DoctorStatusActive",
+                "DoctorStatusDeactivated"
+            ]
+        },
+        "afyamind-backend_src_users.Role": {
+            "type": "string",
+            "enum": [
+                "patient",
+                "doctor",
+                "clinic_admin",
+                "super_admin"
+            ],
+            "x-enum-varnames": [
+                "RolePatient",
+                "RoleDoctor",
+                "RoleClinicAdmin",
+                "RoleSuperAdmin"
+            ]
+        },
+        "afyamind-backend_src_users.UserResponse": {
+            "type": "object",
+            "properties": {
+                "blood_type": {
+                    "type": "string",
+                    "example": "O+"
+                },
+                "clinic_id": {
+                    "description": "Doctor / Clinic Admin specific fields (nullable)",
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "clinic_status": {
+                    "type": "string",
+                    "example": "active"
+                },
                 "created_at": {
+                    "type": "string"
+                },
+                "date_of_birth": {
+                    "description": "Patient specific fields (nullable)",
+                    "type": "string"
+                },
+                "doctor_status": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/afyamind-backend_src_users.DoctorStatus"
+                        }
+                    ],
+                    "example": "active"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "jane.doe@example.com"
+                },
+                "emergency_contact_name": {
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "emergency_contact_phone": {
+                    "type": "string",
+                    "example": "+254700000000"
+                },
+                "first_name": {
+                    "type": "string",
+                    "example": "Jane"
+                },
+                "id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "last_name": {
+                    "type": "string",
+                    "example": "Doe"
+                },
+                "license_number": {
+                    "type": "string",
+                    "example": "LIC-12345"
+                },
+                "phone": {
+                    "type": "string",
+                    "example": "+254712345678"
+                },
+                "role": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/afyamind-backend_src_users.Role"
+                        }
+                    ],
+                    "example": "patient"
+                },
+                "sex": {
+                    "type": "string",
+                    "example": "female"
+                },
+                "specialization": {
+                    "type": "string",
+                    "example": "Cardiology"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "src_access-requests.AccessRequest": {
+            "type": "object",
+            "properties": {
+                "clinic_name": {
+                    "description": "Populated via JOINs — not stored in access_requests table",
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "doctor_name": {
                     "type": "string"
                 },
                 "expires_at": {
@@ -3001,6 +3837,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "patient": {
+                    "$ref": "#/definitions/src_access-requests.PatientInfo"
                 },
                 "patient_id": {
                     "type": "string"
@@ -3025,7 +3864,7 @@ const docTemplate = `{
                 }
             }
         },
-        "accessrequests.CreateAccessRequestRequest": {
+        "src_access-requests.CreateAccessRequestRequest": {
             "type": "object",
             "required": [
                 "patient_id",
@@ -3044,7 +3883,24 @@ const docTemplate = `{
                 }
             }
         },
-        "accessrequests.PatientLookupResponse": {
+        "src_access-requests.PatientInfo": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "src_access-requests.PatientLookupResponse": {
             "type": "object",
             "properties": {
                 "email": {
@@ -3065,7 +3921,7 @@ const docTemplate = `{
                 }
             }
         },
-        "appointments.Appointment": {
+        "src_appointments.Appointment": {
             "type": "object",
             "properties": {
                 "clinic_id": {
@@ -3090,27 +3946,29 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/appointments.AppointmentStatus"
+                    "$ref": "#/definitions/src_appointments.AppointmentStatus"
                 },
                 "updated_at": {
                     "type": "string"
                 }
             }
         },
-        "appointments.AppointmentStatus": {
+        "src_appointments.AppointmentStatus": {
             "type": "string",
             "enum": [
                 "scheduled",
                 "attended",
+                "missed",
                 "cancelled"
             ],
             "x-enum-varnames": [
                 "StatusScheduled",
                 "StatusAttended",
+                "StatusMissed",
                 "StatusCancelled"
             ]
         },
-        "appointments.CreateAppointmentRequest": {
+        "src_appointments.CreateAppointmentRequest": {
             "type": "object",
             "required": [
                 "patient_id",
@@ -3134,7 +3992,24 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.ForgotPasswordRequest": {
+        "src_appointments.UpdateAppointmentStatusRequest": {
+            "type": "object",
+            "required": [
+                "status"
+            ],
+            "properties": {
+                "status": {
+                    "description": "New status for the appointment (attended or missed)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/src_appointments.AppointmentStatus"
+                        }
+                    ],
+                    "example": "attended"
+                }
+            }
+        },
+        "src_auth.ForgotPasswordRequest": {
             "type": "object",
             "required": [
                 "email"
@@ -3147,7 +4022,7 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.LoginRequest": {
+        "src_auth.LoginRequest": {
             "type": "object",
             "required": [
                 "password"
@@ -3170,7 +4045,7 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.RefreshRequest": {
+        "src_auth.RefreshRequest": {
             "type": "object",
             "properties": {
                 "refresh_token": {
@@ -3180,7 +4055,20 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.ResetPasswordRequest": {
+        "src_auth.ResendOTPRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "description": "Registered patient email address",
+                    "type": "string",
+                    "example": "jane.doe@example.com"
+                }
+            }
+        },
+        "src_auth.ResetPasswordRequest": {
             "type": "object",
             "required": [
                 "password"
@@ -3199,7 +4087,7 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.SignupRequest": {
+        "src_auth.SignupRequest": {
             "type": "object",
             "required": [
                 "email",
@@ -3246,7 +4134,39 @@ const docTemplate = `{
                 }
             }
         },
-        "clinicalevaluations.ClinicalEvaluation": {
+        "src_auth.SignupResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "jane.doe@example.com"
+                },
+                "message": {
+                    "type": "string",
+                    "example": "Registration successful. Please verify your email with the 6-digit code sent to your inbox."
+                }
+            }
+        },
+        "src_auth.VerifyEmailRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "otp"
+            ],
+            "properties": {
+                "email": {
+                    "description": "Registered patient email address",
+                    "type": "string",
+                    "example": "jane.doe@example.com"
+                },
+                "otp": {
+                    "description": "6-digit verification code received via email",
+                    "type": "string",
+                    "example": "123456"
+                }
+            }
+        },
+        "src_clinical-evaluations.ClinicalEvaluation": {
             "type": "object",
             "properties": {
                 "allergies_notes": {
@@ -3279,15 +4199,15 @@ const docTemplate = `{
                 "system_examination": {}
             }
         },
-        "clinicalevaluations.ClinicalEvaluationResponse": {
+        "src_clinical-evaluations.ClinicalEvaluationResponse": {
             "type": "object",
             "properties": {
                 "clinical_evaluation": {
-                    "$ref": "#/definitions/clinicalevaluations.ClinicalEvaluation"
+                    "$ref": "#/definitions/src_clinical-evaluations.ClinicalEvaluation"
                 }
             }
         },
-        "clinicalevaluations.CreateClinicalEvaluationRequest": {
+        "src_clinical-evaluations.CreateClinicalEvaluationRequest": {
             "type": "object",
             "required": [
                 "chief_complaint",
@@ -3329,7 +4249,7 @@ const docTemplate = `{
                 }
             }
         },
-        "clinics.Clinic": {
+        "src_clinics.Clinic": {
             "type": "object",
             "properties": {
                 "address": {
@@ -3358,7 +4278,7 @@ const docTemplate = `{
                 }
             }
         },
-        "clinics.CreateClinicRequest": {
+        "src_clinics.CreateClinicRequest": {
             "type": "object",
             "required": [
                 "admin_first_name",
@@ -3400,7 +4320,7 @@ const docTemplate = `{
                 }
             }
         },
-        "clinics.DoctorResponse": {
+        "src_clinics.DoctorResponse": {
             "type": "object",
             "properties": {
                 "created_at": {
@@ -3448,7 +4368,7 @@ const docTemplate = `{
                 }
             }
         },
-        "clinics.InvitationResponse": {
+        "src_clinics.InvitationResponse": {
             "type": "object",
             "properties": {
                 "accepted_at": {
@@ -3478,7 +4398,20 @@ const docTemplate = `{
                 }
             }
         },
-        "diagnoses.CreateDiagnosisRequest": {
+        "src_clinics.UpdateDoctorProfileRequest": {
+            "type": "object",
+            "properties": {
+                "license_number": {
+                    "type": "string",
+                    "example": "LIC-98765"
+                },
+                "specialization": {
+                    "type": "string",
+                    "example": "Cardiology"
+                }
+            }
+        },
+        "src_diagnoses.CreateDiagnosisRequest": {
             "type": "object",
             "required": [
                 "diagnosis_text",
@@ -3503,7 +4436,7 @@ const docTemplate = `{
                 }
             }
         },
-        "diagnoses.Diagnosis": {
+        "src_diagnoses.Diagnosis": {
             "type": "object",
             "properties": {
                 "diagnosed_at": {
@@ -3529,39 +4462,39 @@ const docTemplate = `{
                 }
             }
         },
-        "encounters.AggregatedEncounterResponse": {
+        "src_encounters.AggregatedEncounterResponse": {
             "type": "object",
             "properties": {
                 "diagnoses": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/encounters.DiagnosisDTO"
+                        "$ref": "#/definitions/src_encounters.DiagnosisDTO"
                     }
                 },
                 "encounter": {
-                    "$ref": "#/definitions/encounters.Encounter"
+                    "$ref": "#/definitions/src_encounters.Encounter"
                 },
                 "labs": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/encounters.LabResultDTO"
+                        "$ref": "#/definitions/src_encounters.LabResultDTO"
                     }
                 },
                 "prescriptions": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/encounters.PrescriptionDTO"
+                        "$ref": "#/definitions/src_encounters.PrescriptionDTO"
                     }
                 },
                 "vitals": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/encounters.VitalSignDTO"
+                        "$ref": "#/definitions/src_encounters.VitalSignDTO"
                     }
                 }
             }
         },
-        "encounters.DiagnosisDTO": {
+        "src_encounters.DiagnosisDTO": {
             "type": "object",
             "properties": {
                 "diagnosed_at": {
@@ -3593,7 +4526,7 @@ const docTemplate = `{
                 }
             }
         },
-        "encounters.Encounter": {
+        "src_encounters.Encounter": {
             "type": "object",
             "properties": {
                 "clinic_id": {
@@ -3618,19 +4551,19 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/encounters.EncounterStatus"
+                    "$ref": "#/definitions/src_encounters.EncounterStatus"
                 }
             }
         },
-        "encounters.EncounterResponse": {
+        "src_encounters.EncounterResponse": {
             "type": "object",
             "properties": {
                 "encounter": {
-                    "$ref": "#/definitions/encounters.Encounter"
+                    "$ref": "#/definitions/src_encounters.Encounter"
                 }
             }
         },
-        "encounters.EncounterStatus": {
+        "src_encounters.EncounterStatus": {
             "type": "string",
             "enum": [
                 "open",
@@ -3641,7 +4574,7 @@ const docTemplate = `{
                 "StatusClosed"
             ]
         },
-        "encounters.LabResultDTO": {
+        "src_encounters.LabResultDTO": {
             "type": "object",
             "properties": {
                 "category": {
@@ -3674,16 +4607,20 @@ const docTemplate = `{
                 }
             }
         },
-        "encounters.MedicalHistoryPrescriptionItem": {
+        "src_encounters.MedicalHistoryPrescriptionItem": {
             "type": "object",
             "properties": {
                 "dose": {
                     "type": "string",
                     "example": "1 tablet"
                 },
-                "duration": {
+                "duration_unit": {
                     "type": "string",
-                    "example": "30 days"
+                    "example": "day"
+                },
+                "duration_value": {
+                    "type": "integer",
+                    "example": 30
                 },
                 "frequency": {
                     "type": "string",
@@ -3699,7 +4636,7 @@ const docTemplate = `{
                 }
             }
         },
-        "encounters.MedicalHistoryResponse": {
+        "src_encounters.MedicalHistoryResponse": {
             "type": "object",
             "properties": {
                 "chief_complaint": {
@@ -3720,15 +4657,15 @@ const docTemplate = `{
                 "prescription": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/encounters.MedicalHistoryPrescriptionItem"
+                        "$ref": "#/definitions/src_encounters.MedicalHistoryPrescriptionItem"
                     }
                 },
                 "vitals": {
-                    "$ref": "#/definitions/encounters.MedicalHistoryVitals"
+                    "$ref": "#/definitions/src_encounters.MedicalHistoryVitals"
                 }
             }
         },
-        "encounters.MedicalHistoryVitals": {
+        "src_encounters.MedicalHistoryVitals": {
             "type": "object",
             "properties": {
                 "blood_sugar": {
@@ -3770,7 +4707,7 @@ const docTemplate = `{
                 }
             }
         },
-        "encounters.PrescriptionDTO": {
+        "src_encounters.PrescriptionDTO": {
             "type": "object",
             "properties": {
                 "encounter_id": {
@@ -3784,7 +4721,7 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/encounters.PrescriptionItemDTO"
+                        "$ref": "#/definitions/src_encounters.PrescriptionItemDTO"
                     }
                 },
                 "notes": {
@@ -3796,16 +4733,20 @@ const docTemplate = `{
                 }
             }
         },
-        "encounters.PrescriptionItemDTO": {
+        "src_encounters.PrescriptionItemDTO": {
             "type": "object",
             "properties": {
                 "dose": {
                     "type": "string",
                     "example": "1 tablet"
                 },
-                "duration": {
+                "duration_unit": {
                     "type": "string",
-                    "example": "30 days"
+                    "example": "day"
+                },
+                "duration_value": {
+                    "type": "integer",
+                    "example": 30
                 },
                 "frequency": {
                     "type": "string",
@@ -3840,7 +4781,7 @@ const docTemplate = `{
                 }
             }
         },
-        "encounters.VitalSignDTO": {
+        "src_encounters.VitalSignDTO": {
             "type": "object",
             "properties": {
                 "blood_sugar": {
@@ -3896,7 +4837,7 @@ const docTemplate = `{
                 }
             }
         },
-        "invitations.AcceptInvitationRequest": {
+        "src_invitations.AcceptInvitationRequest": {
             "type": "object",
             "required": [
                 "first_name",
@@ -3940,7 +4881,7 @@ const docTemplate = `{
                 }
             }
         },
-        "invitations.CreateInvitationRequest": {
+        "src_invitations.CreateInvitationRequest": {
             "type": "object",
             "required": [
                 "email"
@@ -3953,7 +4894,7 @@ const docTemplate = `{
                 }
             }
         },
-        "labs.CreateLabResultRequest": {
+        "src_labs.CreateLabResultRequest": {
             "type": "object",
             "required": [
                 "category",
@@ -3989,7 +4930,7 @@ const docTemplate = `{
                 }
             }
         },
-        "labs.LabResult": {
+        "src_labs.LabResult": {
             "type": "object",
             "properties": {
                 "category": {
@@ -4019,7 +4960,7 @@ const docTemplate = `{
                 }
             }
         },
-        "prescriptions.CompletePrescriptionRequest": {
+        "src_prescriptions.CompletePrescriptionRequest": {
             "type": "object",
             "properties": {
                 "item_ids": {
@@ -4030,11 +4971,12 @@ const docTemplate = `{
                 }
             }
         },
-        "prescriptions.CreatePrescriptionItemRequest": {
+        "src_prescriptions.CreatePrescriptionItemRequest": {
             "type": "object",
             "required": [
                 "dose",
-                "duration",
+                "duration_unit",
+                "duration_value",
                 "frequency",
                 "medication_name",
                 "route"
@@ -4043,11 +4985,24 @@ const docTemplate = `{
                 "dose": {
                     "type": "string"
                 },
-                "duration": {
-                    "type": "string"
+                "duration_unit": {
+                    "enum": [
+                        "day",
+                        "week",
+                        "month",
+                        "year"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/src_prescriptions.DurationUnit"
+                        }
+                    ]
+                },
+                "duration_value": {
+                    "type": "integer"
                 },
                 "frequency": {
-                    "$ref": "#/definitions/prescriptions.PrescriptionFrequency"
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionFrequency"
                 },
                 "instructions": {
                     "type": "string"
@@ -4056,11 +5011,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "route": {
-                    "$ref": "#/definitions/prescriptions.PrescriptionRoute"
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionRoute"
                 }
             }
         },
-        "prescriptions.CreatePrescriptionRequest": {
+        "src_prescriptions.CreatePrescriptionRequest": {
             "type": "object",
             "required": [
                 "items"
@@ -4070,7 +5025,7 @@ const docTemplate = `{
                     "type": "array",
                     "minItems": 1,
                     "items": {
-                        "$ref": "#/definitions/prescriptions.CreatePrescriptionItemRequest"
+                        "$ref": "#/definitions/src_prescriptions.CreatePrescriptionItemRequest"
                     }
                 },
                 "notes": {
@@ -4078,7 +5033,22 @@ const docTemplate = `{
                 }
             }
         },
-        "prescriptions.PrescriptionFrequency": {
+        "src_prescriptions.DurationUnit": {
+            "type": "string",
+            "enum": [
+                "day",
+                "week",
+                "month",
+                "year"
+            ],
+            "x-enum-varnames": [
+                "DurationUnitDay",
+                "DurationUnitWeek",
+                "DurationUnitMonth",
+                "DurationUnitYear"
+            ]
+        },
+        "src_prescriptions.PrescriptionFrequency": {
             "type": "string",
             "enum": [
                 "OD",
@@ -4107,17 +5077,20 @@ const docTemplate = `{
                 "FreqQ12H"
             ]
         },
-        "prescriptions.PrescriptionItem": {
+        "src_prescriptions.PrescriptionItem": {
             "type": "object",
             "properties": {
                 "dose": {
                     "type": "string"
                 },
-                "duration": {
-                    "type": "string"
+                "duration_unit": {
+                    "$ref": "#/definitions/src_prescriptions.DurationUnit"
+                },
+                "duration_value": {
+                    "type": "integer"
                 },
                 "frequency": {
-                    "$ref": "#/definitions/prescriptions.PrescriptionFrequency"
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionFrequency"
                 },
                 "id": {
                     "type": "string"
@@ -4132,17 +5105,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "route": {
-                    "$ref": "#/definitions/prescriptions.PrescriptionRoute"
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionRoute"
                 },
                 "startedAt": {
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/prescriptions.PrescriptionItemStatus"
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionItemStatus"
                 }
             }
         },
-        "prescriptions.PrescriptionItemStatus": {
+        "src_prescriptions.PrescriptionItemStatus": {
             "type": "string",
             "enum": [
                 "active",
@@ -4155,7 +5128,7 @@ const docTemplate = `{
                 "ItemStatusCompleted"
             ]
         },
-        "prescriptions.PrescriptionResponse": {
+        "src_prescriptions.PrescriptionResponse": {
             "type": "object",
             "properties": {
                 "encounterID": {
@@ -4167,7 +5140,7 @@ const docTemplate = `{
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/prescriptions.PrescriptionItem"
+                        "$ref": "#/definitions/src_prescriptions.PrescriptionItem"
                     }
                 },
                 "notes": {
@@ -4178,7 +5151,7 @@ const docTemplate = `{
                 }
             }
         },
-        "prescriptions.PrescriptionRoute": {
+        "src_prescriptions.PrescriptionRoute": {
             "type": "string",
             "enum": [
                 "oral",
@@ -4197,11 +5170,12 @@ const docTemplate = `{
                 "RouteOther"
             ]
         },
-        "prescriptions.UpdatePrescriptionItemRequest": {
+        "src_prescriptions.UpdatePrescriptionItemRequest": {
             "type": "object",
             "required": [
                 "dose",
-                "duration",
+                "duration_unit",
+                "duration_value",
                 "frequency",
                 "medication_name",
                 "route"
@@ -4210,11 +5184,24 @@ const docTemplate = `{
                 "dose": {
                     "type": "string"
                 },
-                "duration": {
-                    "type": "string"
+                "duration_unit": {
+                    "enum": [
+                        "day",
+                        "week",
+                        "month",
+                        "year"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/src_prescriptions.DurationUnit"
+                        }
+                    ]
+                },
+                "duration_value": {
+                    "type": "integer"
                 },
                 "frequency": {
-                    "$ref": "#/definitions/prescriptions.PrescriptionFrequency"
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionFrequency"
                 },
                 "instructions": {
                     "type": "string"
@@ -4223,17 +5210,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "route": {
-                    "$ref": "#/definitions/prescriptions.PrescriptionRoute"
+                    "$ref": "#/definitions/src_prescriptions.PrescriptionRoute"
                 }
             }
         },
-        "prescriptions.UpdatePrescriptionRequest": {
+        "src_prescriptions.UpdatePrescriptionRequest": {
             "type": "object",
             "properties": {
                 "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/prescriptions.UpdatePrescriptionItemRequest"
+                        "$ref": "#/definitions/src_prescriptions.UpdatePrescriptionItemRequest"
                     }
                 },
                 "notes": {
@@ -4241,58 +5228,7 @@ const docTemplate = `{
                 }
             }
         },
-        "response.DataEnvelope": {
-            "description": "Standard API success response",
-            "type": "object",
-            "properties": {
-                "data": {
-                    "description": "The response payload - structure varies per endpoint"
-                }
-            }
-        },
-        "response.ErrorBody": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "response.ErrorEnvelope": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "$ref": "#/definitions/response.ErrorBody"
-                }
-            }
-        },
-        "response.MessageBody": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "Operation completed successfully"
-                }
-            }
-        },
-        "response.MessageEnvelope": {
-            "description": "Simple message response",
-            "type": "object",
-            "properties": {
-                "data": {
-                    "description": "Human-readable status message",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/response.MessageBody"
-                        }
-                    ]
-                }
-            }
-        },
-        "users.ChangePasswordRequest": {
+        "src_users.ChangePasswordRequest": {
             "type": "object",
             "required": [
                 "current_password",
@@ -4311,7 +5247,7 @@ const docTemplate = `{
                 }
             }
         },
-        "users.DoctorStatus": {
+        "src_users.DoctorStatus": {
             "type": "string",
             "enum": [
                 "active",
@@ -4322,7 +5258,7 @@ const docTemplate = `{
                 "DoctorStatusDeactivated"
             ]
         },
-        "users.Role": {
+        "src_users.Role": {
             "type": "string",
             "enum": [
                 "patient",
@@ -4337,7 +5273,7 @@ const docTemplate = `{
                 "RoleSuperAdmin"
             ]
         },
-        "users.UpdateProfileRequest": {
+        "src_users.UpdateProfileRequest": {
             "type": "object",
             "properties": {
                 "blood_type": {
@@ -4387,7 +5323,7 @@ const docTemplate = `{
                 }
             }
         },
-        "users.UserResponse": {
+        "src_users.UserResponse": {
             "type": "object",
             "properties": {
                 "blood_type": {
@@ -4395,9 +5331,13 @@ const docTemplate = `{
                     "example": "O+"
                 },
                 "clinic_id": {
-                    "description": "Doctor specific fields (nullable)",
+                    "description": "Doctor / Clinic Admin specific fields (nullable)",
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440001"
+                },
+                "clinic_status": {
+                    "type": "string",
+                    "example": "active"
                 },
                 "created_at": {
                     "type": "string"
@@ -4409,7 +5349,7 @@ const docTemplate = `{
                 "doctor_status": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/users.DoctorStatus"
+                            "$ref": "#/definitions/src_users.DoctorStatus"
                         }
                     ],
                     "example": "active"
@@ -4449,7 +5389,7 @@ const docTemplate = `{
                 "role": {
                     "allOf": [
                         {
-                            "$ref": "#/definitions/users.Role"
+                            "$ref": "#/definitions/src_users.Role"
                         }
                     ],
                     "example": "patient"
@@ -4467,7 +5407,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vitals.AckVitalsRequest": {
+        "src_vitals.AckVitalsRequest": {
             "type": "object",
             "required": [
                 "synced_ids"
@@ -4482,7 +5422,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vitals.LogPatientVitalRequest": {
+        "src_vitals.LogPatientVitalRequest": {
             "type": "object",
             "properties": {
                 "blood_sugar": {
@@ -4514,7 +5454,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vitals.RecordEncounterVitalsRequest": {
+        "src_vitals.RecordEncounterVitalsRequest": {
             "type": "object",
             "properties": {
                 "blood_sugar": {
@@ -4546,7 +5486,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vitals.SyncVitalEntry": {
+        "src_vitals.SyncVitalEntry": {
             "type": "object",
             "required": [
                 "client_id"
@@ -4584,7 +5524,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vitals.SyncVitalResult": {
+        "src_vitals.SyncVitalResult": {
             "type": "object",
             "properties": {
                 "client_id": {
@@ -4598,7 +5538,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vitals.SyncVitalsRequest": {
+        "src_vitals.SyncVitalsRequest": {
             "type": "object",
             "required": [
                 "vitals"
@@ -4608,23 +5548,23 @@ const docTemplate = `{
                     "type": "array",
                     "minItems": 1,
                     "items": {
-                        "$ref": "#/definitions/vitals.SyncVitalEntry"
+                        "$ref": "#/definitions/src_vitals.SyncVitalEntry"
                     }
                 }
             }
         },
-        "vitals.SyncVitalsResponse": {
+        "src_vitals.SyncVitalsResponse": {
             "type": "object",
             "properties": {
                 "results": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/vitals.SyncVitalResult"
+                        "$ref": "#/definitions/src_vitals.SyncVitalResult"
                     }
                 }
             }
         },
-        "vitals.VitalSign": {
+        "src_vitals.VitalSign": {
             "type": "object",
             "properties": {
                 "bloodSugar": {
@@ -4658,7 +5598,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "source": {
-                    "$ref": "#/definitions/vitals.VitalSource"
+                    "$ref": "#/definitions/src_vitals.VitalSource"
                 },
                 "spO2": {
                     "type": "number",
@@ -4677,7 +5617,7 @@ const docTemplate = `{
                 }
             }
         },
-        "vitals.VitalSource": {
+        "src_vitals.VitalSource": {
             "type": "string",
             "enum": [
                 "clinic",

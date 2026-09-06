@@ -230,7 +230,7 @@ func (r *repository) GetAggregatedEncounter(ctx context.Context, id uuid.UUID) (
 
 				// Fetch prescription items
 				itemQuery := `
-					SELECT id, prescription_id, medication_name, dose, route, frequency, duration, status, instructions, started_at
+					SELECT id, prescription_id, medication_name, dose, route, frequency, duration_value, duration_unit, status, instructions, started_at
 					FROM prescription_items WHERE prescription_id = $1 ORDER BY started_at ASC
 				`
 				iRows, itemErr := r.db.QueryContext(ctx, itemQuery, p.ID)
@@ -238,7 +238,7 @@ func (r *repository) GetAggregatedEncounter(ctx context.Context, id uuid.UUID) (
 					for iRows.Next() {
 						var item PrescriptionItemDTO
 						var instr sql.NullString
-						if err := iRows.Scan(&item.ID, &item.PrescriptionID, &item.MedicationName, &item.Dose, &item.Route, &item.Frequency, &item.Duration, &item.Status, &instr, &item.StartedAt); err == nil {
+						if err := iRows.Scan(&item.ID, &item.PrescriptionID, &item.MedicationName, &item.Dose, &item.Route, &item.Frequency, &item.DurationValue, &item.DurationUnit, &item.Status, &instr, &item.StartedAt); err == nil {
 							if instr.Valid {
 								item.Instructions = &instr.String
 							}
@@ -289,7 +289,7 @@ func (r *repository) GetMedicalHistorySummary(ctx context.Context, encounterID u
 
 	// Prescription items
 	rxQuery := `
-		SELECT pi.medication_name, pi.dose, pi.route, pi.frequency, pi.duration
+		SELECT pi.medication_name, pi.dose, pi.route, pi.frequency, pi.duration_value, pi.duration_unit
 		FROM prescription_items pi
 		JOIN prescriptions p ON pi.prescription_id = p.id
 		WHERE p.encounter_id = $1
@@ -300,7 +300,7 @@ func (r *repository) GetMedicalHistorySummary(ctx context.Context, encounterID u
 		defer rxRows.Close()
 		for rxRows.Next() {
 			var item MedicalHistoryPrescriptionItem
-			if err := rxRows.Scan(&item.MedicationName, &item.Dose, &item.Route, &item.Frequency, &item.Duration); err == nil {
+			if err := rxRows.Scan(&item.MedicationName, &item.Dose, &item.Route, &item.Frequency, &item.DurationValue, &item.DurationUnit); err == nil {
 				res.Prescription = append(res.Prescription, item)
 			}
 		}

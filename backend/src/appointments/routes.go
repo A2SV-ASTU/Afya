@@ -11,7 +11,8 @@ func RegisterRoutes(r *gin.RouterGroup, handler *Handler, jwtSecret string) {
 	apptGroup := r.Group("/appointments")
 	apptGroup.Use(middleware.RequireAuth(jwtSecret))
 	{
-		apptGroup.POST("", middleware.RequireRole("doctor"), accessrequests.AccessGuard(sharedAuth.DB), handler.CreateAppointment)
+		apptGroup.POST("", middleware.RequireRole("doctor"), handler.CreateAppointment)
+		apptGroup.PATCH("/:id/status", middleware.RequireRole("doctor"), handler.UpdateAppointmentStatus)
 	}
 
 	patientApptGroup := r.Group("/patients/:patientId/appointments")

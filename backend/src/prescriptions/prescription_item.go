@@ -41,6 +41,15 @@ const (
 	ItemStatusCompleted   PrescriptionItemStatus = "completed"
 )
 
+type DurationUnit string
+
+const (
+	DurationUnitDay   DurationUnit = "day"
+	DurationUnitWeek  DurationUnit = "week"
+	DurationUnitMonth DurationUnit = "month"
+	DurationUnitYear  DurationUnit = "year"
+)
+
 type PrescriptionItem struct {
 	ID             uuid.UUID
 	PrescriptionID uuid.UUID
@@ -48,7 +57,8 @@ type PrescriptionItem struct {
 	Dose           string
 	Route          PrescriptionRoute
 	Frequency      PrescriptionFrequency
-	Duration       string
+	DurationValue  int                    `json:"duration_value"`
+	DurationUnit   DurationUnit           `json:"duration_unit"`
 	Status         PrescriptionItemStatus
 	Instructions   *string
 	StartedAt      time.Time

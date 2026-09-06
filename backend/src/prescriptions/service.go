@@ -15,6 +15,7 @@ import (
 type Service interface {
 	CreatePrescription(ctx context.Context, user *auth.UserContext, encounterID uuid.UUID, req CreatePrescriptionRequest) (*PrescriptionResponse, error)
 	ListPrescriptions(ctx context.Context, user *auth.UserContext, encounterID uuid.UUID) ([]PrescriptionResponse, error)
+	ListPatientPrescriptions(ctx context.Context, user *auth.UserContext, patientID uuid.UUID, page, limit int) ([]PrescriptionResponse, int, error)
 	UpdatePrescription(ctx context.Context, user *auth.UserContext, prescriptionID uuid.UUID, req UpdatePrescriptionRequest) (*PrescriptionResponse, error)
 	CompletePrescription(ctx context.Context, user *auth.UserContext, prescriptionID uuid.UUID, req CompletePrescriptionRequest) error
 	DeactivatePrescription(ctx context.Context, user *auth.UserContext, prescriptionID uuid.UUID) error
@@ -64,7 +65,8 @@ func (s *service) CreatePrescription(ctx context.Context, user *auth.UserContext
 			Dose:           r.Dose,
 			Route:          r.Route,
 			Frequency:      r.Frequency,
-			Duration:       r.Duration,
+			DurationValue:  r.DurationValue,
+			DurationUnit:   r.DurationUnit,
 			Instructions:   r.Instructions,
 		}
 	}
@@ -95,21 +97,47 @@ func (s *service) ListPrescriptions(ctx context.Context, user *auth.UserContext,
 	return out, nil
 }
 
+func (s *service) ListPatientPrescriptions(ctx context.Context, user *auth.UserContext, patientID uuid.UUID, page, limit int) ([]PrescriptionResponse, int, error) {
+	// Patient can only access their own records; doctor access is enforced by AccessGuard at route level.
+	if user.Role == "patient" && user.ID != patientID {
+		return nil, 0, appErrors.ErrForbiddenRole()
+	}
+
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	if page < 1 {
+		page = 1
+	}
+	offset := (page - 1) * limit
+
+	prescriptions, total, err := s.repo.ListByPatientID(ctx, patientID, limit, offset)
+	if err != nil {
+		return nil, 0, appErrors.ErrInternal(err.Error())
+	}
+
+	out := make([]PrescriptionResponse, 0, len(prescriptions))
+	for _, p := range prescriptions {
+		items, err := s.repo.FindItemsByPrescriptionID(ctx, p.ID)
+		if err != nil {
+			return nil, 0, appErrors.ErrInternal(err.Error())
+		}
+		out = append(out, PrescriptionResponse{Prescription: p, Items: items})
+	}
+	return out, total, nil
+}
+
 func (s *service) UpdatePrescription(ctx context.Context, user *auth.UserContext, prescriptionID uuid.UUID, req UpdatePrescriptionRequest) (*PrescriptionResponse, error) {
 	if user.Role != "doctor" {
 		return nil, appErrors.ErrForbiddenRole()
 	}
 
-	encounterID, err := s.repo.FindEncounterIDByPrescription(ctx, prescriptionID)
+	_, err := s.repo.FindEncounterIDByPrescription(ctx, prescriptionID)
 	if err != nil {
 		if errors.Is(err, ErrPrescriptionNotFound) {
 			return nil, appErrors.ErrNotFound("prescription")
 		}
 		return nil, appErrors.ErrInternal(err.Error())
-	}
-
-	if err := s.requireOpenEncounter(ctx, encounterID); err != nil {
-		return nil, err
 	}
 
 	if req.Notes != nil {
@@ -126,7 +154,8 @@ func (s *service) UpdatePrescription(ctx context.Context, user *auth.UserContext
 				Dose:           r.Dose,
 				Route:          r.Route,
 				Frequency:      r.Frequency,
-				Duration:       r.Duration,
+				DurationValue:  r.DurationValue,
+				DurationUnit:   r.DurationUnit,
 				Instructions:   r.Instructions,
 			}
 		}

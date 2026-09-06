@@ -12,11 +12,11 @@ export default function HowItWorksPage() {
               <span className="text-[var(--color-main)] font-semibold text-sm uppercase tracking-widest bg-[var(--color-main-subtle)] px-4 py-1.5 rounded-full inline-flex w-fit border border-[var(--color-main-border)] shadow-sm">
                 Our Methodology
               </span>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 tracking-tight leading-tight">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[var(--color-main-dark)] tracking-tight leading-tight">
                 A Seamless Clinical Workflow.
               </h1>
               <p className="text-lg text-gray-600 leading-relaxed">
-                AfyaMind reimagines the patient journey by connecting the moments between clinic visits. Our PRD v2.0 workflow guarantees data integrity while giving you absolute control.
+                Afya reimagines the patient journey by connecting the moments between clinic visits. Our PRD v2.0 workflow guarantees data integrity while giving you absolute control.
               </p>
               <div className="mt-4">
                 <a href="#timeline" className="inline-flex items-center gap-2 bg-[var(--color-main)] text-white font-semibold px-6 py-3 rounded-full hover:bg-[var(--color-main-hover)] transition-colors shadow-md hover:shadow-lg">
@@ -29,10 +29,10 @@ export default function HowItWorksPage() {
               <div className="relative h-[450px] w-full rounded-[2rem] overflow-hidden shadow-2xl shadow-[var(--color-main-dark)]/10 border border-[var(--color-main-border)]/50 group">
                 <div className="absolute inset-0 bg-gradient-to-tr from-[var(--color-main)]/20 to-transparent z-10 mix-blend-overlay"></div>
                 <Image
-                  src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?auto=format&fit=crop&q=80&w=1200"
+                  src="/images/fa65dc6c2f658be30b403f01da977966.jpg"
                   alt="Patient looking at mobile health app"
                   fill
-                  className="object-cover transform scale-105 group-hover:scale-100 transition-transform duration-700 ease-in-out"
+                  className="w-full h-full object-cover rounded-2xl transform scale-105 group-hover:scale-100 transition-transform duration-700 ease-in-out"
                   priority
                 />
               </div>
@@ -44,14 +44,13 @@ export default function HowItWorksPage() {
       {/* Interactive Step-by-Step Timeline Section */}
       <section id="timeline" className="py-16 max-w-7xl mx-auto px-6 md:px-10">
         <div className="text-center mb-20">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">The AfyaMind Care Journey</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">The Afya Care Journey</h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             How data securely flows from your doctor&apos;s office, into your daily life, and back again.
           </p>
         </div>
 
         <div className="relative max-w-5xl mx-auto">
-          {/* Vertical Line connecting steps (visible on md+) */}
           <div className="hidden md:block absolute left-1/2 top-10 bottom-10 w-0.5 bg-gradient-to-b from-[var(--color-main)] via-[var(--color-main-light)] to-transparent -translate-x-1/2 rounded-full"></div>
 
           <div className="space-y-24">
@@ -60,7 +59,7 @@ export default function HowItWorksPage() {
             <div className="relative flex flex-col md:flex-row items-center justify-between group">
               <div className="md:w-5/12 flex justify-end md:pr-10 mb-8 md:mb-0">
                 <div className="relative w-full h-[300px] rounded-[2rem] overflow-hidden shadow-xl shadow-[var(--color-main-dark)]/10 border border-[var(--color-main-border)] group-hover:-translate-y-2 transition-transform duration-300">
-                  <Image src="https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&q=80&w=800" alt="Doctor capturing vitals" fill className="object-cover" />
+                  <Image src="https://images.unsplash.com/photo-1631549916768-4119b2e5f926?auto=format&fit=crop&q=80&w=800" alt="Doctor capturing vitals" fill className="w-full h-full object-cover rounded-2xl" />
                 </div>
               </div>
 
@@ -83,7 +82,7 @@ export default function HowItWorksPage() {
             <div className="relative flex flex-col md:flex-row-reverse items-center justify-between group">
               <div className="md:w-5/12 flex justify-start md:pl-10 mb-8 md:mb-0">
                 <div className="relative w-full h-[300px] rounded-[2rem] overflow-hidden shadow-xl shadow-[var(--color-main-dark)]/10 border border-[var(--color-main-border)] group-hover:-translate-y-2 transition-transform duration-300">
-                  <Image src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800" alt="Patient tracking on mobile dashboard" fill className="object-cover" />
+                  <Image src="/images/how-it-works-tracking.jpg" alt="Patient tracking on mobile dashboard" fill className="w-full h-full object-cover rounded-2xl" />
                 </div>
               </div>
 
@@ -106,7 +105,7 @@ export default function HowItWorksPage() {
             <div className="relative flex flex-col md:flex-row items-center justify-between group">
               <div className="md:w-5/12 flex justify-end md:pr-10 mb-8 md:mb-0">
                 <div className="relative w-full h-[300px] rounded-[2rem] overflow-hidden shadow-xl shadow-[var(--color-main-dark)]/10 border border-[var(--color-main-border)] group-hover:-translate-y-2 transition-transform duration-300">
-                  <Image src="https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?auto=format&fit=crop&w=1200&q=80" alt="Medical professionals securely collaborating and reviewing digital health records." fill className="object-cover" />
+                  <Image src="https://i.pinimg.com/1200x/7f/83/48/7f8348797471579c55e8818ae5c32f5e.jpg" alt="Medical professionals securely collaborating and reviewing digital health records." fill className="w-full h-full object-cover rounded-2xl" />
                 </div>
               </div>
 

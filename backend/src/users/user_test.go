@@ -111,6 +111,18 @@ func (m *mockRepository) DeleteAccount(ctx context.Context, id uuid.UUID) error 
 	return nil
 }
 
+func (m *mockRepository) MarkEmailVerified(ctx context.Context, userID uuid.UUID) error {
+	u, exists := m.users[userID]
+	if !exists {
+		return ErrUserNotFound
+	}
+	u.IsEmailVerified = true
+	now := time.Now()
+	u.EmailVerifiedAt = &now
+	return nil
+}
+
+
 func TestUserService_GetProfile(t *testing.T) {
 	repo := newMockRepository()
 	svc := NewService(repo)
@@ -263,8 +275,8 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 		}
 	})
 
-	// 4. DELETE /v1/users/me
-	t.Run("DELETE /v1/users/me", func(t *testing.T) {
+	// 4. DELETE /v1/users/me (Patient - should succeed)
+	t.Run("DELETE /v1/users/me patient", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, "/v1/users/me", nil)
 		req.AddCookie(&http.Cookie{Name: "access_token", Value: accessToken})
 		w := httptest.NewRecorder()
@@ -275,4 +287,45 @@ func TestUserHandlers_HTTPIntegration(t *testing.T) {
 			t.Fatalf("expected status 200, got %d. Body: %s", w.Code, w.Body.String())
 		}
 	})
+
+	// 5. DELETE /v1/users/me (Super Admin - should fail with 403)
+	t.Run("DELETE /v1/users/me super_admin forbidden", func(t *testing.T) {
+		superAdminUser := &User{Email: "admin@example.com", FirstName: "Super", LastName: "Admin", Role: RoleSuperAdmin}
+		_ = repo.Create(context.Background(), superAdminUser)
+
+		adminToken, _ := token.GenerateToken(superAdminUser.ID, string(superAdminUser.Role), token.TokenTypeAccess, time.Minute, secret)
+
+		req := httptest.NewRequest(http.MethodDelete, "/v1/users/me", nil)
+		req.AddCookie(&http.Cookie{Name: "access_token", Value: adminToken})
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("expected status 403 for super_admin delete/me, got %d. Body: %s", w.Code, w.Body.String())
+		}
+	})
+}
+
+func TestUserService_DeleteAccount(t *testing.T) {
+	repo := newMockRepository()
+	svc := NewService(repo)
+
+	// 1. Patient user deletion should succeed
+	patient := &User{Email: "patient@example.com", FirstName: "Patient", LastName: "User", Role: RolePatient}
+	_ = repo.Create(context.Background(), patient)
+
+	appErr := svc.DeleteAccount(context.Background(), patient.ID)
+	if appErr != nil {
+		t.Fatalf("unexpected error deleting patient account: %v", appErr)
+	}
+
+	// 2. Super Admin user deletion should be forbidden
+	superAdmin := &User{Email: "superadmin@example.com", FirstName: "Super", LastName: "Admin", Role: RoleSuperAdmin}
+	_ = repo.Create(context.Background(), superAdmin)
+
+	appErr = svc.DeleteAccount(context.Background(), superAdmin.ID)
+	if appErr == nil || appErr.Code != "forbidden_role" {
+		t.Fatalf("expected forbidden_role error when deleting super_admin account, got: %v", appErr)
+	}
 }

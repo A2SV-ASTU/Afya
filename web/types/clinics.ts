@@ -20,6 +20,7 @@ export interface Doctor {
   specialization: string;
   license_number: string;
   doctor_status: 'active' | 'deactivated';
+  invited_by?: string;
   created_at: string;
   updated_at: string;
 }

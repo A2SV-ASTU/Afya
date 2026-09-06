@@ -1,21 +1,39 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useStore } from '@/lib/store';
+import { useState, useEffect, useMemo } from 'react';
+import { clinicsApi } from '@/lib/api/clinics';
+import { Clinic } from '@/types/database';
 import { AdminAnalytics } from '../types';
 
-export function useAdminStats(): AdminAnalytics {
-  const { clinics, doctors, encounters, accessRequests } = useStore();
+export function useAdminStats(providedClinics?: Clinic[]): AdminAnalytics {
+  const [fetchedClinics, setFetchedClinics] = useState<Clinic[]>([]);
+
+  useEffect(() => {
+    if (providedClinics) return;
+    let cancelled = false;
+    clinicsApi
+      .list()
+      .then((res) => {
+        if (!cancelled && res?.clinics) {
+          setFetchedClinics(res.clinics);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [providedClinics]);
+
+  const clinics = providedClinics || fetchedClinics;
 
   return useMemo(() => {
     const activeClinicsCount = clinics.filter((c) => c.status === 'active').length;
-    const activeGrantsCount = accessRequests.filter((r) => r.status === 'approved').length;
     return {
       totalClinics: clinics.length,
       activeClinics: activeClinicsCount,
-      totalDoctors: doctors.length,
-      totalEncounters: encounters.length,
-      totalGrants: activeGrantsCount,
+      totalDoctors: 0,
+      totalEncounters: 0,
+      totalGrants: 0,
     };
-  }, [clinics, doctors, encounters, accessRequests]);
+  }, [clinics]);
 }

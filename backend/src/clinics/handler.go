@@ -247,6 +247,72 @@ func (h *Handler) ActivateDoctor(c *gin.Context) {
 	response.JSON(c, http.StatusOK, gin.H{"status": "active"})
 }
 
+// UpdateDoctorProfile godoc
+//
+//	@Summary		Update doctor specialization and/or license number
+//	@Description	Updates a doctor's specialization and/or license number in the specified clinic. Clinic admin only.
+//	@Tags			Clinics
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			clinicId	path		string								true	"Clinic ID"
+//	@Param			doctorId	path		string								true	"Doctor ID"
+//	@Param			body		body		clinics.UpdateDoctorProfileRequest	true	"Doctor profile update payload"
+//	@Success		200			{object}	clinics.DoctorResponse				"Doctor profile updated successfully"
+//	@Failure		400			{object}	response.ErrorEnvelope				"Validation error"
+//	@Failure		401			{object}	response.ErrorEnvelope				"Not authenticated"
+//	@Failure		403			{object}	response.ErrorEnvelope				"Forbidden — unauthorized for clinic"
+//	@Failure		404			{object}	response.ErrorEnvelope				"Doctor not found"
+//	@Router			/clinics/{clinicId}/doctors/{doctorId} [patch]
+func (h *Handler) UpdateDoctorProfile(c *gin.Context) {
+	clinicIDStr := c.Param("clinicId")
+	doctorIDStr := c.Param("doctorId")
+
+	clinicID, err := uuid.Parse(clinicIDStr)
+	if err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid clinic ID"))
+		return
+	}
+
+	doctorID, err := uuid.Parse(doctorIDStr)
+	if err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError("Invalid doctor ID"))
+		return
+	}
+
+	var req UpdateDoctorProfileRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.RespondAppError(c, appErrors.ErrValidationError(err.Error()))
+		return
+	}
+
+	user, err := sharedAuth.GetUser(c)
+	if err != nil {
+		response.SendError(c, err)
+		return
+	}
+
+	doctor, err := h.svc.UpdateDoctorProfile(c.Request.Context(), user, clinicID, doctorID, req)
+	if err != nil {
+		if err.Error() == "unauthorized for this clinic" {
+			response.RespondAppError(c, appErrors.ErrForbiddenRole())
+			return
+		}
+		if err.Error() == "doctor not found in this clinic" {
+			response.RespondAppError(c, appErrors.ErrNotFound("doctor"))
+			return
+		}
+		if err.Error() == "at least one of specialization or license_number must be provided" {
+			response.RespondAppError(c, appErrors.ErrValidationError(err.Error()))
+			return
+		}
+		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
+		return
+	}
+
+	response.JSON(c, http.StatusOK, doctor)
+}
+
 // GetClinic godoc
 //
 //	@Summary		Get clinic details

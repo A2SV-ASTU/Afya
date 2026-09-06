@@ -15,3 +15,9 @@ type CreateAppointmentRequest struct {
 	// Optional consultation notes/purpose
 	Notes *string `json:"notes" example:"Annual cardiac checkup"`
 }
+
+// UpdateAppointmentStatusRequest is the request body for PATCH /appointments/:id/status.
+type UpdateAppointmentStatusRequest struct {
+	// New status for the appointment (attended or missed)
+	Status AppointmentStatus `json:"status" binding:"required" example:"attended"`
+}

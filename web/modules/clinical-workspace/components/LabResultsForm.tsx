@@ -22,10 +22,10 @@ export function LabResultsForm({ encounter, onSaved }: LabResultsFormProps) {
   const [measurements, setMeasurements] = useState('Hemoglobin: 13.8 (Ref 12.0-16.0), Platelets: 240 (Ref 150-450)');
   const [isSaved, setIsSaved] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    addLabResult(encounter.id, {
+    await addLabResult(encounter.id, {
       test_name: testName,
       category,
       flag,
@@ -37,6 +37,7 @@ export function LabResultsForm({ encounter, onSaved }: LabResultsFormProps) {
     if (onSaved) onSaved();
     setTimeout(() => setIsSaved(false), 3000);
   };
+
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-6">
