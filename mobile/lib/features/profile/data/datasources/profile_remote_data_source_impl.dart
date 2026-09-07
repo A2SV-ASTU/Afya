@@ -77,7 +77,11 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   }
 
   @override
-  Future<void> logout() async {
+Future<void> logout() async {
+  try {
     await apiClient.dio.post(ApiEndpoints.logout);
+  } finally {
+    await apiClient.cookieStorageService.clearCookies();
   }
+}
 }
