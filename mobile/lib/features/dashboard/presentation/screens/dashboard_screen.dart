@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../core/di/injection_container.dart';
 import '../../../../app/router/route_paths.dart';
-
+import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -17,7 +16,8 @@ import '../../../vitals_sync/presentation/screens/log_vital_signs_screen.dart'
     show VitalSignInputDialog;
 
 import '../../../medication_and_adherence/domain/entities/local_dose_record_entity.dart';
-import '../../../medication_and_adherence/presentation/widgets/log_action_sheet.dart';
+import '../../../medication_and_adherence/presentation/screens/all_medications_screen.dart';
+import '../../../medication_and_adherence/presentation/screens/prescription_detail_screen.dart';
 import '../../../medication_and_adherence/presentation/widgets/today_schedule_card.dart';
 
 import '../cubit/dashboard_cubit.dart';
@@ -37,21 +37,29 @@ class DashboardScreen extends StatelessWidget {
     LocalDoseRecordEntity dose,
     DashboardState state,
   ) {
-    final cubit = context.read<DashboardCubit>();
-
     final matchingRx = state.cachedPrescriptions
         .where((r) => r.id == dose.prescriptionItemId)
         .firstOrNull;
 
-    LogActionSheet.show(
-      context,
-      doseRecord: dose,
-      route: matchingRx?.route,
-      instructions: matchingRx?.instructions,
-      onTaken: (d) => cubit.markDoseTaken(d),
-      onSnooze: (d) => cubit.snoozeDose(d),
-      onSkip: (d, reason) => cubit.skipDose(d, reason),
-    );
+    if (matchingRx != null) {
+      Navigator.of(context)
+          .push(
+            MaterialPageRoute(
+              builder: (_) => PrescriptionDetailScreen(
+                prescription: matchingRx,
+                doctorName: 'Dr. Sarah Kamau',
+                clinicName: 'Nairobi West Hospital',
+              ),
+            ),
+          )
+          .then((_) {
+            if (context.mounted) {
+              context
+                  .read<DashboardCubit>()
+                  .loadDashboard(forceRefresh: true);
+            }
+          });
+    }
   }
 
   // ==========================================
@@ -69,14 +77,8 @@ class DashboardScreen extends StatelessWidget {
       },
     );
 
-    // IMPORTANT:
-    // Do NOT navigate to Vitals History here.
-    //
-    // The VitalSignInputDialog already saves the vital
-    // and closes itself with Navigator.pop(vital).
-    //
-    // After the dialog closes, the user remains
-    // on the Dashboard/Home page.
+    // The VitalSignInputDialog saves the vital and
+    // closes itself. The user stays on Dashboard.
   }
 
   // ==========================================
@@ -118,32 +120,19 @@ class DashboardScreen extends StatelessWidget {
       // ========================================
       body: SafeArea(
         child: BlocConsumer<DashboardCubit, DashboardState>(
-          // ======================================
-          // LISTEN ONLY FOR NEW ERRORS
-          // ======================================
           listenWhen: (previous, current) =>
               current.errorMessage != null &&
               previous.errorMessage != current.errorMessage,
-
-          // ======================================
-          // SHOW ERROR MESSAGE
-          // ======================================
           listener: (context, state) {
             if (state.errorMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    state.errorMessage!,
-                  ),
+                  content: Text(state.errorMessage!),
                   backgroundColor: AppColors.urgentAlert,
                 ),
               );
             }
           },
-
-          // ======================================
-          // BUILD UI
-          // ======================================
           builder: (context, state) {
             // ------------------------------------
             // LOADING
@@ -173,25 +162,19 @@ class DashboardScreen extends StatelessWidget {
             // ------------------------------------
             return RefreshIndicator(
               color: AppColors.primary,
-
               onRefresh: () => context
                   .read<DashboardCubit>()
                   .loadDashboard(
                     forceRefresh: true,
                   ),
-
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppDimensions.space20,
                   vertical: AppDimensions.space16,
                 ),
-
                 child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ==================================
                     // 1. DASHBOARD HEADER
@@ -208,20 +191,33 @@ class DashboardScreen extends StatelessWidget {
                     // 2. TODAY'S MEDICATION
                     // ==================================
                     Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
-
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         const Text(
                           "Today's Medication",
                           style: AppTypography.titleMedium,
                         ),
-
-                        if (state.todayDoses.isNotEmpty)
+                        if (state.todayDoses.length > 3)
                           GestureDetector(
-                            onTap: () => context.go(
-                              RoutePaths.history,
-                            ),
+                            onTap: () {
+                              Navigator.of(context)
+                                  .push(
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          const AllMedicationsScreen(),
+                                    ),
+                                  )
+                                  .then((_) {
+                                if (context.mounted) {
+                                  context
+                                      .read<DashboardCubit>()
+                                      .loadDashboard(
+                                        forceRefresh: true,
+                                      );
+                                }
+                              });
+                            },
                             child: Text(
                               'View All',
                               style: AppTypography.caption.copyWith(
@@ -241,39 +237,31 @@ class DashboardScreen extends StatelessWidget {
                     // TODAY'S MEDICATION CARD
                     // ==================================
                     TodayScheduleCard(
-                      doses: state.todayDoses,
-
+                      doses: state.todayDoses.take(3).toList(),
                       title: null,
-
                       emptyMessage:
                           'No reminders buzzing yet — '
                           'your dose schedule will land here '
                           'once it\'s set.',
-
                       routeBuilder: (dose) => state
                           .cachedPrescriptions
                           .where(
                             (r) =>
-                                r.id ==
-                                dose.prescriptionItemId,
+                                r.id == dose.prescriptionItemId,
                           )
                           .firstOrNull
                           ?.route ??
                           '',
-
                       instructionsBuilder: (dose) => state
                           .cachedPrescriptions
                           .where(
                             (r) =>
-                                r.id ==
-                                dose.prescriptionItemId,
+                                r.id == dose.prescriptionItemId,
                           )
                           .firstOrNull
                           ?.instructions ??
                           '',
-
-                      onDoseTap: (dose) =>
-                          _handleDoseTap(
+                      onDoseTap: (dose) => _handleDoseTap(
                         context,
                         dose,
                         state,
@@ -305,14 +293,11 @@ class DashboardScreen extends StatelessWidget {
                     // 4. NEXT APPOINTMENT
                     // ==================================
                     NextAppointmentSection(
-                      nextAppointment:
-                          state.nextAppointment,
-
+                      nextAppointment: state.nextAppointment,
                       onAppointmentTap: () =>
                           context.push(
                         RoutePaths.appointments,
                       ),
-
                       onViewAllAppointments: () =>
                           context.push(
                         RoutePaths.appointments,

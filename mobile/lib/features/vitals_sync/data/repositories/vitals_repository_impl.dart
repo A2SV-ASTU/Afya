@@ -4,7 +4,6 @@ import 'package:injectable/injectable.dart';
 import '../../domain/entities/vital_sign_entity.dart';
 import '../../domain/entities/vitals_sync_batch_result_entity.dart';
 import '../../domain/repositories/vitals_repository.dart';
-
 import '../datasources/vitals_local_data_source.dart';
 import '../datasources/vitals_remote_data_source.dart';
 import '../models/vital_sign_model.dart';
@@ -40,20 +39,15 @@ class VitalsRepositoryImpl implements VitalsRepository {
 
   @override
   Future<List<VitalSignEntity>> getPendingVitals() async {
-    return await local.getPendingVitals();
+    return local.getPendingVitals();
   }
 
   @override
   Future<VitalsSyncBatchResultEntity> syncVitals() async {
     final pending = await local.getPendingVitals();
 
-    debugPrint(
-      '========== VITAL SYNC DEBUG ==========',
-    );
-
-    debugPrint(
-      'Pending vitals: ${pending.length}',
-    );
+    debugPrint('========== VITAL SYNC DEBUG ==========');
+    debugPrint('Pending vitals: ${pending.length}');
 
     if (pending.isEmpty) {
       debugPrint('Nothing to sync.');
@@ -66,22 +60,12 @@ class VitalsRepositoryImpl implements VitalsRepository {
     }
 
     try {
-      // Send pending vitals to backend.
       final result = await remote.syncVitals(pending);
 
-      debugPrint(
-        'Backend uploaded: ${result.uploaded}',
-      );
+      debugPrint('Backend uploaded: ${result.uploaded}');
+      debugPrint('Backend failed: ${result.failed}');
+      debugPrint('Failed IDs: ${result.failedIds}');
 
-      debugPrint(
-        'Backend failed: ${result.failed}',
-      );
-
-      debugPrint(
-        'Failed IDs: ${result.failedIds}',
-      );
-
-      // IDs that were successfully uploaded.
       final failedIds = result.failedIds.toSet();
 
       final uploadedIds = pending
@@ -89,8 +73,6 @@ class VitalsRepositoryImpl implements VitalsRepository {
           .where((id) => !failedIds.contains(id))
           .toList();
 
-      // Remove successfully uploaded records from the
-      // local outbox.
       if (uploadedIds.isNotEmpty) {
         await local.deleteSyncedVitals(uploadedIds);
 
@@ -99,27 +81,19 @@ class VitalsRepositoryImpl implements VitalsRepository {
         );
       }
 
-      debugPrint(
-        '=====================================',
-      );
+      debugPrint('=====================================');
 
       return result;
     } catch (e) {
-      debugPrint(
-        'Vital sync failed: $e',
-      );
-
-      debugPrint(
-        '=====================================',
-      );
-
+      debugPrint('Vital sync failed: $e');
+      debugPrint('=====================================');
       rethrow;
     }
   }
 
   @override
   Future<List<VitalSignEntity>> getHistory() async {
-    // Always read local data first.
+    // Always try to read local data first.
     List<VitalSignModel> localVitals = [];
 
     try {
@@ -134,7 +108,7 @@ class VitalsRepositoryImpl implements VitalsRepository {
       );
     }
 
-    // Try remote history.
+    // Try to get the latest history from the backend.
     List<VitalSignModel> remoteVitals = [];
 
     try {
@@ -144,19 +118,19 @@ class VitalsRepositoryImpl implements VitalsRepository {
         'Remote history count: ${remoteVitals.length}',
       );
     } catch (e) {
-      // Offline is okay. We still return local data.
+      // Offline is okay. Return the local data.
       debugPrint(
         'Remote history unavailable: $e',
       );
     }
 
-    // Combine remote + local.
+    // Combine remote and local records.
     final allVitals = <VitalSignEntity>[
       ...remoteVitals,
       ...localVitals,
     ];
 
-    // Remove duplicates.
+    // Remove duplicates using clientId.
     final uniqueVitals = <String, VitalSignEntity>{};
 
     for (final vital in allVitals) {
@@ -165,7 +139,7 @@ class VitalsRepositoryImpl implements VitalsRepository {
 
     final history = uniqueVitals.values.toList();
 
-    // Newest first.
+    // Newest records first.
     history.sort(
       (a, b) => b.recordedAt.compareTo(a.recordedAt),
     );

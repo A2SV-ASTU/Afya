@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:injectable/injectable.dart';
 
+import '../../features/medication_and_adherence/presentation/screens/all_medications_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../core/di/injection_container.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
@@ -41,6 +42,8 @@ final GlobalKey<NavigatorState> _profileNavigatorKey =
 
 @lazySingleton
 class AppRouter {
+  static GlobalKey<NavigatorState> get rootNavigatorKey => _rootNavigatorKey;
+
   late final GoRouter router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: RoutePaths.splash,
@@ -92,6 +95,13 @@ class AppRouter {
             child: const AppointmentsScreen(patientId: 'me'),
           );
         },
+      ),
+
+      // Standalone All Medications Route
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: RoutePaths.allMedications,
+        builder: (context, state) => const AllMedicationsScreen(),
       ),
 
       // Persistent Tab Navigation Shell
