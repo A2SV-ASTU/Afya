@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:afyamind_mobile/features/access_requests/data/models/access_request_model.dart';
+import 'package:afyamind_mobile/features/access_requests/data/models/access_request_dto.dart';
 
 void main() {
   final tJson = {
@@ -14,7 +14,7 @@ void main() {
     'created_at': '2026-01-01T00:00:00.000',
   };
 
-  final tModel = AccessRequestModel(
+  final tModel = AccessRequestDto(
     id: '1',
     clinicId: 'c1',
     clinicName: 'Clinic A',
@@ -25,9 +25,9 @@ void main() {
     createdAt: DateTime(2026, 1, 1),
   );
 
-  group('AccessRequestModel', () {
+  group('AccessRequestDto', () {
     test('fromJson should return a valid model', () {
-      final result = AccessRequestModel.fromJson(tJson);
+      final result = AccessRequestDto.fromJson(tJson);
       expect(result, equals(tModel));
     });
 
@@ -37,7 +37,7 @@ void main() {
     });
 
     test('fromJson and toJson should be symmetric', () {
-      final fromJsonResult = AccessRequestModel.fromJson(tJson);
+      final fromJsonResult = AccessRequestDto.fromJson(tJson);
       final toJsonResult = fromJsonResult.toJson();
       expect(toJsonResult, equals(tJson));
     });
@@ -54,7 +54,7 @@ void main() {
         'created_at': '2026-05-01T08:00:00.000',
       };
 
-      final result = AccessRequestModel.fromJson(differentJson);
+      final result = AccessRequestDto.fromJson(differentJson);
 
       expect(result.id, '2');
       expect(result.clinicId, 'c2');

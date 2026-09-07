@@ -2,23 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/access_request_entity.dart';
 
+import 'countdown_timer_widget.dart';
+
 class AccessRequestCard extends StatelessWidget {
   final AccessRequestEntity request;
   final VoidCallback onApprove;
   final VoidCallback onDeny;
+  final VoidCallback? onExpired;
 
   const AccessRequestCard({
     super.key,
     required this.request,
     required this.onApprove,
     required this.onDeny,
+    this.onExpired,
   });
 
   @override
   Widget build(BuildContext context) {
     final formattedDate = DateFormat('MMM dd, yyyy • hh:mm a').format(request.createdAt);
-    final expiresIn = request.expiresAt.difference(DateTime.now());
-    final minutesLeft = expiresIn.inMinutes;
+    final bool isExpired = request.expiresAt.isBefore(DateTime.now());
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -56,7 +59,10 @@ class AccessRequestCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 8),
-              _buildUrgencyBadge(minutesLeft),
+              CountdownTimerWidget(
+                expiresAt: request.expiresAt,
+                onTimerComplete: onExpired,
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -146,7 +152,7 @@ class AccessRequestCard extends StatelessWidget {
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: onDeny,
+                  onPressed: isExpired ? null : onDeny,
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     side: const BorderSide(color: Color(0xFFD32F2F)),
@@ -168,7 +174,7 @@ class AccessRequestCard extends StatelessWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: onApprove,
+                  onPressed: isExpired ? null : onApprove,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF014F24),
                     foregroundColor: Colors.white,
@@ -195,40 +201,5 @@ class AccessRequestCard extends StatelessWidget {
     );
   }
 
-  Widget _buildUrgencyBadge(int minutesLeft) {
-    Color bgColor;
-    Color textColor;
-    String text;
 
-    if (minutesLeft <= 2) {
-      bgColor = const Color(0xFFFFEBEE);
-      textColor = const Color(0xFFD32F2F);
-      text = '${minutesLeft}m left';
-    } else if (minutesLeft <= 5) {
-      bgColor = const Color(0xFFFFF3E0);
-      textColor = const Color(0xFFE65100);
-      text = '${minutesLeft}m left';
-    } else {
-      bgColor = const Color(0xFFE8F5E9);
-      textColor = const Color(0xFF2E7D32);
-      text = '${minutesLeft}m left';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontFamily: 'Inter',
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: textColor,
-        ),
-      ),
-    );
-  }
 }

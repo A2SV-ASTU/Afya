@@ -77,6 +77,34 @@ class _PendingAccessRequestsViewState extends State<PendingAccessRequestsView> {
                 backgroundColor: const Color(0xFF014F24),
               ),
             );
+          } else if (state is PendingAccessRequestsLoaded &&
+              state.autoExpiredClinicName != null) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'An access request from ${state.autoExpiredClinicName} has expired.',
+                  ),
+                  backgroundColor: const Color(0xFFE65100),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+          } else if (state is PendingAccessRequestsEmpty &&
+              state.autoExpiredClinicName != null) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'An access request from ${state.autoExpiredClinicName} has expired.',
+                  ),
+                  backgroundColor: const Color(0xFFE65100),
+                  behavior: SnackBarBehavior.floating,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
           }
         },
         builder: (context, state) {
@@ -96,66 +124,7 @@ class _PendingAccessRequestsViewState extends State<PendingAccessRequestsView> {
                 : (state as AccessRequestActionSuccess).requests;
 
             if (requests.isEmpty) {
-              return Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.mark_email_unread_outlined,
-                        size: 64,
-                        color: Color(0xFF8C9C96),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'No Pending Requests',
-                        style: TextStyle(
-                          fontFamily: 'Manrope',
-                          fontWeight: FontWeight.w600,
-                          fontSize: 18,
-                          color: Color(0xFF121E1A),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'You have no pending access requests from clinics.\nWhen a clinic requests access to your records, it will appear here.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontFamily: 'Inter',
-                          fontSize: 14,
-                          color: Color(0xFF8C9C96),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      ElevatedButton(
-                        onPressed: () {
-                          context
-                              .read<PendingAccessRequestsBloc>()
-                              .add(FetchPendingAccessRequestsEvent());
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF014F24),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 24, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: const Text(
-                          'Refresh',
-                          style: TextStyle(
-                            fontFamily: 'Inter',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+              return _buildEmptyState(context);
             }
 
             return RefreshIndicator(
@@ -165,19 +134,30 @@ class _PendingAccessRequestsViewState extends State<PendingAccessRequestsView> {
                     .read<PendingAccessRequestsBloc>()
                     .add(FetchPendingAccessRequestsEvent());
               },
-              child: ListView.builder(
+              child: AnimatedList(
+                key: ValueKey(requests.map((r) => r.id).join()),
                 padding: const EdgeInsets.all(16.0),
-                itemCount: requests.length,
-                itemBuilder: (context, index) {
+                initialItemCount: requests.length,
+                itemBuilder: (context, index, animation) {
                   final request = requests[index];
-                  return AccessRequestCard(
-                    request: request,
-                    onApprove: () => _showApproveDialog(context, request),
-                    onDeny: () => _showDenyDialog(context, request),
+                  return SizeTransition(
+                    sizeFactor: animation,
+                    child: FadeTransition(
+                      opacity: animation,
+                      child: AccessRequestCard(
+                        request: request,
+                        onApprove: () => _showApproveDialog(context, request),
+                        onDeny: () => _showDenyDialog(context, request),
+                      ),
+                    ),
                   );
                 },
               ),
             );
+          }
+
+          if (state is PendingAccessRequestsEmpty) {
+            return _buildEmptyState(context);
           }
 
           // Error state fallback
@@ -220,6 +200,69 @@ class _PendingAccessRequestsViewState extends State<PendingAccessRequestsView> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.mark_email_unread_outlined,
+              size: 64,
+              color: Color(0xFF8C9C96),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'No Pending Requests',
+              style: TextStyle(
+                fontFamily: 'Manrope',
+                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                color: Color(0xFF121E1A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'You have no pending access requests from clinics.\nWhen a clinic requests access to your records, it will appear here.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Inter',
+                fontSize: 14,
+                color: Color(0xFF8C9C96),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                context
+                    .read<PendingAccessRequestsBloc>()
+                    .add(FetchPendingAccessRequestsEvent());
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF014F24),
+                foregroundColor: Colors.white,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Refresh',
+                style: TextStyle(
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

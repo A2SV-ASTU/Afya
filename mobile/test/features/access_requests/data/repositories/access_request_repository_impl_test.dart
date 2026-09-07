@@ -6,8 +6,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:afyamind_mobile/core/errors/exceptions.dart';
 import 'package:afyamind_mobile/core/errors/failures.dart';
 import 'package:afyamind_mobile/features/access_requests/data/datasources/access_request_remote_data_source.dart';
-import 'package:afyamind_mobile/features/access_requests/data/models/access_request_model.dart';
-import 'package:afyamind_mobile/features/access_requests/data/models/clinic_grant_model.dart';
+import 'package:afyamind_mobile/features/access_requests/data/models/access_request_dto.dart';
+import 'package:afyamind_mobile/features/access_requests/data/models/clinic_grant_dto.dart';
 import 'package:afyamind_mobile/features/access_requests/data/repositories/access_request_repository_impl.dart';
 
 class MockAccessRequestRemoteDataSource extends Mock
@@ -27,7 +27,7 @@ void main() {
   final tDateTime = DateTime(2026, 1, 1);
   final tExpiresAt = DateTime(2026, 2, 1);
 
-  final tAccessRequestModel = AccessRequestModel(
+  final tAccessRequestDto = AccessRequestDto(
     id: '1',
     clinicId: 'c1',
     clinicName: 'Clinic A',
@@ -38,7 +38,7 @@ void main() {
     createdAt: tDateTime,
   );
 
-  final tClinicGrantModel = ClinicGrantModel(
+  final tClinicGrantDto = ClinicGrantDto(
     grantId: 'g1',
     clinicId: 'c1',
     clinicName: 'Clinic A',
@@ -48,7 +48,7 @@ void main() {
   group('getPendingAccessRequests', () {
     test('should return Right with list on success', () async {
       when(() => mockRemoteDataSource.getPendingAccessRequests())
-          .thenAnswer((_) async => [tAccessRequestModel]);
+          .thenAnswer((_) async => [tAccessRequestDto]);
 
       final result = await repository.getPendingAccessRequests();
 
@@ -189,7 +189,7 @@ void main() {
   group('getActiveGrants', () {
     test('should return Right with list on success', () async {
       when(() => mockRemoteDataSource.getActiveGrants())
-          .thenAnswer((_) async => [tClinicGrantModel]);
+          .thenAnswer((_) async => [tClinicGrantDto]);
 
       final result = await repository.getActiveGrants();
 

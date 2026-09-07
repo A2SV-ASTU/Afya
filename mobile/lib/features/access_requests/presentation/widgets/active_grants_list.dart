@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/clinic_grant_entity.dart';
-import '../bloc/access_request_cubit.dart';
-import '../bloc/access_request_state.dart';
+import '../bloc/clinic_grants_bloc.dart';
 import 'revoke_grant_dialog.dart';
 
 /// Displays a list of active clinic access grants.
-///
-/// Each card shows the clinic name, date granted, and a revoke button.
 class ActiveGrantsList extends StatelessWidget {
   final List<ClinicGrantEntity> grants;
+  final Map<String, int> remainingSecondsMap;
 
-  const ActiveGrantsList({super.key, required this.grants});
+  const ActiveGrantsList({
+    super.key,
+    required this.grants,
+    required this.remainingSecondsMap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +36,8 @@ class ActiveGrantsList extends StatelessWidget {
       itemCount: grants.length,
       itemBuilder: (context, index) {
         final grant = grants[index];
-        return _GrantCard(grant: grant);
+        final remainingSeconds = remainingSecondsMap[grant.clinicId] ?? 0;
+        return _GrantCard(grant: grant, remainingSeconds: remainingSeconds);
       },
     );
   }
@@ -42,13 +45,24 @@ class ActiveGrantsList extends StatelessWidget {
 
 class _GrantCard extends StatelessWidget {
   final ClinicGrantEntity grant;
+  final int remainingSeconds;
 
-  const _GrantCard({required this.grant});
+  const _GrantCard({required this.grant, required this.remainingSeconds});
+
+  String _formatTime(int seconds) {
+    final m = (seconds / 60).floor().toString().padLeft(2, '0');
+    final s = (seconds % 60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<AccessRequestCubit>().state;
-    final isRevoking = state is RevokingGrant;
+    final isRevoking = false; // Add real revoke loading check if needed
+
+    final bool isWarning = remainingSeconds < 60;
+
+    final Color badgeBg = isWarning ? const Color(0xFFFFEBEE) : const Color(0xFFE8F5E9);
+    final Color badgeText = isWarning ? const Color(0xFFD32F2F) : const Color(0xFF2E7D32);
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -82,20 +96,41 @@ class _GrantCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
 
-            // Date granted
+            // Date granted and Countdown
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: Color(0xFF757575),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: Color(0xFF757575),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Granted: ${_formatDate(grant.grantedAt)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF757575),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Granted: ${_formatDate(grant.grantedAt)}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF757575),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: badgeBg,
+                    borderRadius: BorderRadius.circular(8)
+                  ),
+                  child: Text(
+                    _formatTime(remainingSeconds),
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: badgeText,
+                    ),
                   ),
                 ),
               ],
@@ -109,11 +144,7 @@ class _GrantCard extends StatelessWidget {
                 onPressed: isRevoking
                     ? null
                     : () {
-                        RevokeGrantDialog.show(
-                          context: context,
-                          clinicName: grant.clinicName,
-                          clinicId: grant.clinicId,
-                        );
+                        context.read<ClinicGrantsBloc>().add(RevokeClinicGrantEvent(grant.clinicId));
                       },
                 icon: isRevoking
                     ? const SizedBox(

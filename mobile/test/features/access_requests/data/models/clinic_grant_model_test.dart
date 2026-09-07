@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:afyamind_mobile/features/access_requests/data/models/clinic_grant_model.dart';
+import 'package:afyamind_mobile/features/access_requests/data/models/clinic_grant_dto.dart';
 
 void main() {
   final tJson = {
@@ -10,16 +10,16 @@ void main() {
     'granted_at': '2026-01-01T00:00:00.000',
   };
 
-  final tModel = ClinicGrantModel(
+  final tModel = ClinicGrantDto(
     grantId: 'g1',
     clinicId: 'c1',
     clinicName: 'Clinic A',
     grantedAt: DateTime(2026, 1, 1),
   );
 
-  group('ClinicGrantModel', () {
+  group('ClinicGrantDto', () {
     test('fromJson should return a valid model', () {
-      final result = ClinicGrantModel.fromJson(tJson);
+      final result = ClinicGrantDto.fromJson(tJson);
       expect(result, equals(tModel));
     });
 
@@ -29,7 +29,7 @@ void main() {
     });
 
     test('fromJson and toJson should be symmetric', () {
-      final fromJsonResult = ClinicGrantModel.fromJson(tJson);
+      final fromJsonResult = ClinicGrantDto.fromJson(tJson);
       final toJsonResult = fromJsonResult.toJson();
       expect(toJsonResult, equals(tJson));
     });
@@ -42,7 +42,7 @@ void main() {
         'granted_at': '2026-06-01T12:30:00.000',
       };
 
-      final result = ClinicGrantModel.fromJson(differentJson);
+      final result = ClinicGrantDto.fromJson(differentJson);
 
       expect(result.grantId, 'g2');
       expect(result.clinicId, 'c2');

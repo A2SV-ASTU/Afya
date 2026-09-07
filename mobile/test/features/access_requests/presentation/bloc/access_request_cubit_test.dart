@@ -308,13 +308,13 @@ void main() {
     grantId: 'g1',
     clinicId: 'c1',
     clinicName: 'Clinic A',
-    grantedAt: DateTime(2026, 1, 15),
+    grantedAt: DateTime.now().subtract(const Duration(minutes: 1)),
   );
   final tGrant2 = ClinicGrantEntity(
     grantId: 'g2',
     clinicId: 'c2',
     clinicName: 'Clinic B',
-    grantedAt: DateTime(2026, 3, 10),
+    grantedAt: DateTime.now().subtract(const Duration(minutes: 2)),
   );
 
   group('fetchActiveGrants', () {

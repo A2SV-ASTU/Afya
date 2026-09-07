@@ -5,12 +5,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:afyamind_mobile/features/access_requests/domain/entities/clinic_grant_entity.dart';
-import 'package:afyamind_mobile/features/access_requests/presentation/bloc/access_request_cubit.dart';
-import 'package:afyamind_mobile/features/access_requests/presentation/bloc/access_request_state.dart';
+import 'package:afyamind_mobile/features/access_requests/presentation/bloc/clinic_grants_bloc.dart';
 import 'package:afyamind_mobile/features/access_requests/presentation/pages/active_grants_page.dart';
 
-class MockAccessRequestCubit extends MockCubit<AccessRequestState>
-    implements AccessRequestCubit {}
+class MockClinicGrantsBloc extends MockBloc<ClinicGrantsEvent, ClinicGrantsState>
+    implements ClinicGrantsBloc {}
 
 ClinicGrantEntity tGrant({
   String? clinicId,
@@ -21,45 +20,45 @@ ClinicGrantEntity tGrant({
     grantId: 'g1',
     clinicId: clinicId ?? 'c1',
     clinicName: clinicName ?? 'Clinic A',
-    grantedAt: grantedAt ?? DateTime(2026, 1, 15),
+    grantedAt: grantedAt ?? DateTime.now().subtract(const Duration(minutes: 1)),
   );
 }
 
 void main() {
-  late MockAccessRequestCubit mockCubit;
+  late MockClinicGrantsBloc mockBloc;
 
   setUp(() {
-    mockCubit = MockAccessRequestCubit();
-    registerFallbackValue(const AccessRequestInitial());
-    when(() => mockCubit.fetchActiveGrants()).thenAnswer((_) async {});
+    mockBloc = MockClinicGrantsBloc();
+    registerFallbackValue(FetchActiveGrantsEvent());
+    registerFallbackValue(RecalculateTimersEvent());
   });
 
   tearDown(() {
-    mockCubit.close();
+    mockBloc.close();
   });
 
-  Widget buildTestPage({AccessRequestState? cubitState}) {
-    final state = cubitState ?? const ActiveGrantsLoading();
-    when(() => mockCubit.state).thenReturn(state);
+  Widget buildTestPage({ClinicGrantsState? blocState}) {
+    final state = blocState ?? ClinicGrantsLoading();
+    when(() => mockBloc.state).thenReturn(state);
     whenListen(
-      mockCubit,
-      Stream<AccessRequestState>.fromIterable([state]),
+      mockBloc,
+      Stream<ClinicGrantsState>.fromIterable([state]),
       initialState: state,
     );
 
     return MaterialApp(
-      home: BlocProvider<AccessRequestCubit>.value(
-        value: mockCubit,
+      home: BlocProvider<ClinicGrantsBloc>.value(
+        value: mockBloc,
         child: const ActiveGrantsPage(),
       ),
     );
   }
 
   group('ActiveGrantsPage', () {
-    testWidgets('should show loading indicator when state is ActiveGrantsLoading',
+    testWidgets('should show loading indicator when state is ClinicGrantsLoading',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestPage(
-        cubitState: const ActiveGrantsLoading(),
+        blocState: ClinicGrantsLoading(),
       ));
       await tester.pump();
 
@@ -69,7 +68,7 @@ void main() {
     testWidgets('should display error message and retry button on failure',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestPage(
-        cubitState: const ActiveGrantsFailure(message: 'Failed to load grants'),
+        blocState: const ClinicGrantsError('Failed to load grants'),
       ));
       await tester.pump();
 
@@ -81,36 +80,25 @@ void main() {
     testWidgets('should call fetchActiveGrants when Retry is tapped',
         (WidgetTester tester) async {
       await tester.pumpWidget(buildTestPage(
-        cubitState: const ActiveGrantsFailure(message: 'Failed'),
+        blocState: const ClinicGrantsError('Failed'),
       ));
       await tester.pump();
 
       await tester.tap(find.text('Retry'));
       await tester.pump();
 
-      verify(() => mockCubit.fetchActiveGrants()).called(2);
+      verify(() => mockBloc.add(any(that: isA<FetchActiveGrantsEvent>()))).called(2);
     });
 
     testWidgets('should display grants list when loaded',
         (WidgetTester tester) async {
       final grants = [tGrant(), tGrant(clinicId: 'c2', clinicName: 'Clinic B')];
-
-      whenListen(
-        mockCubit,
-        Stream<AccessRequestState>.fromIterable([
-          ActiveGrantsLoaded(grants: grants),
-        ]),
-        initialState: ActiveGrantsLoaded(grants: grants),
+      final state = ClinicGrantsLoaded(
+        grants: grants,
+        remainingSecondsMap: const {'c1': 240, 'c2': 180},
       );
-      when(() => mockCubit.state)
-          .thenReturn(ActiveGrantsLoaded(grants: grants));
 
-      await tester.pumpWidget(MaterialApp(
-        home: BlocProvider<AccessRequestCubit>.value(
-          value: mockCubit,
-          child: const ActiveGrantsPage(),
-        ),
-      ));
+      await tester.pumpWidget(buildTestPage(blocState: state));
       await tester.pump();
 
       expect(find.text('Clinic A'), findsOneWidget);
@@ -119,22 +107,12 @@ void main() {
 
     testWidgets('should show empty state when no grants',
         (WidgetTester tester) async {
-      whenListen(
-        mockCubit,
-        Stream<AccessRequestState>.fromIterable([
-          const ActiveGrantsLoaded(grants: []),
-        ]),
-        initialState: const ActiveGrantsLoaded(grants: []),
+      const state = ClinicGrantsLoaded(
+        grants: [],
+        remainingSecondsMap: {},
       );
-      when(() => mockCubit.state)
-          .thenReturn(const ActiveGrantsLoaded(grants: []));
 
-      await tester.pumpWidget(MaterialApp(
-        home: BlocProvider<AccessRequestCubit>.value(
-          value: mockCubit,
-          child: const ActiveGrantsPage(),
-        ),
-      ));
+      await tester.pumpWidget(buildTestPage(blocState: state));
       await tester.pump();
 
       expect(find.text('No active clinic access grants.'), findsOneWidget);
@@ -142,22 +120,12 @@ void main() {
 
     testWidgets('should display AppBar title',
         (WidgetTester tester) async {
-      whenListen(
-        mockCubit,
-        Stream<AccessRequestState>.fromIterable([
-          const ActiveGrantsLoaded(grants: []),
-        ]),
-        initialState: const ActiveGrantsLoaded(grants: []),
+      const state = ClinicGrantsLoaded(
+        grants: [],
+        remainingSecondsMap: {},
       );
-      when(() => mockCubit.state)
-          .thenReturn(const ActiveGrantsLoaded(grants: []));
 
-      await tester.pumpWidget(MaterialApp(
-        home: BlocProvider<AccessRequestCubit>.value(
-          value: mockCubit,
-          child: const ActiveGrantsPage(),
-        ),
-      ));
+      await tester.pumpWidget(buildTestPage(blocState: state));
       await tester.pump();
 
       expect(find.text('Active Grants'), findsOneWidget);
@@ -166,23 +134,12 @@ void main() {
     testWidgets('should show revoke button for each grant',
         (WidgetTester tester) async {
       final grants = [tGrant(), tGrant(clinicId: 'c2', clinicName: 'Clinic B')];
-
-      whenListen(
-        mockCubit,
-        Stream<AccessRequestState>.fromIterable([
-          ActiveGrantsLoaded(grants: grants),
-        ]),
-        initialState: ActiveGrantsLoaded(grants: grants),
+      final state = ClinicGrantsLoaded(
+        grants: grants,
+        remainingSecondsMap: const {'c1': 240, 'c2': 180},
       );
-      when(() => mockCubit.state)
-          .thenReturn(ActiveGrantsLoaded(grants: grants));
 
-      await tester.pumpWidget(MaterialApp(
-        home: BlocProvider<AccessRequestCubit>.value(
-          value: mockCubit,
-          child: const ActiveGrantsPage(),
-        ),
-      ));
+      await tester.pumpWidget(buildTestPage(blocState: state));
       await tester.pump();
 
       expect(find.text('Revoke Access'), findsNWidgets(2));

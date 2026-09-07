@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../bloc/access_request_cubit.dart';
-import '../bloc/access_request_state.dart';
+import '../../../../core/di/injection_container.dart';
+import '../bloc/clinic_grants_bloc.dart';
 import '../widgets/active_grants_list.dart';
 
 /// Page that displays the user's active clinic access grants.
 ///
-/// Uses [AccessRequestCubit.fetchActiveGrants] to load data and
+/// Uses [ClinicGrantsBloc] to load data and
 /// shows loading, error, and populated states accordingly.
 class ActiveGrantsPage extends StatefulWidget {
   const ActiveGrantsPage({super.key});
@@ -16,11 +16,25 @@ class ActiveGrantsPage extends StatefulWidget {
   State<ActiveGrantsPage> createState() => _ActiveGrantsPageState();
 }
 
-class _ActiveGrantsPageState extends State<ActiveGrantsPage> {
+class _ActiveGrantsPageState extends State<ActiveGrantsPage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    context.read<AccessRequestCubit>().fetchActiveGrants();
+    WidgetsBinding.instance.addObserver(this);
+    context.read<ClinicGrantsBloc>().add(FetchActiveGrantsEvent());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      context.read<ClinicGrantsBloc>().add(RecalculateTimersEvent());
+    }
   }
 
   @override
@@ -30,15 +44,25 @@ class _ActiveGrantsPageState extends State<ActiveGrantsPage> {
         title: const Text('Active Grants'),
         centerTitle: true,
       ),
-      body: BlocBuilder<AccessRequestCubit, AccessRequestState>(
+      body: BlocConsumer<ClinicGrantsBloc, ClinicGrantsState>(
+        listener: (context, state) {
+          if (state is ClinicGrantsLoaded && state.autoExpiredClinicId != null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Temporary access session has expired."),
+                backgroundColor: Color(0xFFD32F2F),
+              ),
+            );
+          }
+        },
         builder: (context, state) {
-          if (state is ActiveGrantsLoading) {
+          if (state is ClinicGrantsLoading || state is ClinicGrantsInitial) {
             return const Center(
               child: CircularProgressIndicator(),
             );
           }
 
-          if (state is ActiveGrantsFailure) {
+          if (state is ClinicGrantsError) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -59,7 +83,7 @@ class _ActiveGrantsPageState extends State<ActiveGrantsPage> {
                     const SizedBox(height: 16),
                     ElevatedButton(
                       onPressed: () {
-                        context.read<AccessRequestCubit>().fetchActiveGrants();
+                        context.read<ClinicGrantsBloc>().add(FetchActiveGrantsEvent());
                       },
                       child: const Text('Retry'),
                     ),
@@ -69,27 +93,18 @@ class _ActiveGrantsPageState extends State<ActiveGrantsPage> {
             );
           }
 
-          if (state is ActiveGrantsLoaded) {
+          if (state is ClinicGrantsLoaded) {
             return RefreshIndicator(
-              onRefresh: () =>
-                  context.read<AccessRequestCubit>().fetchActiveGrants(),
+              onRefresh: () async {
+                context.read<ClinicGrantsBloc>().add(FetchActiveGrantsEvent());
+              },
               child: ListView(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
-                  ActiveGrantsList(grants: state.grants),
-                ],
-              ),
-            );
-          }
-
-          if (state is RevokingGrant) {
-            return RefreshIndicator(
-              onRefresh: () =>
-                  context.read<AccessRequestCubit>().fetchActiveGrants(),
-              child: ListView(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                children: [
-                  ActiveGrantsList(grants: state.grants),
+                  ActiveGrantsList(
+                    grants: state.grants,
+                    remainingSecondsMap: state.remainingSecondsMap,
+                  ),
                 ],
               ),
             );

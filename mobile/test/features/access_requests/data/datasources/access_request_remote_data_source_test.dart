@@ -1,127 +1,144 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'package:afyamind_mobile/core/network/api_client.dart';
 import 'package:afyamind_mobile/features/access_requests/data/datasources/access_request_remote_data_source.dart';
-import 'package:afyamind_mobile/features/access_requests/data/models/access_request_model.dart';
-import 'package:afyamind_mobile/features/access_requests/data/models/clinic_grant_model.dart';
+import 'package:afyamind_mobile/features/access_requests/data/models/access_request_dto.dart';
+import 'package:afyamind_mobile/features/access_requests/data/models/clinic_grant_dto.dart';
+import 'package:afyamind_mobile/core/errors/exceptions.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
+class MockDio extends Mock implements Dio {}
 
 void main() {
   late AccessRequestRemoteDataSourceImpl dataSource;
   late MockApiClient mockApiClient;
+  late MockDio mockDio;
 
   setUp(() {
     mockApiClient = MockApiClient();
+    mockDio = MockDio();
+    when(() => mockApiClient.dio).thenReturn(mockDio);
     dataSource = AccessRequestRemoteDataSourceImpl(mockApiClient);
   });
 
   group('getPendingAccessRequests', () {
-    test('should return the mock list of AccessRequestModel', () async {
+    test('should return list of AccessRequestDto when response code is 200', () async {
+      final mockData = {
+        'data': [
+          {
+            'id': 'req-1',
+            'clinic_id': 'clinic-3',
+            'clinic_name': 'St. Paul Hospital',
+            'doctor_name': 'Dr. Jane Smith',
+            'reason': 'Checkup',
+            'status': 'pending',
+            'expires_at': '2026-09-07T12:00:00Z',
+            'created_at': '2026-09-07T11:00:00Z',
+          }
+        ]
+      };
+
+      when(() => mockDio.get('/access-requests?status=pending')).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+          data: mockData,
+        ),
+      );
+
       final result = await dataSource.getPendingAccessRequests();
 
-      expect(result, isA<List<AccessRequestModel>>());
+      expect(result, isA<List<AccessRequestDto>>());
       expect(result.length, 1);
-      expect(result[0].id, 'req-1');
-      expect(result[0].clinicName, 'St. Paul Hospital');
-      expect(result[0].doctorName, 'Dr. Jane Smith');
-      expect(result[0].status, 'pending');
+      expect(result.first.id, 'req-1');
     });
 
-    test('should return empty list after all requests are removed', () async {
-      await dataSource.approveAccessRequest('req-1');
-      final result = await dataSource.getPendingAccessRequests();
+    test('should throw ServerException when response code is not 200', () async {
+      when(() => mockDio.get('/access-requests?status=pending')).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 400,
+          data: {'message': 'Error'},
+        ),
+      );
 
-      expect(result, isEmpty);
+      expect(() => dataSource.getPendingAccessRequests(), throwsA(isA<ServerException>()));
     });
   });
 
   group('approveAccessRequest', () {
-    test('should remove the request with matching id', () async {
-      final before = await dataSource.getPendingAccessRequests();
-      expect(before.length, 1);
-
-      await dataSource.approveAccessRequest('req-1');
-
-      final after = await dataSource.getPendingAccessRequests();
-      expect(after, isEmpty);
-    });
-
-    test('should not throw when id does not exist', () async {
-      await expectLater(
-        dataSource.approveAccessRequest('non-existent-id'),
-        completes,
+    test('should complete successfully when status is 200', () async {
+      when(() => mockDio.patch(
+            '/access-requests/req-1/decision',
+            data: {'decision': 'approve'},
+          )).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+        ),
       );
+
+      await expectLater(dataSource.approveAccessRequest('req-1'), completes);
     });
   });
 
   group('denyAccessRequest', () {
-    test('should remove the request with matching id', () async {
-      final before = await dataSource.getPendingAccessRequests();
-      expect(before.length, 1);
-
-      await dataSource.denyAccessRequest('req-1');
-
-      final after = await dataSource.getPendingAccessRequests();
-      expect(after, isEmpty);
-    });
-
-    test('should not throw when id does not exist', () async {
-      await expectLater(
-        dataSource.denyAccessRequest('non-existent-id'),
-        completes,
+    test('should complete successfully when status is 200', () async {
+      when(() => mockDio.patch(
+            '/access-requests/req-1/decision',
+            data: {'decision': 'deny'},
+          )).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+        ),
       );
+
+      await expectLater(dataSource.denyAccessRequest('req-1'), completes);
     });
   });
 
   group('getActiveGrants', () {
-    test('should return the mock list of ClinicGrantModel', () async {
+    test('should return list of ClinicGrantDto when status is 200', () async {
+      final mockData = {
+        'data': [
+          {
+            'grant_id': 'grant-1',
+            'clinic_id': 'clinic-1',
+            'clinic_name': 'Afya Hospital',
+            'granted_at': '2026-09-07T11:00:00Z',
+          }
+        ]
+      };
+
+      when(() => mockDio.get('/clinic-grants')).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+          data: mockData,
+        ),
+      );
+
       final result = await dataSource.getActiveGrants();
 
-      expect(result, isA<List<ClinicGrantModel>>());
-      expect(result.length, 2);
-      expect(result[0].grantId, 'grant-1');
-      expect(result[0].clinicId, 'clinic-1');
-      expect(result[0].clinicName, 'Afya Hospital');
-      expect(result[1].grantId, 'grant-2');
-      expect(result[1].clinicName, 'Addis Ababa Medical Center');
-    });
-
-    test('should return updated list after a grant is revoked', () async {
-      await dataSource.revokeClinicGrant('clinic-1');
-      final result = await dataSource.getActiveGrants();
-
+      expect(result, isA<List<ClinicGrantDto>>());
       expect(result.length, 1);
-      expect(result[0].clinicId, 'clinic-2');
+      expect(result.first.grantId, 'grant-1');
     });
   });
 
   group('revokeClinicGrant', () {
-    test('should remove the grant with matching clinicId', () async {
-      final before = await dataSource.getActiveGrants();
-      expect(before.length, 2);
-
-      await dataSource.revokeClinicGrant('clinic-1');
-
-      final after = await dataSource.getActiveGrants();
-      expect(after.length, 1);
-      expect(after.any((g) => g.clinicId == 'clinic-1'), isFalse);
-    });
-
-    test('should remove all grants when both are revoked', () async {
-      await dataSource.revokeClinicGrant('clinic-1');
-      await dataSource.revokeClinicGrant('clinic-2');
-
-      final result = await dataSource.getActiveGrants();
-      expect(result, isEmpty);
-    });
-
-    test('should not throw when clinicId does not exist', () async {
-      await expectLater(
-        dataSource.revokeClinicGrant('non-existent-id'),
-        completes,
+    test('should complete successfully when status is 200', () async {
+      when(() => mockDio.delete('/clinic-grants/clinic-1')).thenAnswer(
+        (_) async => Response(
+          requestOptions: RequestOptions(path: ''),
+          statusCode: 200,
+        ),
       );
+
+      await expectLater(dataSource.revokeClinicGrant('clinic-1'), completes);
     });
   });
 }

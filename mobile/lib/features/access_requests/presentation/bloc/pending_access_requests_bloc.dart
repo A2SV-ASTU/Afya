@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -35,6 +37,18 @@ class DenyAccessRequestEvent extends PendingAccessRequestsEvent {
   List<Object?> get props => [requestId];
 }
 
+class AccessRequestExpiredEvent extends PendingAccessRequestsEvent {
+  final String requestId;
+  final String clinicName;
+
+  const AccessRequestExpiredEvent(this.requestId, this.clinicName);
+
+  @override
+  List<Object?> get props => [requestId, clinicName];
+}
+
+class _TickExpirationsEvent extends PendingAccessRequestsEvent {}
+
 // --- States ---
 abstract class PendingAccessRequestsState extends Equatable {
   const PendingAccessRequestsState();
@@ -53,11 +67,21 @@ class PendingAccessRequestsLoading extends PendingAccessRequestsState {
 
 class PendingAccessRequestsLoaded extends PendingAccessRequestsState {
   final List<AccessRequestEntity> requests;
+  final String? autoExpiredClinicName; // For snackbar trigger
 
-  const PendingAccessRequestsLoaded(this.requests);
+  const PendingAccessRequestsLoaded(this.requests, {this.autoExpiredClinicName});
 
   @override
-  List<Object?> get props => [requests];
+  List<Object?> get props => [requests, autoExpiredClinicName];
+}
+
+class PendingAccessRequestsEmpty extends PendingAccessRequestsState {
+  final String? autoExpiredClinicName;
+
+  const PendingAccessRequestsEmpty({this.autoExpiredClinicName});
+
+  @override
+  List<Object?> get props => [autoExpiredClinicName];
 }
 
 class PendingAccessRequestsError extends PendingAccessRequestsState {
@@ -87,6 +111,8 @@ class PendingAccessRequestsBloc
   final ApproveAccessRequestUseCase _approveUseCase;
   final DenyAccessRequestUseCase _denyUseCase;
 
+  Timer? _ticker;
+
   PendingAccessRequestsBloc({
     required GetPendingAccessRequestsUseCase getPendingUseCase,
     required ApproveAccessRequestUseCase approveUseCase,
@@ -98,6 +124,14 @@ class PendingAccessRequestsBloc
     on<FetchPendingAccessRequestsEvent>(_onFetchPending);
     on<ApproveAccessRequestEvent>(_onApprove);
     on<DenyAccessRequestEvent>(_onDeny);
+    on<AccessRequestExpiredEvent>(_onRequestExpired);
+    on<_TickExpirationsEvent>(_onTickExpirations);
+  }
+
+  @override
+  Future<void> close() {
+    _ticker?.cancel();
+    return super.close();
   }
 
   Future<void> _onFetchPending(
@@ -110,8 +144,59 @@ class PendingAccessRequestsBloc
 
     result.fold(
       (failure) => emit(PendingAccessRequestsError(failure.message)),
-      (requests) => emit(PendingAccessRequestsLoaded(requests)),
+      (requests) {
+        final now = DateTime.now();
+        final validRequests = requests.where((r) => r.expiresAt.isAfter(now)).toList();
+
+        _ticker?.cancel();
+        if (validRequests.isNotEmpty) {
+          _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+            add(_TickExpirationsEvent());
+          });
+          emit(PendingAccessRequestsLoaded(validRequests));
+        } else {
+          emit(const PendingAccessRequestsEmpty());
+        }
+      },
     );
+  }
+
+  void _onTickExpirations(
+    _TickExpirationsEvent event,
+    Emitter<PendingAccessRequestsState> emit,
+  ) {
+    if (state is PendingAccessRequestsLoaded) {
+      final currentRequests = (state as PendingAccessRequestsLoaded).requests;
+      final now = DateTime.now();
+
+      for (var req in currentRequests) {
+        if (!req.expiresAt.isAfter(now)) {
+          add(AccessRequestExpiredEvent(req.id, req.clinicName));
+        }
+      }
+    }
+  }
+
+  void _onRequestExpired(
+    AccessRequestExpiredEvent event,
+    Emitter<PendingAccessRequestsState> emit,
+  ) {
+    if (state is PendingAccessRequestsLoaded) {
+      final currentRequests = (state as PendingAccessRequestsLoaded).requests;
+      final updatedRequests = currentRequests
+          .where((req) => req.id != event.requestId)
+          .toList();
+
+      if (updatedRequests.isEmpty) {
+        _ticker?.cancel();
+        emit(PendingAccessRequestsEmpty(autoExpiredClinicName: event.clinicName));
+      } else {
+        emit(PendingAccessRequestsLoaded(
+          updatedRequests,
+          autoExpiredClinicName: event.clinicName,
+        ));
+      }
+    }
   }
 
   Future<void> _onApprove(

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/di/injection_container.dart';
-import '../bloc/grants_management_bloc.dart';
+import '../bloc/clinic_grants_bloc.dart';
 import '../widgets/clinic_grant_card.dart';
 import '../widgets/revoke_confirm_dialog.dart';
 
@@ -11,7 +11,7 @@ class ClinicGrantsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => sl<GrantsManagementBloc>()..add(FetchActiveGrantsEvent()),
+      create: (_) => sl<ClinicGrantsBloc>()..add(FetchActiveGrantsEvent()),
       child: const ClinicGrantsView(),
     );
   }
@@ -38,7 +38,7 @@ class _ClinicGrantsViewState extends State<ClinicGrantsView> {
         return RevokeConfirmDialog(
           onConfirm: () {
             Navigator.of(dialogContext).pop();
-            context.read<GrantsManagementBloc>().add(RevokeGrantEvent(clinicId));
+            context.read<ClinicGrantsBloc>().add(RevokeClinicGrantEvent(clinicId));
           },
           onCancel: () => Navigator.of(dialogContext).pop(),
         );
@@ -64,9 +64,9 @@ class _ClinicGrantsViewState extends State<ClinicGrantsView> {
           ),
         ),
       ),
-      body: BlocConsumer<GrantsManagementBloc, GrantsManagementState>(
+      body: BlocConsumer<ClinicGrantsBloc, ClinicGrantsState>(
         listener: (context, state) {
-          if (state is GrantsManagementError) {
+          if (state is ClinicGrantsError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
@@ -76,7 +76,7 @@ class _ClinicGrantsViewState extends State<ClinicGrantsView> {
           }
         },
         builder: (context, state) {
-          if (state is GrantsManagementLoading || state is GrantsManagementInitial) {
+          if (state is ClinicGrantsLoading || state is ClinicGrantsInitial) {
             return const Center(
               child: CircularProgressIndicator(
                 color: Color(0xFF014F24),
@@ -84,7 +84,7 @@ class _ClinicGrantsViewState extends State<ClinicGrantsView> {
             );
           }
 
-          if (state is GrantsManagementLoaded) {
+          if (state is ClinicGrantsLoaded) {
             if (state.grants.isEmpty) {
               return Center(
                 child: Padding(
@@ -120,7 +120,7 @@ class _ClinicGrantsViewState extends State<ClinicGrantsView> {
                       const SizedBox(height: 24),
                       ElevatedButton(
                         onPressed: () {
-                          context.read<GrantsManagementBloc>().add(FetchActiveGrantsEvent());
+                          context.read<ClinicGrantsBloc>().add(FetchActiveGrantsEvent());
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF014F24),
@@ -148,7 +148,7 @@ class _ClinicGrantsViewState extends State<ClinicGrantsView> {
             return RefreshIndicator(
               color: const Color(0xFF014F24),
               onRefresh: () async {
-                context.read<GrantsManagementBloc>().add(FetchActiveGrantsEvent());
+                context.read<ClinicGrantsBloc>().add(FetchActiveGrantsEvent());
               },
               child: ListView.builder(
                 padding: const EdgeInsets.all(16.0),
@@ -187,7 +187,7 @@ class _ClinicGrantsViewState extends State<ClinicGrantsView> {
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () {
-                    context.read<GrantsManagementBloc>().add(FetchActiveGrantsEvent());
+                    context.read<ClinicGrantsBloc>().add(FetchActiveGrantsEvent());
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF014F24),

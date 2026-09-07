@@ -1,15 +1,15 @@
 import '../../domain/entities/clinic_grant_entity.dart';
 
-class ClinicGrantModel extends ClinicGrantEntity {
-  const ClinicGrantModel({
+class ClinicGrantDto extends ClinicGrantEntity {
+  const ClinicGrantDto({
     required super.grantId,
     required super.clinicId,
     required super.clinicName,
     required super.grantedAt,
   });
 
-  factory ClinicGrantModel.fromJson(Map<String, dynamic> json) {
-    return ClinicGrantModel(
+  factory ClinicGrantDto.fromJson(Map<String, dynamic> json) {
+    return ClinicGrantDto(
       // Backend returns 'id', mobile expects 'grant_id'
       grantId: (json['grant_id'] ?? json['id']) as String,
       // Backend returns 'requesting_clinic_id', mobile expects 'clinic_id'

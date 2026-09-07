@@ -37,7 +37,7 @@ import '../../features/access_requests/domain/usecases/get_pending_access_reques
     as _i508;
 import '../../features/access_requests/domain/usecases/revoke_clinic_grant_usecase.dart'
     as _i1;
-import '../../features/access_requests/presentation/bloc/grants_management_bloc.dart'
+import '../../features/access_requests/presentation/bloc/clinic_grants_bloc.dart'
     as _i506;
 import '../../features/access_requests/presentation/bloc/pending_access_requests_bloc.dart'
     as _i427;
@@ -337,7 +337,7 @@ extension GetItInjectableX on _i174.GetIt {
               remoteDataSource: gh<_i113.ClinicalHistoryRemoteDataSource>(),
               localDataSource: gh<_i196.ClinicalHistoryLocalDataSource>(),
             ));
-    gh.factory<_i506.GrantsManagementBloc>(() => _i506.GrantsManagementBloc(
+    gh.factory<_i506.ClinicGrantsBloc>(() => _i506.ClinicGrantsBloc(
           getActiveGrantsUseCase: gh<_i211.GetActiveGrantsUseCase>(),
           revokeClinicGrantUseCase: gh<_i1.RevokeClinicGrantUseCase>(),
         ));

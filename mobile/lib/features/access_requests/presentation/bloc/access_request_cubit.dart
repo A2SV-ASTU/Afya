@@ -141,7 +141,19 @@ class AccessRequestCubit extends Cubit<AccessRequestState> {
     result.fold(
       (failure) => emit(ActiveGrantsFailure(message: failure.message)),
       (grants) {
-        _activeGrants = List.of(grants);
+        final now = DateTime.now();
+        // Filter out expired grants (older than 5 minutes)
+        final validGrants = grants.where((g) {
+          final expiresAt = g.grantedAt.add(const Duration(minutes: 5));
+          if (expiresAt.isBefore(now)) {
+            // Auto-revoke locally expired grants on the backend
+            _revokeClinicGrantUseCase(g.clinicId);
+            return false;
+          }
+          return true;
+        }).toList();
+
+        _activeGrants = List.of(validGrants);
         emit(ActiveGrantsLoaded(grants: _activeGrants));
       },
     );

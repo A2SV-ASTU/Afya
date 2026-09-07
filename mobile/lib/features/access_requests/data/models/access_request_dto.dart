@@ -1,7 +1,7 @@
 import '../../domain/entities/access_request_entity.dart';
 
-class AccessRequestModel extends AccessRequestEntity {
-  const AccessRequestModel({
+class AccessRequestDto extends AccessRequestEntity {
+  const AccessRequestDto({
     required super.id,
     required super.clinicId,
     required super.clinicName,
@@ -12,8 +12,8 @@ class AccessRequestModel extends AccessRequestEntity {
     required super.createdAt,
   });
 
-  factory AccessRequestModel.fromJson(Map<String, dynamic> json) {
-    return AccessRequestModel(
+  factory AccessRequestDto.fromJson(Map<String, dynamic> json) {
+    return AccessRequestDto(
       id: json['id'] as String,
       // Backend uses 'requesting_clinic_id', mobile uses 'clinicId'
       clinicId: (json['clinic_id'] ?? json['requesting_clinic_id']) as String,
