@@ -2,22 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-
 import '../../../../core/di/injection_container.dart';
-import '../../../vitals_sync/presentation/bloc/vitals_sync_bloc.dart';
-import '../../../vitals_sync/presentation/screens/log_vital_signs_screen.dart'
-    show VitalSignInputDialog;
-import '../../../vitals_sync/domain/entities/vital_sign_entity.dart';
-
 import '../../../../app/router/route_paths.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/afya_error_view.dart';
 import '../../../../core/widgets/afya_loading_indicator.dart';
+
+import '../../../vitals_sync/domain/entities/vital_sign_entity.dart';
+import '../../../vitals_sync/presentation/bloc/vitals_sync_bloc.dart';
+import '../../../vitals_sync/presentation/screens/log_vital_signs_screen.dart'
+    show VitalSignInputDialog;
+
 import '../../../medication_and_adherence/domain/entities/local_dose_record_entity.dart';
 import '../../../medication_and_adherence/presentation/widgets/log_action_sheet.dart';
 import '../../../medication_and_adherence/presentation/widgets/today_schedule_card.dart';
+
 import '../cubit/dashboard_cubit.dart';
 import '../cubit/dashboard_state.dart';
 import '../widgets/dashboard_header.dart';
@@ -27,12 +29,16 @@ import '../widgets/today_adherence_card.dart';
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
+  // ==========================================
+  // HANDLE MEDICATION DOSE TAP
+  // ==========================================
   void _handleDoseTap(
     BuildContext context,
     LocalDoseRecordEntity dose,
     DashboardState state,
   ) {
     final cubit = context.read<DashboardCubit>();
+
     final matchingRx = state.cachedPrescriptions
         .where((r) => r.id == dose.prescriptionItemId)
         .firstOrNull;
@@ -48,31 +54,42 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-
-
+  // ==========================================
+  // SHOW LOG VITALS DIALOG
+  // ==========================================
   Future<void> _showLogVitalsDialog(BuildContext context) async {
-  final vital = await showDialog<VitalSignEntity>(
-    context: context,
-    barrierDismissible: false,
-    builder: (dialogContext) {
-      return BlocProvider.value(
-        value: sl<VitalsSyncBloc>(),
-        child: const VitalSignInputDialog(),
-      );
-    },
-  );
+    await showDialog<VitalSignEntity>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return BlocProvider.value(
+          value: sl<VitalsSyncBloc>(),
+          child: const VitalSignInputDialog(),
+        );
+      },
+    );
 
-  if (!context.mounted || vital == null) {
-    return;
+    // IMPORTANT:
+    // Do NOT navigate to Vitals History here.
+    //
+    // The VitalSignInputDialog already saves the vital
+    // and closes itself with Navigator.pop(vital).
+    //
+    // After the dialog closes, the user remains
+    // on the Dashboard/Home page.
   }
 
-  context.go(RoutePaths.history);
-}
-
+  // ==========================================
+  // BUILD DASHBOARD
+  // ==========================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+
+      // ========================================
+      // LOG VITAL SIGNS BUTTON
+      // ========================================
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showLogVitalsDialog(context),
         backgroundColor: AppColors.primary,
@@ -90,68 +107,121 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+          borderRadius: BorderRadius.circular(
+            AppDimensions.radiusFull,
+          ),
         ),
       ),
+
+      // ========================================
+      // DASHBOARD BODY
+      // ========================================
       body: SafeArea(
         child: BlocConsumer<DashboardCubit, DashboardState>(
+          // ======================================
+          // LISTEN ONLY FOR NEW ERRORS
+          // ======================================
           listenWhen: (previous, current) =>
               current.errorMessage != null &&
               previous.errorMessage != current.errorMessage,
+
+          // ======================================
+          // SHOW ERROR MESSAGE
+          // ======================================
           listener: (context, state) {
             if (state.errorMessage != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(state.errorMessage!),
+                  content: Text(
+                    state.errorMessage!,
+                  ),
                   backgroundColor: AppColors.urgentAlert,
                 ),
               );
             }
           },
+
+          // ======================================
+          // BUILD UI
+          // ======================================
           builder: (context, state) {
+            // ------------------------------------
+            // LOADING
+            // ------------------------------------
             if (state.status == DashboardStatus.loading) {
               return const AfyaLoadingIndicator();
             }
 
+            // ------------------------------------
+            // ERROR
+            // ------------------------------------
             if (state.status == DashboardStatus.error &&
                 state.todayDoses.isEmpty) {
               return AfyaErrorView(
-                message: state.errorMessage ?? 'Failed to load dashboard data.',
+                message: state.errorMessage ??
+                    'Failed to load dashboard data.',
                 onRetry: () => context
                     .read<DashboardCubit>()
-                    .loadDashboard(forceRefresh: true),
+                    .loadDashboard(
+                      forceRefresh: true,
+                    ),
               );
             }
 
+            // ------------------------------------
+            // DASHBOARD CONTENT
+            // ------------------------------------
             return RefreshIndicator(
               color: AppColors.primary,
+
               onRefresh: () => context
                   .read<DashboardCubit>()
-                  .loadDashboard(forceRefresh: true),
+                  .loadDashboard(
+                    forceRefresh: true,
+                  ),
+
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
+
                 padding: const EdgeInsets.symmetric(
                   horizontal: AppDimensions.space20,
                   vertical: AppDimensions.space16,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 1. Header
-                    DashboardHeader(user: state.user),
-                    const SizedBox(height: AppDimensions.space24),
 
-                    // 2. Today's Medication Section
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment.start,
+
+                  children: [
+                    // ==================================
+                    // 1. DASHBOARD HEADER
+                    // ==================================
+                    DashboardHeader(
+                      user: state.user,
+                    ),
+
+                    const SizedBox(
+                      height: AppDimensions.space24,
+                    ),
+
+                    // ==================================
+                    // 2. TODAY'S MEDICATION
+                    // ==================================
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+
                       children: [
                         const Text(
                           "Today's Medication",
                           style: AppTypography.titleMedium,
                         ),
+
                         if (state.todayDoses.isNotEmpty)
                           GestureDetector(
-                            onTap: () => context.go(RoutePaths.history),
+                            onTap: () => context.go(
+                              RoutePaths.history,
+                            ),
                             child: Text(
                               'View All',
                               style: AppTypography.caption.copyWith(
@@ -162,48 +232,96 @@ class DashboardScreen extends StatelessWidget {
                           ),
                       ],
                     ),
-                    const SizedBox(height: AppDimensions.space12),
+
+                    const SizedBox(
+                      height: AppDimensions.space12,
+                    ),
+
+                    // ==================================
+                    // TODAY'S MEDICATION CARD
+                    // ==================================
                     TodayScheduleCard(
                       doses: state.todayDoses,
-                      title: null,
-                      emptyMessage:
-                          'No reminders buzzing yet — your dose schedule will land here once it\'s set.',
-                      routeBuilder: (dose) =>
-                          state.cachedPrescriptions
-                              .where((r) => r.id == dose.prescriptionItemId)
-                              .firstOrNull
-                              ?.route ??
-                          '',
-                      instructionsBuilder: (dose) =>
-                          state.cachedPrescriptions
-                              .where((r) => r.id == dose.prescriptionItemId)
-                              .firstOrNull
-                              ?.instructions ??
-                          '',
-                      onDoseTap: (dose) => _handleDoseTap(context, dose, state),
-                    ),
-                    const SizedBox(height: AppDimensions.space24),
 
-                    // 3. Today's Adherence Section
+                      title: null,
+
+                      emptyMessage:
+                          'No reminders buzzing yet — '
+                          'your dose schedule will land here '
+                          'once it\'s set.',
+
+                      routeBuilder: (dose) => state
+                          .cachedPrescriptions
+                          .where(
+                            (r) =>
+                                r.id ==
+                                dose.prescriptionItemId,
+                          )
+                          .firstOrNull
+                          ?.route ??
+                          '',
+
+                      instructionsBuilder: (dose) => state
+                          .cachedPrescriptions
+                          .where(
+                            (r) =>
+                                r.id ==
+                                dose.prescriptionItemId,
+                          )
+                          .firstOrNull
+                          ?.instructions ??
+                          '',
+
+                      onDoseTap: (dose) =>
+                          _handleDoseTap(
+                        context,
+                        dose,
+                        state,
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: AppDimensions.space24,
+                    ),
+
+                    // ==================================
+                    // 3. TODAY'S ADHERENCE
+                    // ==================================
                     TodayAdherenceCard(
                       takenCount: state.takenCount,
                       pendingCount: state.pendingCount,
                       missedCount: state.missedCount,
                       skippedCount: state.skippedCount,
                       totalCount: state.totalCount,
-                      adherencePercentage: state.adherencePercentage,
+                      adherencePercentage:
+                          state.adherencePercentage,
                     ),
-                    const SizedBox(height: AppDimensions.space24),
 
-                    // 4. Next Appointment Section
-                    NextAppointmentSection(
-                      nextAppointment: state.nextAppointment,
-                      onAppointmentTap: () =>
-                          context.push(RoutePaths.appointments),
-                      onViewAllAppointments: () =>
-                          context.push(RoutePaths.appointments),
+                    const SizedBox(
+                      height: AppDimensions.space24,
                     ),
-                    const SizedBox(height: AppDimensions.space32),
+
+                    // ==================================
+                    // 4. NEXT APPOINTMENT
+                    // ==================================
+                    NextAppointmentSection(
+                      nextAppointment:
+                          state.nextAppointment,
+
+                      onAppointmentTap: () =>
+                          context.push(
+                        RoutePaths.appointments,
+                      ),
+
+                      onViewAllAppointments: () =>
+                          context.push(
+                        RoutePaths.appointments,
+                      ),
+                    ),
+
+                    const SizedBox(
+                      height: AppDimensions.space32,
+                    ),
                   ],
                 ),
               ),

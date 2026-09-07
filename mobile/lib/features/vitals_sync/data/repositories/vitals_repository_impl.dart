@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:injectable/injectable.dart';
 
 import '../../domain/entities/vital_sign_entity.dart';
@@ -7,7 +8,6 @@ import '../../domain/repositories/vitals_repository.dart';
 import '../datasources/vitals_local_data_source.dart';
 import '../datasources/vitals_remote_data_source.dart';
 import '../models/vital_sign_model.dart';
-import 'package:flutter/foundation.dart';
 
 @LazySingleton(as: VitalsRepository)
 class VitalsRepositoryImpl implements VitalsRepository {
@@ -47,7 +47,17 @@ class VitalsRepositoryImpl implements VitalsRepository {
   Future<VitalsSyncBatchResultEntity> syncVitals() async {
     final pending = await local.getPendingVitals();
 
+    debugPrint(
+      '========== VITAL SYNC DEBUG ==========',
+    );
+
+    debugPrint(
+      'Pending vitals: ${pending.length}',
+    );
+
     if (pending.isEmpty) {
+      debugPrint('Nothing to sync.');
+
       return const VitalsSyncBatchResultEntity(
         uploaded: 0,
         failed: 0,
@@ -55,75 +65,115 @@ class VitalsRepositoryImpl implements VitalsRepository {
       );
     }
 
-    return await remote.syncVitals(pending);
+    try {
+      // Send pending vitals to backend.
+      final result = await remote.syncVitals(pending);
+
+      debugPrint(
+        'Backend uploaded: ${result.uploaded}',
+      );
+
+      debugPrint(
+        'Backend failed: ${result.failed}',
+      );
+
+      debugPrint(
+        'Failed IDs: ${result.failedIds}',
+      );
+
+      // IDs that were successfully uploaded.
+      final failedIds = result.failedIds.toSet();
+
+      final uploadedIds = pending
+          .map((vital) => vital.clientId)
+          .where((id) => !failedIds.contains(id))
+          .toList();
+
+      // Remove successfully uploaded records from the
+      // local outbox.
+      if (uploadedIds.isNotEmpty) {
+        await local.deleteSyncedVitals(uploadedIds);
+
+        debugPrint(
+          'Removed ${uploadedIds.length} synced vitals from Hive.',
+        );
+      }
+
+      debugPrint(
+        '=====================================',
+      );
+
+      return result;
+    } catch (e) {
+      debugPrint(
+        'Vital sync failed: $e',
+      );
+
+      debugPrint(
+        '=====================================',
+      );
+
+      rethrow;
+    }
   }
 
   @override
-Future<List<VitalSignEntity>> getHistory() async {
-  final remoteHistory = await remote.getHistory();
-  final pendingVitals = await local.getPendingVitals();
+  Future<List<VitalSignEntity>> getHistory() async {
+    // Always read local data first.
+    List<VitalSignModel> localVitals = [];
 
-  debugPrint('========== VITAL HISTORY DEBUG ==========');
-  debugPrint('Remote history count: ${remoteHistory.length}');
-  debugPrint('Local pending count: ${pendingVitals.length}');
+    try {
+      localVitals = await local.getPendingVitals();
 
-  for (final vital in remoteHistory) {
-    debugPrint(
-      'REMOTE -> '
-      'id=${vital.clientId}, '
-      'BP=${vital.systolicBp}/${vital.diastolicBp}, '
-      'pulse=${vital.pulse}, '
-      'temp=${vital.temperature}, '
-      'weight=${vital.weight}, '
-      'recordedAt=${vital.recordedAt}',
+      debugPrint(
+        'Local pending vitals count: ${localVitals.length}',
+      );
+    } catch (e) {
+      debugPrint(
+        'Failed to read local vitals: $e',
+      );
+    }
+
+    // Try remote history.
+    List<VitalSignModel> remoteVitals = [];
+
+    try {
+      remoteVitals = await remote.getHistory();
+
+      debugPrint(
+        'Remote history count: ${remoteVitals.length}',
+      );
+    } catch (e) {
+      // Offline is okay. We still return local data.
+      debugPrint(
+        'Remote history unavailable: $e',
+      );
+    }
+
+    // Combine remote + local.
+    final allVitals = <VitalSignEntity>[
+      ...remoteVitals,
+      ...localVitals,
+    ];
+
+    // Remove duplicates.
+    final uniqueVitals = <String, VitalSignEntity>{};
+
+    for (final vital in allVitals) {
+      uniqueVitals[vital.clientId] = vital;
+    }
+
+    final history = uniqueVitals.values.toList();
+
+    // Newest first.
+    history.sort(
+      (a, b) => b.recordedAt.compareTo(a.recordedAt),
     );
-  }
 
-  for (final vital in pendingVitals) {
     debugPrint(
-      'LOCAL -> '
-      'id=${vital.clientId}, '
-      'BP=${vital.systolicBp}/${vital.diastolicBp}, '
-      'pulse=${vital.pulse}, '
-      'temp=${vital.temperature}, '
-      'weight=${vital.weight}, '
-      'recordedAt=${vital.recordedAt}',
+      'Final history count: ${history.length}',
     );
+
+    return history;
   }
-
-  final allVitals = <VitalSignEntity>[
-    ...remoteHistory,
-    ...pendingVitals,
-  ];
-
-  final uniqueVitals = <String, VitalSignEntity>{};
-
-  for (final vital in allVitals) {
-    uniqueVitals[vital.clientId] = vital;
-  }
-
-  final history = uniqueVitals.values.toList();
-
-  history.sort(
-    (a, b) => b.recordedAt.compareTo(a.recordedAt),
-  );
-
-  debugPrint('Final history count: ${history.length}');
-
-  for (final vital in history) {
-    debugPrint(
-      'FINAL -> '
-      'id=${vital.clientId}, '
-      'BP=${vital.systolicBp}/${vital.diastolicBp}, '
-      'pulse=${vital.pulse}, '
-      'temp=${vital.temperature}, '
-      'weight=${vital.weight}, '
-      'recordedAt=${vital.recordedAt}',
-    );
-  }
-
-  debugPrint('=========================================');
-
-  return history;
-}
 }
