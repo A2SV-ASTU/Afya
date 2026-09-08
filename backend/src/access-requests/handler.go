@@ -95,6 +95,10 @@ func (h *Handler) CreateRequest(c *gin.Context) {
 			response.RespondAppError(c, appErrors.ErrNotFound("patient"))
 			return
 		}
+		if err.Error() == "active_grant_exists" {
+			response.RespondAppError(c, appErrors.ErrConflict("Clinic already has active access to this patient. Revoke existing grant first."))
+			return
+		}
 		response.RespondAppError(c, appErrors.ErrInternal(err.Error()))
 		return
 	}

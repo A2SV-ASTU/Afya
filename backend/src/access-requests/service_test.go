@@ -247,3 +247,58 @@ func TestCreateAccessRequest_PopulatesPatient(t *testing.T) {
 		t.Errorf("expected email john.doe@example.com, got %s", ar.Patient.Email)
 	}
 }
+
+func TestCreateAccessRequest_BlockedWhenActiveGrantExists(t *testing.T) {
+	repo := newMockRepository()
+	userRepo := newMockUserRepo()
+
+	clinicID := uuid.New()
+	doctorID := uuid.New()
+	patientID := uuid.New()
+
+	doctor := &users.User{
+		ID:       doctorID,
+		Role:     users.RoleDoctor,
+		ClinicID: &clinicID,
+	}
+	patient := &users.User{
+		ID:        patientID,
+		FirstName: "Jane",
+		LastName:  "Smith",
+		Email:     "jane.smith@example.com",
+		Role:      users.RolePatient,
+	}
+
+	userRepo.users[doctorID] = doctor
+	userRepo.users[patientID] = patient
+
+	svc := NewService(nil, repo, userRepo, nil)
+
+	// First request — should succeed
+	req := CreateAccessRequestRequest{
+		PatientID: patientID,
+		Reason:    "Initial consultation",
+	}
+
+	ar, err := svc.CreateRequest(context.Background(), clinicID, doctorID, req, "http://localhost:8080")
+	if err != nil {
+		t.Fatalf("expected first request to succeed, got %v", err)
+	}
+
+	// Simulate patient approval (set status to approved)
+	ar.Status = StatusApproved
+
+	// Second request — should be blocked because an active grant exists
+	req2 := CreateAccessRequestRequest{
+		PatientID: patientID,
+		Reason:    "Follow-up visit",
+	}
+
+	_, err = svc.CreateRequest(context.Background(), clinicID, doctorID, req2, "http://localhost:8080")
+	if err == nil {
+		t.Fatal("expected error when creating duplicate request with active grant, got nil")
+	}
+	if err.Error() != "active_grant_exists" {
+		t.Errorf("expected error 'active_grant_exists', got '%s'", err.Error())
+	}
+}

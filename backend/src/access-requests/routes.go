@@ -16,9 +16,9 @@ func RegisterRoutes(rg *gin.RouterGroup, handler *Handler, jwtSecret string) {
 	{
 		clinicsGroup.GET("", handler.ListRequests)
 		clinicsGroup.POST("", handler.CreateRequest)
-		// Only clinic admin can revoke, we use a separate group
+		// Clinic admin or doctor can revoke
 		revokeGroup := clinicsGroup.Group("/:id/revoke")
-		revokeGroup.Use(middleware.RequireRole("clinic_admin"))
+		revokeGroup.Use(middleware.RequireRole("clinic_admin", "doctor"))
 		{
 			revokeGroup.POST("", handler.RevokeRequest)
 		}
