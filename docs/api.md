@@ -678,7 +678,7 @@ All error responses adhere to a consistent error schema:
 ### 19. Create Access Request
 - **Endpoint**: `POST /api/v1/clinics/{clinicId}/access-requests`
 - **Auth Required**: Yes (`clinic_admin` or `doctor`)
-- **Description**: Creates a pending access request to a patient's medical records and sends an email to the patient containing Magic Links to Approve or Deny. (Expires in 15 minutes).
+- **Description**: Creates a pending access request to a patient's medical records and sends an email to the patient containing Magic Links to Approve or Deny. (Expires in 15 minutes). **If the clinic already has an active (approved, non-revoked) grant for this patient, the request is rejected with a 409 Conflict.**
 
 #### Request Body
 ```json
@@ -745,13 +745,15 @@ All error responses adhere to a consistent error schema:
   ]
 }
 ```
+- **404 Not Found** (`not_found`): Patient not found.
+- **409 Conflict** (`conflict`): Clinic already has active access to this patient. Revoke existing grant first.
 
 ---
 
 ### 21. Revoke Access Request Grant
 - **Endpoint**: `POST /api/v1/clinics/{clinicId}/access-requests/{id}/revoke`
-- **Auth Required**: Yes (`clinic_admin` role)
-- **Description**: Revokes an active approved access grant for the clinic.
+- **Auth Required**: Yes (`clinic_admin` or `doctor`)
+- **Description**: Revokes an active approved access grant for the clinic. The caller (clinic admin or doctor) must belong to the same clinic that owns the access request.
 
 #### Responses
 - **200 OK**:
@@ -1447,4 +1449,3 @@ Magic links are browser-rendered HTML pages used for email-driven workflows with
 - **401 Unauthorized**: Missing or invalid token.
 - **403 Forbidden**: Caller is not a clinic admin for this clinic.
 - **404 Not Found**: Doctor not found in this clinic.
-
