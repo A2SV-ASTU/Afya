@@ -41,9 +41,10 @@ class HandleSnoozeUseCase {
       }
 
       final int newSnoozeCount = dose.snoozeCount + 1;
-      final int offsetMinutes = newSnoozeCount == 1 ? 10 : 20;
+      final DateTime baseTime = dose.snoozedUntil ?? dose.scheduledTime;
+      final int minutesToAdd = newSnoozeCount == 1 ? 10 : 20;
       final DateTime newSnoozedUntil =
-          dose.scheduledTime.add(Duration(minutes: offsetMinutes));
+          baseTime.add(Duration(minutes: minutesToAdd));
       final bool canSnoozeAgain = newSnoozeCount < 2;
 
       final updatedDose = dose.copyWith(

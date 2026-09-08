@@ -143,7 +143,68 @@ void main() {
       expect(progress.skippedCount, 1);
       expect(progress.missedCount, 1);
       expect(progress.pendingCount, 2);
-      expect(progress.remainingCount, 2);
+      expect(progress.remainingCount, 4); // 5 total - 1 taken = 4 remaining to satisfy course
+      expect(progress.isComplete, false);
+      expect(progress.isTrackingActive, true);
+    });
+
+    test('calendar end date passing with missed doses does NOT mark course complete', () {
+      final records = [
+        LocalDoseRecordEntity(
+          id: 'd1',
+          prescriptionItemId: 'rx_vit_e',
+          medicationName: 'Vitamin E',
+          dose: '400 IU',
+          scheduledTime: twoDaysAgo,
+          status: DoseStatus.taken,
+        ),
+        LocalDoseRecordEntity(
+          id: 'd2',
+          prescriptionItemId: 'rx_vit_e',
+          medicationName: 'Vitamin E',
+          dose: '400 IU',
+          scheduledTime: yesterday,
+          status: DoseStatus.taken,
+        ),
+        LocalDoseRecordEntity(
+          id: 'd3',
+          prescriptionItemId: 'rx_vit_e',
+          medicationName: 'Vitamin E',
+          dose: '400 IU',
+          scheduledTime: today,
+          status: DoseStatus.missed,
+        ),
+        LocalDoseRecordEntity(
+          id: 'd4',
+          prescriptionItemId: 'rx_vit_e',
+          medicationName: 'Vitamin E',
+          dose: '400 IU',
+          scheduledTime: tomorrow,
+          status: DoseStatus.missed,
+        ),
+        LocalDoseRecordEntity(
+          id: 'd5',
+          prescriptionItemId: 'rx_vit_e',
+          medicationName: 'Vitamin E',
+          dose: '400 IU',
+          scheduledTime: inTwoDays,
+          status: DoseStatus.missed,
+        ),
+      ];
+
+      final progress = MedicationCourseProgress.calculate(
+        prescription: tRxVitaminE,
+        doseRecords: records,
+      );
+
+      // Even though pendingCount is 0, taken is 2/5 -> course is NOT complete!
+      expect(progress.totalScheduled, 5);
+      expect(progress.takenCount, 2);
+      expect(progress.missedCount, 3);
+      expect(progress.pendingCount, 0);
+      expect(progress.remainingCount, 3);
+      expect(progress.isComplete, false);
+      expect(progress.isTrackingActive, true);
     });
 
     test('marks course complete when all scheduled doses are taken or closed', () {

@@ -115,7 +115,7 @@ void main() {
         dose: '10mg',
         scheduledTime: DateTime(2026, 8, 29, 8, 0),
         status: DoseStatus.pending,
-        snoozeCount: 1, // 1 snooze used, can snooze once more
+        snoozeCount: 1, // 1 snooze used, next snooze is 20 min
       );
 
       await tester.pumpWidget(
@@ -139,12 +139,12 @@ void main() {
       await tester.pumpAndSettle();
 
       final snoozeButton = tester.widget<AfyaButton>(
-        find.widgetWithText(AfyaButton, 'Snooze (10 min)'),
+        find.widgetWithText(AfyaButton, 'Snooze (20 min)'),
       );
       expect(snoozeButton.onPressed, isNotNull);
       expect(find.text('Maximum 2 snoozes reached'), findsNothing);
 
-      await tester.tap(find.widgetWithText(AfyaButton, 'Snooze (10 min)'));
+      await tester.tap(find.widgetWithText(AfyaButton, 'Snooze (20 min)'));
       await tester.pumpAndSettle();
 
       expect(find.byType(LogActionSheet), findsNothing);
@@ -170,7 +170,7 @@ void main() {
       );
 
       final snoozeButton = tester.widget<AfyaButton>(
-        find.widgetWithText(AfyaButton, 'Snooze (10 min)'),
+        find.widgetWithText(AfyaButton, 'Snooze'),
       );
       expect(snoozeButton.onPressed, isNull);
       expect(find.text('Maximum 2 snoozes reached'), findsOneWidget);
@@ -197,7 +197,7 @@ void main() {
         ),
       );
 
-      final snoozeFinder = find.widgetWithText(AfyaButton, 'Snooze (10 min)');
+      final snoozeFinder = find.widgetWithText(AfyaButton, 'Snooze');
       final snoozeButton = tester.widget<AfyaButton>(snoozeFinder);
       expect(snoozeButton.onPressed, isNull);
 

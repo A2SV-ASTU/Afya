@@ -49,6 +49,19 @@ class NotificationService {
       initSettings,
       onDidReceiveNotificationResponse: _handleNotificationResponse,
     );
+
+    final androidImplementation =
+        _notificationsPlugin.resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    const androidChannel = AndroidNotificationChannel(
+      medicationChannelId,
+      medicationChannelName,
+      description: medicationChannelDescription,
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+    );
+    await androidImplementation?.createNotificationChannel(androidChannel);
   }
 
   void _handleNotificationResponse(NotificationResponse response) {
@@ -70,17 +83,19 @@ class NotificationService {
     final androidActions = <AndroidNotificationAction>[
       const AndroidNotificationAction(
         'take',
-        'Take',
+        'TAKEN',
         showsUserInterface: true,
       ),
       if (includeSnooze)
         const AndroidNotificationAction(
           'snooze',
-          'Snooze',
+          'SNOOZE',
+          showsUserInterface: true,
         ),
       const AndroidNotificationAction(
         'skip',
-        'Skip',
+        'SKIP',
+        showsUserInterface: true,
       ),
     ];
 
@@ -90,6 +105,11 @@ class NotificationService {
       channelDescription: medicationChannelDescription,
       importance: Importance.max,
       priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+      category: AndroidNotificationCategory.alarm,
+      visibility: NotificationVisibility.public,
+      fullScreenIntent: true,
       actions: androidActions,
     );
 
@@ -149,6 +169,7 @@ class NotificationService {
             AndroidFlutterLocalNotificationsPlugin>();
     final androidGranted =
         await androidImplementation?.requestNotificationsPermission();
+    await androidImplementation?.requestExactAlarmsPermission();
 
     final iosImplementation =
         _notificationsPlugin.resolvePlatformSpecificImplementation<

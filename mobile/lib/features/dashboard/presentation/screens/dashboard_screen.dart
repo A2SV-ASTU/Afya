@@ -66,7 +66,7 @@ class DashboardScreen extends StatelessWidget {
   // SHOW LOG VITALS DIALOG
   // ==========================================
   Future<void> _showLogVitalsDialog(BuildContext context) async {
-    await showDialog<VitalSignEntity>(
+    final vital = await showDialog<VitalSignEntity>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) {
@@ -79,6 +79,16 @@ class DashboardScreen extends StatelessWidget {
 
     // The VitalSignInputDialog saves the vital and
     // closes itself. The user stays on Dashboard.
+    if (!context.mounted || vital == null) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Vital signs recorded successfully.'),
+        backgroundColor: AppColors.primaryDark,
+      ),
+    );
   }
 
   // ==========================================
