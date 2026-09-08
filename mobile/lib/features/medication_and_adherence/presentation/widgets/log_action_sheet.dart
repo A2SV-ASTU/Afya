@@ -234,7 +234,11 @@ class LogActionSheet extends StatelessWidget {
 
             // 2. Snooze
             AfyaButton(
-              text: 'Snooze (10 min)',
+              text: doseRecord.snoozeCount == 0
+                  ? 'Snooze (10 min)'
+                  : (doseRecord.snoozeCount == 1
+                      ? 'Snooze (20 min)'
+                      : 'Snooze'),
               isSecondary: true,
               onPressed: canSnooze
                   ? () {

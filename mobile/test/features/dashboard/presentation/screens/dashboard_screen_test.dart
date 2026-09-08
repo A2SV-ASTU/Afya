@@ -158,7 +158,7 @@ void main() {
 
         expect(
           find.byIcon(Icons.notifications_none_rounded),
-          findsOneWidget,
+          findsNothing,
         );
 
         expect(

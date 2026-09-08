@@ -48,12 +48,12 @@ class ProcessMissedDosesUseCase {
           continue;
         }
 
+        final baseDeadline = dose.scheduledTime.add(missedThreshold);
         final deadline = dose.snoozedUntil != null
-            ? (dose.snoozedUntil!
-                    .isAfter(dose.scheduledTime.add(missedThreshold))
+            ? (dose.snoozedUntil!.add(const Duration(minutes: 10)).isAfter(baseDeadline)
                 ? dose.snoozedUntil!.add(const Duration(minutes: 10))
-                : dose.scheduledTime.add(missedThreshold))
-            : dose.scheduledTime.add(missedThreshold);
+                : baseDeadline)
+            : baseDeadline;
 
         if (currentTime.isAfter(deadline)) {
           final missedDose = dose.copyWith(
