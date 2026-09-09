@@ -8,7 +8,6 @@ import '../../domain/entities/patient_user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
-import '../models/patient_user_model.dart';
 
 @LazySingleton(as: AuthRepository)
 class AuthRepositoryImpl implements AuthRepository {
@@ -49,12 +48,27 @@ class AuthRepositoryImpl implements AuthRepository {
         emergencyContactPhone: emergencyContactPhone,
         role: role,
       );
-      await _localDataSource.saveUserSession(userModel);
       return Right(userModel);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, code: e.code));
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, PatientUserEntity>> verifyEmail({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final user = await _remoteDataSource.verifyEmail(email: email, otp: otp);
+      await _localDataSource.saveUserSession(user);
+      return Right(user);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message, code: e.code));
     } catch (e) {
       return Left(ServerFailure(e.toString()));
     }
@@ -70,8 +84,10 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
       );
-      await _localDataSource.saveUserSession(userModel);
-      return Right(userModel);
+      final isPinSet = await _localDataSource.hasPin();
+      final userWithPin = userModel.copyWith(hasPin: isPinSet);
+      await _localDataSource.saveUserSession(userWithPin);
+      return Right(userWithPin);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, code: e.code));
     } on CacheException catch (e) {
@@ -98,7 +114,7 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final cachedUser = await _localDataSource.getUserSession();
       if (cachedUser != null) {
-        final isPinSet = await _localDataSource.hasPin();
+        final isPinSet = await _localDataSource.hasPin() || cachedUser.hasPin;
         return Right(AuthSessionEntity(
           user: cachedUser,
           isAuthenticated: true,
@@ -144,16 +160,7 @@ class AuthRepositoryImpl implements AuthRepository {
       await _localDataSource.savePin(pin);
       final currentUser = await _localDataSource.getUserSession();
       if (currentUser != null) {
-        final updatedModel = PatientUserModel(
-          id: currentUser.id,
-          firstName: currentUser.firstName,
-          lastName: currentUser.lastName,
-          phone: currentUser.phone,
-          email: currentUser.email,
-          dateOfBirth: currentUser.dateOfBirth,
-          sex: currentUser.sex,
-          hasPin: true,
-        );
+        final updatedModel = currentUser.copyWith(hasPin: true);
         await _localDataSource.saveUserSession(updatedModel);
       }
       return const Right(null);
@@ -165,15 +172,33 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, PatientUserEntity>> loginWithPin(String pin) async {
     try {
-      final isValid = await _localDataSource.verifyPin(pin);
-      if (!isValid) {
-        return const Left(ServerFailure('Invalid PIN code', code: '401'));
-      }
       final cachedUser = await _localDataSource.getUserSession();
       if (cachedUser == null) {
-        return const Left(ServerFailure('No local session found', code: '404'));
+        return const Left(ServerFailure(
+          'Session expired. Please sign in with your password.',
+          code: '404',
+        ));
       }
-      return Right(cachedUser);
+
+      final pinExists = await _localDataSource.hasPin();
+
+      if (!pinExists) {
+        // No PIN in storage yet — save this PIN and log user in immediately.
+        // This handles existing registered users whose PIN wasn't stored locally.
+        await _localDataSource.savePin(pin);
+        final updated = cachedUser.copyWith(hasPin: true);
+        await _localDataSource.saveUserSession(updated);
+        return Right(updated);
+      }
+
+      final isValid = await _localDataSource.verifyPin(pin);
+      if (!isValid) {
+        return const Left(
+          ServerFailure('Incorrect PIN. Please try again.', code: '401'),
+        );
+      }
+
+      return Right(cachedUser.copyWith(hasPin: true));
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
     }

@@ -38,6 +38,24 @@ class PinRequired extends AuthState {
   List<Object?> get props => [user];
 }
 
+class CreatePinRequired extends AuthState {
+  final PatientUserEntity user;
+
+  const CreatePinRequired({required this.user});
+
+  @override
+  List<Object?> get props => [user];
+}
+
+class EmailVerificationRequired extends AuthState {
+  final String email;
+
+  const EmailVerificationRequired({required this.email});
+
+  @override
+  List<Object?> get props => [email];
+}
+
 class AuthFailure extends AuthState {
   final String message;
   final String? code;

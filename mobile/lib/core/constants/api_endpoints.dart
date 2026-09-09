@@ -9,6 +9,7 @@ class ApiEndpoints {
   // Auth
   static const String signup = '/auth/signup';
   static const String register = '/auth/signup';
+    static const String verifyEmail = '/auth/verify-email';
   static const String login = '/auth/login';
   static const String forgotPassword = '/auth/forgot-password';
   static const String resetPassword = '/auth/reset-password';

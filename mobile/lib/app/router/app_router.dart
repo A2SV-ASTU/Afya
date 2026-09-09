@@ -11,6 +11,8 @@ import 'package:injectable/injectable.dart';
 import '../../features/medication_and_adherence/presentation/screens/all_medications_screen.dart';
 import '../../features/profile/presentation/screens/profile_screen.dart';
 import '../../core/di/injection_container.dart';
+import '../../features/auth/presentation/screens/create_pin_screen.dart';
+import '../../features/auth/presentation/screens/verify_email_screen.dart';
 import '../../features/auth/presentation/screens/sign_in_screen.dart';
 import '../../features/auth/presentation/screens/sign_up_screen.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
@@ -55,11 +57,24 @@ class AppRouter {
       ),
       GoRoute(
         path: RoutePaths.signIn,
-        builder: (context, state) => const SignInScreen(),
+        builder: (context, state) {
+          final pinMode = state.uri.queryParameters['pin'] == 'true';
+          return SignInScreen(initialPinMode: pinMode);
+        },
       ),
       GoRoute(
         path: RoutePaths.signUp,
         builder: (context, state) => const SignUpScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.createPin,
+        builder: (context, state) => const CreatePinScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.verifyEmail,
+        builder: (context, state) => VerifyEmailScreen(
+          email: state.uri.queryParameters['email'] ?? '',
+        ),
       ),
 
       // Email Deep-Link Route for Access Consent
@@ -122,17 +137,17 @@ class AppRouter {
             ],
           ),
           StatefulShellBranch(
-  navigatorKey: _historyNavigatorKey,
-  routes: [
-    GoRoute(
-      path: RoutePaths.history,
-      builder: (context, state) => BlocProvider(
-        create: (context) => sl<VitalsSyncBloc>(),
-        child: const VitalsHistoryScreen(),
-      ),
-    ),
-  ],
-),
+            navigatorKey: _historyNavigatorKey,
+            routes: [
+              GoRoute(
+                path: RoutePaths.history,
+                builder: (context, state) => BlocProvider(
+                  create: (context) => sl<VitalsSyncBloc>(),
+                  child: const VitalsHistoryScreen(),
+                ),
+              ),
+            ],
+          ),
           StatefulShellBranch(
             navigatorKey: _chatNavigatorKey,
             routes: [
@@ -167,7 +182,8 @@ class AppRouter {
                   ),
                   GoRoute(
                     path: 'pending-access-requests',
-                    builder: (context, state) => const PendingAccessRequestsScreen(),
+                    builder: (context, state) =>
+                        const PendingAccessRequestsScreen(),
                   ),
                 ],
               ),

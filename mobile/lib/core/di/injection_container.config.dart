@@ -10,7 +10,6 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:connectivity_plus/connectivity_plus.dart' as _i895;
-import 'package:dio/dio.dart' as _i361;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:hive/hive.dart' as _i979;
@@ -57,6 +56,7 @@ import '../../features/auth/domain/usecases/refresh_token_usecase.dart'
 import '../../features/auth/domain/usecases/register_patient_usecase.dart'
     as _i617;
 import '../../features/auth/domain/usecases/set_pin_usecase.dart' as _i313;
+import '../../features/auth/domain/usecases/verify_email_usecase.dart' as _i30;
 import '../../features/auth/presentation/bloc/auth_bloc.dart' as _i797;
 import '../../features/chat/data/datasources/chat_local_data_source.dart'
     as _i94;
@@ -199,16 +199,19 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i979.Box<dynamic>>(() => vitalsModule.vitalsBox);
     gh.lazySingleton<_i94.ChatLocalDataSource>(
         () => _i94.ChatLocalDataSourceImpl());
-    gh.lazySingleton<_i945.GeminiRemoteDataSource>(
-        () => _i945.GeminiRemoteDataSourceImpl(dio: gh<_i361.Dio>()));
     gh.lazySingleton<_i439.ProfileLocalDataSource>(
         () => _i1010.ProfileLocalDataSourceImpl());
     gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
         () => _i196.ClinicalHistoryLocalDataSourceImpl());
+    gh.lazySingleton<_i852.AuthLocalDataSource>(
+        () => _i852.AuthLocalDataSourceImpl(
+              gh<_i558.FlutterSecureStorage>(),
+              gh<_i605.LocalDatabaseService>(),
+            ));
     gh.lazySingleton<_i894.MedicationLocalDataSource>(
         () => _i894.MedicationLocalDataSourceImpl());
-    gh.lazySingleton<_i852.AuthLocalDataSource>(
-        () => _i852.AuthLocalDataSourceImpl(gh<_i558.FlutterSecureStorage>()));
+    gh.lazySingleton<_i945.GeminiRemoteDataSource>(
+        () => _i945.GeminiRemoteDataSourceImpl());
     gh.lazySingleton<_i916.CookieStorageService>(
         () => _i916.CookieStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i932.NetworkInfo>(
@@ -228,6 +231,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i420.ChatRepository>(() => _i504.ChatRepositoryImpl(
           localDataSource: gh<_i94.ChatLocalDataSource>(),
           remoteDataSource: gh<_i945.GeminiRemoteDataSource>(),
+          authLocalDataSource: gh<_i852.AuthLocalDataSource>(),
+          medicationLocalDataSource: gh<_i894.MedicationLocalDataSource>(),
         ));
     gh.lazySingleton<_i847.ProfileRemoteDataSource>(
         () => _i1036.ProfileRemoteDataSourceImpl(gh<_i557.ApiClient>()));
@@ -293,6 +298,8 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i617.RegisterPatientUseCase(gh<_i787.AuthRepository>()));
     gh.lazySingleton<_i313.SetPinUseCase>(
         () => _i313.SetPinUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i30.VerifyEmailUseCase>(
+        () => _i30.VerifyEmailUseCase(gh<_i787.AuthRepository>()));
     gh.lazySingleton<_i275.MedicationNotificationHandler>(
         () => _i275.MedicationNotificationHandler(
               gh<_i894.MedicationLocalDataSource>(),
@@ -326,6 +333,7 @@ extension GetItInjectableX on _i174.GetIt {
           logoutPatientUseCase: gh<_i244.LogoutPatientUseCase>(),
           loginWithPinUseCase: gh<_i519.LoginWithPinUseCase>(),
           setPinUseCase: gh<_i313.SetPinUseCase>(),
+          verifyEmailUseCase: gh<_i30.VerifyEmailUseCase>(),
         ));
     gh.lazySingleton<_i1026.StopMedicationTrackingUseCase>(
         () => _i1026.StopMedicationTrackingUseCase(

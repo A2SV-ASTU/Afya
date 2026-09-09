@@ -27,7 +27,8 @@ class _PinLoginViewState extends State<PinLoginView> {
   @override
   void didUpdateWidget(covariant PinLoginView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.errorMessage != null && widget.errorMessage != oldWidget.errorMessage) {
+    if (widget.errorMessage != null &&
+        widget.errorMessage != oldWidget.errorMessage) {
       setState(() {
         _pinDigits.clear();
       });
@@ -61,157 +62,185 @@ class _PinLoginViewState extends State<PinLoginView> {
     return Container(
       color: AppColors.pinBackground,
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppDimensions.space24,
-            vertical: AppDimensions.space16,
-          ),
-          child: Column(
-            children: [
-              const SizedBox(height: AppDimensions.space12),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxHeight < 650;
+            final keySize = compact ? 60.0 : 72.0;
+            final keypadGap = compact ? 12.0 : 16.0;
+            final horizontalPadding = constraints.maxWidth < 360 ? 16.0 : 24.0;
+            final verticalPadding = compact ? 8.0 : AppDimensions.space16;
 
-              // Top Logo Header: Afya
-              Text(
-                'Afya',
-                style: AppTypography.titleMedium.copyWith(
-                  color: AppColors.tealPrimary,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
+            return Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: horizontalPadding,
+                vertical: verticalPadding,
               ),
-
-              const Spacer(flex: 1),
-
-              // Main Title: Enter your PIN
-              Text(
-                'Enter your PIN',
-                style: AppTypography.displayLarge.copyWith(
-                  color: AppColors.tealDark,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-
-              const SizedBox(height: AppDimensions.space12),
-
-              // Subtitle
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space24),
-                child: Text(
-                  'No internet connection. Enter your PIN to continue using Afya.',
-                  textAlign: TextAlign.center,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: const Color(0xFF5A6E68),
-                    fontSize: 14,
-                    height: 1.35,
+              child: SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - verticalPadding * 2,
                   ),
-                ),
-              ),
+                  child: Column(
+                    mainAxisAlignment: compact
+                        ? MainAxisAlignment.start
+                        : MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(height: AppDimensions.space8),
 
-              if (widget.errorMessage != null && widget.errorMessage!.isNotEmpty) ...[
-                const SizedBox(height: AppDimensions.space12),
-                Text(
-                  widget.errorMessage!,
-                  textAlign: TextAlign.center,
-                  style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.urgentAlert,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: AppDimensions.space32),
-
-              // 4 PIN Dots Indicator
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(4, (index) {
-                  final isFilled = index < _pinDigits.length;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    margin: const EdgeInsets.symmetric(horizontal: 10),
-                    width: 14,
-                    height: 14,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isFilled ? AppColors.tealPrimary : Colors.transparent,
-                      border: Border.all(
-                        color: isFilled ? AppColors.tealPrimary : const Color(0xFFA0B2AC),
-                        width: 2,
+                      // Top Logo Header: Afya
+                      Text(
+                        'Afya',
+                        style: AppTypography.titleMedium.copyWith(
+                          color: AppColors.tealPrimary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
                       ),
-                    ),
-                  );
-                }),
-              ),
 
-              const Spacer(flex: 2),
+                      const SizedBox(height: AppDimensions.space12),
 
-              // Custom 3x4 Numeric Keypad
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppDimensions.space16),
-                child: Column(
-                  children: [
-                    _buildKeypadRow(['1', '2', '3']),
-                    const SizedBox(height: 18),
-                    _buildKeypadRow(['4', '5', '6']),
-                    const SizedBox(height: 18),
-                    _buildKeypadRow(['7', '8', '9']),
-                    const SizedBox(height: 18),
-                    _buildBottomKeypadRow(),
-                  ],
-                ),
-              ),
+                      // Main Title: Enter your PIN
+                      Text(
+                        'Enter your PIN',
+                        style: AppTypography.displayLarge.copyWith(
+                          color: AppColors.tealDark,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
 
-              const Spacer(flex: 2),
+                      const SizedBox(height: AppDimensions.space8),
 
-              // Bottom Link Button: Sign in with internet
-              TextButton(
-                onPressed: widget.onSwitchToPasswordLogin,
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.tealPrimary,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                child: Text(
-                  'Sign in with internet',
-                  style: AppTypography.labelLarge.copyWith(
-                    color: AppColors.tealPrimary,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                      // Subtitle
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppDimensions.space24),
+                        child: Text(
+                          'No internet connection. Enter your PIN to continue using Afya.',
+                          textAlign: TextAlign.center,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: const Color(0xFF5A6E68),
+                            fontSize: 14,
+                            height: 1.35,
+                          ),
+                        ),
+                      ),
+
+                      if (widget.errorMessage != null &&
+                          widget.errorMessage!.isNotEmpty) ...[
+                        const SizedBox(height: AppDimensions.space12),
+                        Text(
+                          widget.errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: AppTypography.bodyMedium.copyWith(
+                            color: AppColors.urgentAlert,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+
+                      SizedBox(height: compact ? 12 : AppDimensions.space16),
+
+                      // 4 PIN Dots Indicator
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(4, (index) {
+                          final isFilled = index < _pinDigits.length;
+                          return AnimatedContainer(
+                            duration: const Duration(milliseconds: 150),
+                            margin: const EdgeInsets.symmetric(horizontal: 10),
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isFilled
+                                  ? AppColors.tealPrimary
+                                  : Colors.transparent,
+                              border: Border.all(
+                                color: isFilled
+                                    ? AppColors.tealPrimary
+                                    : const Color(0xFFA0B2AC),
+                                width: 2,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+
+                      SizedBox(height: compact ? 16 : AppDimensions.space24),
+
+                      // Custom 3x4 Numeric Keypad
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: AppDimensions.space16),
+                        child: Column(
+                          children: [
+                            _buildKeypadRow(['1', '2', '3'], keySize),
+                            SizedBox(height: keypadGap),
+                            _buildKeypadRow(['4', '5', '6'], keySize),
+                            SizedBox(height: keypadGap),
+                            _buildKeypadRow(['7', '8', '9'], keySize),
+                            SizedBox(height: keypadGap),
+                            _buildBottomKeypadRow(keySize),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: AppDimensions.space12),
+
+                      // Bottom Link Button
+                      TextButton(
+                        onPressed: widget.onSwitchToPasswordLogin,
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.tealPrimary,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                        ),
+                        child: Text(
+                          'Sign in with internet',
+                          style: AppTypography.labelLarge.copyWith(
+                            color: AppColors.tealPrimary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: AppDimensions.space8),
+                    ],
                   ),
                 ),
               ),
-
-              const SizedBox(height: AppDimensions.space8),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildKeypadRow(List<String> keys) {
+  Widget _buildKeypadRow(List<String> keys, double keySize) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: keys.map((key) => _buildKeyButton(key)).toList(),
+      children: keys.map((key) => _buildKeyButton(key, keySize)).toList(),
     );
   }
 
-  Widget _buildBottomKeypadRow() {
+  Widget _buildBottomKeypadRow(double keySize) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         // Empty placeholder space for alignment
-        const SizedBox(width: 72, height: 72),
-        _buildKeyButton('0'),
-        _buildBackspaceButton(),
+        SizedBox(width: keySize, height: keySize),
+        _buildKeyButton('0', keySize),
+        _buildBackspaceButton(keySize),
       ],
     );
   }
 
-  Widget _buildKeyButton(String label) {
+  Widget _buildKeyButton(String label, double keySize) {
     return Container(
-      width: 72,
-      height: 72,
+      width: keySize,
+      height: keySize,
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,
@@ -234,7 +263,7 @@ class _PinLoginViewState extends State<PinLoginView> {
               label,
               style: AppTypography.displayLarge.copyWith(
                 color: AppColors.tealDark,
-                fontSize: 28,
+                fontSize: keySize >= 72 ? 30 : 28,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -244,10 +273,10 @@ class _PinLoginViewState extends State<PinLoginView> {
     );
   }
 
-  Widget _buildBackspaceButton() {
+  Widget _buildBackspaceButton(double keySize) {
     return Container(
-      width: 72,
-      height: 72,
+      width: keySize,
+      height: keySize,
       decoration: BoxDecoration(
         color: Colors.white,
         shape: BoxShape.circle,

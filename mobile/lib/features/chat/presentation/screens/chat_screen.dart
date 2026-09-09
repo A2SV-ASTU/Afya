@@ -39,7 +39,8 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF7F4), // Mint background matching screenshot design
+      backgroundColor:
+          const Color(0xFFEFF7F4), // Mint background matching screenshot design
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(65),
         child: AppBar(
@@ -105,9 +106,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   value: 'clear',
                   child: Row(
                     children: [
-                      Icon(Icons.delete_outline_rounded, size: 20, color: Color(0xFFBA1A1A)),
+                      Icon(Icons.delete_outline_rounded,
+                          size: 20, color: Color(0xFFBA1A1A)),
                       SizedBox(width: 10),
-                      Text('Clear Chat History', style: TextStyle(fontSize: 14)),
+                      Text('Clear Chat History',
+                          style: TextStyle(fontSize: 14)),
                     ],
                   ),
                 ),
@@ -115,7 +118,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   value: 'info',
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, size: 20, color: Color(0xFF0C554B)),
+                      Icon(Icons.info_outline_rounded,
+                          size: 20, color: Color(0xFF0C554B)),
                       SizedBox(width: 10),
                       Text('About AfyaMind AI', style: TextStyle(fontSize: 14)),
                     ],
@@ -140,69 +144,36 @@ class _ChatScreenState extends State<ChatScreen> {
                 },
                 builder: (context, state) {
                   if (state is ChatLoaded) {
-                    if (state.messages.isEmpty) {
-                      return const ChatEmptyState();
-                    }
+                    final content = state.messages.isEmpty
+                        ? ChatEmptyState(
+                            onSuggestionSelected: (prompt) {
+                              context.read<ChatCubit>().sendMessage(prompt);
+                            },
+                          )
+                        : ListView.builder(
+                            controller: _scrollController,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            itemCount: state.messages.length +
+                                (state.isTyping ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index < state.messages.length) {
+                                return ChatMessageBubble(
+                                    message: state.messages[index]);
+                              }
 
-                    return ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      itemCount: state.messages.length + (state.isTyping ? 1 : 0),
-                      itemBuilder: (context, index) {
-                        if (index < state.messages.length) {
-                          return ChatMessageBubble(message: state.messages[index]);
-                        } else {
-                          // Typing Indicator Bubble
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            child: Row(
-                              children: [
-                                Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFA2C7BB),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Center(
-                                    child: Icon(Icons.eco_rounded, size: 18, color: Color(0xFF0C554B)),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      SizedBox(
-                                        width: 14,
-                                        height: 14,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Color(0xFF0C554B),
-                                        ),
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        'Afya AI is typing...',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          color: Color(0xFF5C7C75),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
+                              return const _TypingIndicator();
+                            },
                           );
-                        }
-                      },
+
+                    return Column(
+                      children: [
+                        if (state.errorMessage != null)
+                          _ChatErrorBanner(
+                            message: state.errorMessage!,
+                            onRetry: context.read<ChatCubit>().retryLastMessage,
+                          ),
+                        Expanded(child: content),
+                      ],
                     );
                   }
 
@@ -241,7 +212,8 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             Icon(Icons.auto_awesome, color: Color(0xFF0C554B)),
             SizedBox(width: 10),
-            Text('Afya AI', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Afya AI',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
         content: const Text(
@@ -253,9 +225,64 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Got it', style: TextStyle(color: Color(0xFF0C554B), fontWeight: FontWeight.bold)),
+            child: const Text('Got it',
+                style: TextStyle(
+                    color: Color(0xFF0C554B), fontWeight: FontWeight.bold)),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TypingIndicator extends StatelessWidget {
+  const _TypingIndicator();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: const BoxDecoration(
+                color: Color(0xFFA2C7BB), shape: BoxShape.circle),
+            child: const Icon(Icons.eco_rounded,
+                size: 18, color: Color(0xFF0C554B)),
+          ),
+          const SizedBox(width: 10),
+          const Text('Afya AI is typing...',
+              style: TextStyle(color: Color(0xFF5C7C75))),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChatErrorBanner extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ChatErrorBanner({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFFFFDAD6),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Color(0xFFBA1A1A)),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(message,
+                    style: const TextStyle(color: Color(0xFF7A1010)))),
+            TextButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
+        ),
       ),
     );
   }

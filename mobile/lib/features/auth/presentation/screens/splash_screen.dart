@@ -28,6 +28,8 @@ class _SplashScreenState extends State<SplashScreen> {
   void _onGetStartedPressed(AuthState state) {
     if (state is Authenticated) {
       context.go(RoutePaths.dashboard);
+    } else if (state is PinRequired) {
+      context.go('${RoutePaths.signIn}?pin=true');
     } else {
       context.go(RoutePaths.signIn);
     }
@@ -37,9 +39,11 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        // Auto-navigate only if user is already authenticated
+        // Auto-navigate only if user is already authenticated or requires PIN
         if (state is Authenticated) {
           context.go(RoutePaths.dashboard);
+        } else if (state is PinRequired) {
+          context.go('${RoutePaths.signIn}?pin=true');
         }
       },
       builder: (context, state) {

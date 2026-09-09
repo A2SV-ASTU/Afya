@@ -67,7 +67,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is Authenticated) {
+        if (state is EmailVerificationRequired) {
+          context.go(
+            '${RoutePaths.verifyEmail}?email=${Uri.encodeComponent(state.email)}',
+          );
+        } else if (state is CreatePinRequired) {
+          context.go(RoutePaths.createPin);
+        } else if (state is Authenticated) {
           context.go(RoutePaths.dashboard);
         } else if (state is AuthFailure && _hasSubmitted) {
           setState(() {
@@ -166,8 +172,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Password is required';
                     }
-                    if (value.trim().length < 6) {
-                      return 'Password must be at least 6 characters';
+                    if (value.trim().length < 8) {
+                      return 'Password must be at least 8 characters';
                     }
                     return null;
                   },
