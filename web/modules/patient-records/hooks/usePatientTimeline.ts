@@ -12,6 +12,8 @@ interface UsePatientTimelineResult {
   timeline: TimelineEncounterCardData[];
   isLoading: boolean;
   error: string | null;
+  /** Encounters listed without their clinical detail — the UI must warn. */
+  incompleteCount: number;
 }
 
 function toCardData(enc: Encounter, chiefComplaint: string): TimelineEncounterCardData {
@@ -63,7 +65,12 @@ function toCardData(enc: Encounter, chiefComplaint: string): TimelineEncounterCa
  * clinical evaluation (`GET /encounters/:id/clinical-evaluation`).
  */
 export function usePatientTimeline(patientId: string): UsePatientTimelineResult {
-  const { encounters, isLoading: encountersLoading, error } = usePatientEncounters(patientId);
+  const {
+    encounters,
+    isLoading: encountersLoading,
+    error,
+    incompleteCount,
+  } = usePatientEncounters(patientId);
   const [timeline, setTimeline] = useState<TimelineEncounterCardData[]>([]);
   const [complaintsLoading, setComplaintsLoading] = useState(true);
 
@@ -93,5 +100,10 @@ export function usePatientTimeline(patientId: string): UsePatientTimelineResult 
     };
   }, [encounters, encountersLoading]);
 
-  return { timeline, isLoading: encountersLoading || complaintsLoading, error };
+  return {
+    timeline,
+    isLoading: encountersLoading || complaintsLoading,
+    error,
+    incompleteCount,
+  };
 }

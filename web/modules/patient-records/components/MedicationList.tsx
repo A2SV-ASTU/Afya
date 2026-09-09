@@ -10,7 +10,7 @@ interface MedicationListProps {
 }
 
 export function MedicationList({ patientId }: MedicationListProps) {
-  const { encounters, isLoading, error } = usePatientEncounters(patientId);
+  const { encounters, isLoading, error, incompleteCount } = usePatientEncounters(patientId);
 
   const allItems = encounters.flatMap((e) =>
     (e.prescriptions || []).flatMap((rx) =>
@@ -42,13 +42,21 @@ export function MedicationList({ patientId }: MedicationListProps) {
   if (allItems.length === 0) {
     return (
       <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 text-xs text-slate-500">
-        No active or historical medications recorded for this patient.
+        {incompleteCount > 0
+          ? 'Medication records could not be loaded for this patient. This list may be incomplete.'
+          : 'No active or historical medications recorded for this patient.'}
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+      {incompleteCount > 0 && (
+        <div className="p-3.5 bg-amber-50 border-b border-amber-200 text-xs text-amber-900">
+          {incompleteCount} encounter{incompleteCount === 1 ? '' : 's'} could not be loaded — this
+          medication list may be incomplete.
+        </div>
+      )}
       <div className="p-6 border-b border-slate-100 flex items-center justify-between">
         <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
           <Pill className="w-5 h-5 text-[#2E7D32]" />

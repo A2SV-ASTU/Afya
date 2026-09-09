@@ -44,8 +44,9 @@ export interface TimelineEvent {
 
 export interface VitalsTrendPoint {
   date: string;
-  systolic: number;
-  diastolic: number;
-  pulse: number;
-  bloodSugar?: number;
+  /** Null when the reading carried no value for that measure — recharts skips the point. */
+  systolic: number | null;
+  diastolic: number | null;
+  pulse: number | null;
+  bloodSugar: number | null;
 }

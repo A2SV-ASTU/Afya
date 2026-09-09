@@ -5,7 +5,7 @@ import {
   ScheduleAppointmentInput,
   VitalsInput,
 } from '../types';
-import { Encounter, EncounterType } from '@/types/database';
+import { Encounter, EncounterType, EncounterStatus } from '@/types/database';
 import {
   encountersApi,
   vitalsApi,
@@ -102,6 +102,19 @@ export async function scheduleAppointmentAction(
   });
 }
 
-export async function closeEncounterAction(encounterId: string): Promise<void> {
-  await encountersApi.close(encounterId);
+/**
+ * Closes the encounter and returns the backend's own view of the closed record.
+ * The caller applies this directly instead of re-reading the encounter: closing
+ * is followed by revoking the clinic's access grant, after which
+ * `GET /encounters/:id` is refused by AccessGuard.
+ */
+export async function closeEncounterAction(
+  encounterId: string
+): Promise<{ status: EncounterStatus; ended_at: string | null }> {
+  const res = await encountersApi.close(encounterId);
+  const closed = res.encounter;
+  return {
+    status: closed?.status === 'open' ? 'open' : 'closed',
+    ended_at: closed?.ended_at ?? closed?.closed_at ?? new Date().toISOString(),
+  };
 }

@@ -28,6 +28,9 @@ export default function NewEncounterPage() {
   const [authorizedGrants, setAuthorizedGrants] = useState<AccessRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  /** Set when the encounter was created but a follow-up write failed, so the
+   * doctor can still continue into the workspace instead of being stranded. */
+  const [pendingEncounterId, setPendingEncounterId] = useState<string | null>(null);
 
   const [patientId, setPatientId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -130,8 +133,8 @@ export default function NewEncounterPage() {
     }
 
     // Persist the initial chief complaint as the encounter's clinical evaluation.
-    // A failure here should not strand the doctor — the encounter already exists
-    // and the note can be completed from the workspace's Clinical Notes tab.
+    // The encounter already exists at this point, so a failure here is surfaced
+    // rather than swallowed, and the doctor is offered the workspace to finish in.
     if (chiefComplaint.trim()) {
       try {
         await clinicalEvaluationsApi.create(newEncounterId, {
@@ -140,7 +143,12 @@ export default function NewEncounterPage() {
         });
       } catch (err) {
         if (!(err instanceof ApiError && err.status === 409)) {
-          console.error('Failed to record initial clinical evaluation', err);
+          setPendingEncounterId(newEncounterId);
+          setErrorMsg(
+            `${getApiErrorMessage(err, 'The initial chief complaint could not be saved.')} The encounter was created — record the complaint in the Clinical Notes tab.`
+          );
+          setIsSubmitting(false);
+          return;
         }
       }
     }
@@ -171,8 +179,19 @@ export default function NewEncounterPage() {
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2.5 shadow-2xs">
           <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold">Encounter Initialization Failed</p>
+            <p className="font-bold">
+              {pendingEncounterId ? 'Encounter created with a problem' : 'Encounter Initialization Failed'}
+            </p>
             <p className="mt-0.5">{errorMsg}</p>
+            {pendingEncounterId && (
+              <button
+                type="button"
+                onClick={() => router.push(`/doctor/encounters/${pendingEncounterId}`)}
+                className="mt-2 font-bold underline underline-offset-2 cursor-pointer"
+              >
+                Continue to encounter workspace
+              </button>
+            )}
           </div>
         </div>
       )}

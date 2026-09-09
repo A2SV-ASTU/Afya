@@ -27,7 +27,7 @@ interface TimelineProps {
 }
 
 export function Timeline({ patientId }: TimelineProps) {
-  const { timeline: encounters, isLoading, error } = usePatientTimeline(patientId);
+  const { timeline: encounters, isLoading, error, incompleteCount } = usePatientTimeline(patientId);
 
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
 
@@ -82,6 +82,14 @@ export function Timeline({ patientId }: TimelineProps) {
 
   return (
     <div className="space-y-4 select-none">
+      {incompleteCount > 0 && (
+        <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
+          <strong>{incompleteCount}</strong> of {encounters.length} encounter
+          {encounters.length === 1 ? '' : 's'} could not be fully loaded. Those cards show no vitals,
+          labs or diagnoses because the records were unavailable — not because none were recorded.
+        </div>
+      )}
+
       {/* Header Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
         <div>

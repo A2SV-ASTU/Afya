@@ -9,6 +9,12 @@ interface UsePatientEncountersResult {
   encounters: Encounter[];
   isLoading: boolean;
   error: string | null;
+  /**
+   * Encounters whose clinical detail could not be fetched. They are still listed,
+   * but with no vitals/labs/diagnoses — callers MUST warn, never let an empty
+   * card read as "this visit had no findings".
+   */
+  incompleteCount: number;
 }
 
 /**
@@ -21,6 +27,7 @@ export function usePatientEncounters(patientId: string): UsePatientEncountersRes
   const [encounters, setEncounters] = useState<Encounter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [incompleteCount, setIncompleteCount] = useState(0);
 
   useEffect(() => {
     if (!patientId) {
@@ -31,26 +38,34 @@ export function usePatientEncounters(patientId: string): UsePatientEncountersRes
     let cancelled = false;
     setIsLoading(true);
     setError(null);
+    setIncompleteCount(0);
 
     (async () => {
       try {
         const list = await encountersApi.listForPatient(patientId);
         const summaries = list.encounters ?? [];
 
-        const detailed = await Promise.all(
-          summaries.map((summary) =>
-            encountersApi
-              .getById(summary.id)
-              .then((res) => mapAggregatedEncounter(res))
-              .catch(() => mapAggregatedEncounter({ encounter: summary }))
-          )
+        const settled = await Promise.allSettled(
+          summaries.map((summary) => encountersApi.getById(summary.id))
         );
+
+        let incomplete = 0;
+        const detailed = settled.map((outcome, i) => {
+          if (outcome.status === 'fulfilled') {
+            return mapAggregatedEncounter(outcome.value);
+          }
+          incomplete += 1;
+          return mapAggregatedEncounter({ encounter: summaries[i] });
+        });
 
         detailed.sort(
           (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
         );
 
-        if (!cancelled) setEncounters(detailed);
+        if (!cancelled) {
+          setEncounters(detailed);
+          setIncompleteCount(incomplete);
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : 'Failed to load patient records.');
@@ -65,5 +80,5 @@ export function usePatientEncounters(patientId: string): UsePatientEncountersRes
     };
   }, [patientId]);
 
-  return { encounters, isLoading, error };
+  return { encounters, isLoading, error, incompleteCount };
 }

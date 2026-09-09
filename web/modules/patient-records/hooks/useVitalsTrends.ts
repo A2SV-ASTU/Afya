@@ -33,18 +33,29 @@ export function useVitalsTrends(patientId: string): UseVitalsTrendsResult {
       .listForPatient(patientId)
       .then((res) => {
         if (cancelled) return;
+        const timeOf = (v: { recorded_at?: string; created_at?: string }) =>
+          new Date(v.recorded_at || v.created_at || 0).getTime();
+
         const points: VitalsTrendPoint[] = (res.vital_signs ?? [])
-          .filter((v) => v.systolic_bp != null && v.diastolic_bp != null)
+          .filter(
+            (v) =>
+              v.systolic_bp != null ||
+              v.diastolic_bp != null ||
+              v.pulse != null ||
+              v.blood_sugar != null
+          )
+          .sort((a, b) => timeOf(a) - timeOf(b))
           .map((v) => ({
-            date: new Date(v.recorded_at || v.created_at || Date.now()).toLocaleDateString(undefined, {
+            date: new Date(timeOf(v)).toLocaleDateString(undefined, {
               month: 'short',
               day: 'numeric',
             }),
-            systolic: v.systolic_bp as number,
-            diastolic: v.diastolic_bp as number,
-            pulse: v.pulse ?? 0,
-            bloodSugar: v.blood_sugar,
+            systolic: v.systolic_bp ?? null,
+            diastolic: v.diastolic_bp ?? null,
+            pulse: v.pulse ?? null,
+            bloodSugar: v.blood_sugar ?? null,
           }));
+
         setTrends(points);
         setIsLoading(false);
       })

@@ -15,7 +15,7 @@ import { accessRequestsApi } from '@/lib/api/access-requests';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { closeEncounterAction } from '@/modules/clinical-workspace/actions/startEncounter';
 import { mapAggregatedEncounter } from '@/modules/clinical-workspace/lib/encounterMappers';
-import { Encounter } from '@/types/database';
+import { Encounter, EncounterStatus } from '@/types/database';
 import { Button } from '@/modules/core/ui/Button';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
 import { EncounterTabs } from '@/modules/clinical-workspace/components/EncounterTabs';
@@ -91,16 +91,26 @@ export default function EncounterWorkspacePage() {
     if (isClosing) return;
     setCloseError(null);
     setIsClosing(true);
+
+    let closed: { status: EncounterStatus; ended_at: string | null };
     try {
-      await closeEncounterAction(encounter.id);
+      closed = await closeEncounterAction(encounter.id);
     } catch (err) {
       setCloseError(getApiErrorMessage(err, 'Failed to close the encounter. Please try again.'));
       setIsClosing(false);
       return;
     }
 
-    // Per clinic policy, closing the encounter terminates the clinic's access to
-    // this patient's records. A failure here must not block the close itself.
+    // Apply the backend's own close response rather than re-reading the
+    // encounter: the grant is revoked next, after which AccessGuard refuses
+    // GET /encounters/:id for this doctor.
+    setEncounter((prev) =>
+      prev ? { ...prev, status: closed.status, ended_at: closed.ended_at, closed_at: closed.ended_at } : prev
+    );
+    setShowCloseModal(false);
+
+    // Clinic policy: closing the encounter terminates the clinic's access to
+    // this patient's records. A failure here must not undo the close.
     if (encounter.clinic_id) {
       try {
         const res = await accessRequestsApi.listRequests(encounter.clinic_id, 'approved');
@@ -118,9 +128,7 @@ export default function EncounterWorkspacePage() {
       }
     }
 
-    setShowCloseModal(false);
     setIsClosing(false);
-    await fetchEncounter();
   };
 
   return (
@@ -170,10 +178,20 @@ export default function EncounterWorkspacePage() {
         </div>
       </div>
 
-      {closeError && (
+      {(closeError || loadError) && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2.5">
           <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-          <span>{closeError}</span>
+          <span>{closeError || loadError}</span>
+        </div>
+      )}
+
+      {isClosed && (
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2.5">
+          <Lock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+          <span>
+            This encounter is sealed. Your clinic&apos;s access grant for this patient has been revoked, so
+            these records are no longer editable or retrievable from here.
+          </span>
         </div>
       )}
 
