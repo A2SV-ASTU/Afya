@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -15,8 +15,9 @@ import {
   AlertTriangle,
   Building2,
 } from 'lucide-react';
-import { useStore } from '@/lib/store';
 import { encountersApi } from '@/lib/api/encounters';
+import { accessRequestsApi } from '@/lib/api/access-requests';
+import { closeEncounterAction } from '@/modules/clinical-workspace/actions/startEncounter';
 import { Encounter, EncounterType } from '@/types/database';
 import { Button } from '@/modules/core/ui/Button';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
@@ -28,6 +29,7 @@ import { DiagnosisPicker } from '@/modules/clinical-workspace/components/Diagnos
 import { PrescriptionBuilder } from '@/modules/clinical-workspace/components/PrescriptionBuilder';
 import { AppointmentScheduler } from '@/modules/clinical-workspace/components/AppointmentScheduler';
 import { CloseEncounterModal } from '@/modules/clinical-workspace/components/CloseEncounterModal';
+import { ClinicalEvaluationForm } from '@/modules/clinical-workspace/components/ClinicalEvaluationForm';
 import { formatDateTime } from '@/modules/core/lib/utils';
 
 export default function EncounterWorkspacePage() {
@@ -35,52 +37,46 @@ export default function EncounterWorkspacePage() {
   const params = useParams();
   const encounterId = (params?.encounterId as string) || '';
 
-  const { encounters, closeEncounter } = useStore();
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>('vitals');
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('evaluation');
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [liveEncounter, setLiveEncounter] = useState<Encounter | null>(null);
+  const [encounter, setEncounter] = useState<Encounter | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (encounterId) {
-      encountersApi
-        .getById(encounterId)
-        .then((res) => {
-          if (!cancelled && res) {
-            const enc = res.encounter || (res as unknown as Encounter);
-            setLiveEncounter({
-              id: enc.id,
-              patient_id: enc.patient_id,
-              patient_name: res.patient_name || enc.patient_name || 'Patient',
-              clinic_id: enc.clinic_id || '',
-              clinic_name: res.clinic_name || enc.clinic_name || 'Clinic',
-              opened_by_doctor_id: enc.opened_by_doctor_id || enc.doctor_id || '',
-              opened_by_doctor_name: res.doctor_name || enc.opened_by_doctor_name || 'Attending Physician',
-              type: (enc.type as EncounterType) || 'outpatient',
-              status: (enc.status as 'open' | 'closed') || 'open',
-              notes: enc.notes || '',
-              started_at: enc.started_at || enc.created_at || new Date().toISOString(),
-              closed_at: enc.closed_at,
-              vitals: res.vitals || enc.vitals || [],
-              labs: res.labs || enc.labs || [],
-              diagnoses: res.diagnoses || enc.diagnoses || [],
-              prescriptions: res.prescriptions || enc.prescriptions || [],
-            });
-            setIsLoading(false);
-
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setIsLoading(false);
+  const fetchEncounter = useCallback(async () => {
+    if (!encounterId) return;
+    try {
+      const res = await encountersApi.getById(encounterId);
+      if (res) {
+        const enc = res.encounter || (res as unknown as Encounter);
+        setEncounter({
+          id: enc.id,
+          patient_id: enc.patient_id,
+          patient_name: res.patient_name || enc.patient_name || 'Patient',
+          clinic_id: enc.clinic_id || '',
+          clinic_name: res.clinic_name || enc.clinic_name || 'AfyaMind Clinic (Placeholder)',
+          opened_by_doctor_id: enc.opened_by_doctor_id || enc.doctor_id || '',
+          opened_by_doctor_name: res.doctor_name || enc.opened_by_doctor_name || 'Attending Physician',
+          type: (enc.type as EncounterType) || 'outpatient',
+          status: (enc.status as 'open' | 'closed') || 'open',
+          notes: enc.notes || '',
+          started_at: enc.started_at || enc.created_at || new Date().toISOString(),
+          closed_at: enc.closed_at,
+          vitals: res.vitals || enc.vitals || [],
+          labs: res.labs || enc.labs || [],
+          diagnoses: res.diagnoses || enc.diagnoses || [],
+          prescriptions: res.prescriptions || enc.prescriptions || [],
         });
+      }
+    } catch (err) {
+      console.error('Failed to fetch encounter', err);
+    } finally {
+      setIsLoading(false);
     }
-    return () => {
-      cancelled = true;
-    };
   }, [encounterId]);
 
-  const encounter = liveEncounter || encounters.find((e) => e.id === encounterId);
+  useEffect(() => {
+    fetchEncounter();
+  }, [fetchEncounter]);
 
   if (!encounter && isLoading) {
     return (
@@ -106,11 +102,25 @@ export default function EncounterWorkspacePage() {
   const isClosed = encounter.status === 'closed';
 
   const handleConfirmClose = async () => {
-    await closeEncounter(encounter.id);
-    setLiveEncounter((prev) => (prev ? { ...prev, status: 'closed', closed_at: new Date().toISOString() } : prev));
-    setShowCloseModal(false);
-  };
+    try {
+      await closeEncounterAction(encounter.id);
 
+      // Auto-revoke access
+      if (encounter.clinic_id) {
+        const res = await accessRequestsApi.listRequests(encounter.clinic_id, 'approved');
+        const activeGrant = res.access_requests?.find(r => r.patient_id === encounter.patient_id);
+        if (activeGrant) {
+          await accessRequestsApi.revokeRequest(encounter.clinic_id, activeGrant.id);
+        }
+      }
+
+      setEncounter((prev) => (prev ? { ...prev, status: 'closed', closed_at: new Date().toISOString() } : prev));
+      setShowCloseModal(false);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to close encounter. Please try again.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -167,9 +177,20 @@ export default function EncounterWorkspacePage() {
       />
 
       {/* Tab Contents */}
+      {activeTab === 'evaluation' && (
+        <div className="space-y-6">
+          <ClinicalEvaluationForm
+            encounterId={encounter.id}
+            isClosed={isClosed}
+            onSaved={fetchEncounter}
+          />
+        </div>
+      )}
+
       {activeTab === 'vitals' && (
         <div className="space-y-6">
-          {!isClosed && <VitalsRecorder encounter={encounter} />}
+          {/* We'll assume the form components use onSaved instead of dispatchers */}
+          {!isClosed && <VitalsRecorder encounter={encounter} onSaved={fetchEncounter} />}
 
           {/* Current recorded vitals list */}
           {encounter.vitals && encounter.vitals.length > 0 && (
@@ -184,7 +205,7 @@ export default function EncounterWorkspacePage() {
                     </p>
                     <p className="text-slate-600">Pulse: <strong>{vit.pulse} bpm</strong> • SpO2: <strong>{vit.spo2}%</strong></p>
                     {vit.temperature && <p className="text-slate-600">Temp: {vit.temperature}°C</p>}
-                    {vit.notes && <p className="text-[11px] text-slate-500 italic mt-1">&ldquo;{vit.notes}&rdquo;</p>}
+                    {vit.notes && <p className="text-[11px] text-slate-500 italic mt-1">"{vit.notes}"</p>}
                   </div>
                 ))}
               </div>
@@ -195,7 +216,7 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'labs' && (
         <div className="space-y-6">
-          {!isClosed && <LabResultsForm encounter={encounter} />}
+          {!isClosed && <LabResultsForm encounter={encounter} onSaved={fetchEncounter} />}
 
           {encounter.labs && encounter.labs.length > 0 && (
             <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
@@ -221,7 +242,7 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'diagnoses' && (
         <div className="space-y-6">
-          {!isClosed && <DiagnosisPicker encounter={encounter} />}
+          {!isClosed && <DiagnosisPicker encounter={encounter} onSaved={fetchEncounter} />}
 
           {encounter.diagnoses && encounter.diagnoses.length > 0 && (
             <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
@@ -249,7 +270,7 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'prescriptions' && (
         <div className="space-y-6">
-          {!isClosed && <PrescriptionBuilder encounter={encounter} />}
+          {!isClosed && <PrescriptionBuilder encounter={encounter} onSaved={fetchEncounter} />}
 
           {encounter.prescriptions && encounter.prescriptions.length > 0 && (
             <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
@@ -279,7 +300,7 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'appointment' && (
         <div className="space-y-6">
-          {!isClosed && <AppointmentScheduler encounter={encounter} />}
+          {!isClosed && <AppointmentScheduler encounter={encounter} onSaved={fetchEncounter} />}
         </div>
       )}
 
@@ -301,7 +322,7 @@ export default function EncounterWorkspacePage() {
               {encounter.diagnoses?.length ? (
                 <ul className="space-y-1.5 text-slate-700">
                   {encounter.diagnoses.map((d) => (
-                    <li key={d.id} className="flex items-center gap-2">
+                     <li key={d.id} className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#388E3C]" />
                       <strong>{d.icd_code || 'DX'}</strong> — {d.diagnosis_text} ({d.diagnosis_type})
                     </li>
@@ -342,7 +363,7 @@ export default function EncounterWorkspacePage() {
           ) : (
             <div className="p-4 rounded-2xl bg-[#E8F5E9] border border-[#C8E6C9] text-xs text-[#1B5E20] flex items-center gap-2 font-semibold">
               <CheckCircle2 className="w-4 h-4 text-[#2E7D32]" />
-              This clinical encounter is sealed and signed in the patient&apos;s longitudinal health record.
+              This clinical encounter is sealed and signed in the patient's longitudinal health record.
             </div>
           )}
         </div>

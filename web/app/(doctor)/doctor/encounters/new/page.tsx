@@ -5,15 +5,11 @@ import { useRouter } from 'next/navigation';
 import {
   Stethoscope,
   ArrowLeft,
-  Activity,
   ShieldCheck,
   CheckCircle2,
   User,
-  Building2,
-  Clock,
   ArrowRight,
   AlertCircle,
-  PlusCircle,
   Search,
   X,
   ChevronDown,
@@ -21,34 +17,19 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/lib/store';
 import { Button } from '@/modules/core/ui/Button';
-import { EncounterType, Patient, Encounter } from '@/types/database';
+import { EncounterType, AccessRequest, getAccessRequestPatientName } from '@/types/database';
+import { accessRequestsApi, clinicalEvaluationsApi } from '@/lib/api';
+import { startEncounterAction } from '@/modules/clinical-workspace/actions/startEncounter';
 
 export default function NewEncounterPage() {
   const router = useRouter();
-  const { currentUser, clinics, patients, encounters, createEncounter } = useStore();
+  const { currentUser, clinics } = useStore();
 
   const activeClinic = clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0];
 
-  // Patients who granted active access to this clinic
-  const authorizedPatients = activeClinic
-    ? patients.filter((p) => p.active_grant_clinic_ids.includes(activeClinic.id))
-    : [];
-
-  // Filter out patients who currently have an active/open encounter
-  const availablePatients = authorizedPatients.filter(
-    (p) => !encounters.some((e) => e.patient_id === p.id && e.status === 'open')
-  );
-
-  // List of patients who currently HAVE an active open encounter
-  const patientsWithActiveEncounters = authorizedPatients
-    .map((p) => ({
-      patient: p,
-      activeEncounter: encounters.find((e) => e.patient_id === p.id && e.status === 'open'),
-    }))
-    .filter(
-      (item): item is { patient: Patient; activeEncounter: Encounter } =>
-        item.activeEncounter !== undefined
-    );
+  const [authorizedGrants, setAuthorizedGrants] = useState<AccessRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [patientId, setPatientId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -56,9 +37,23 @@ export default function NewEncounterPage() {
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Search & Combobox states
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const comboboxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      if (!activeClinic?.id) return;
+      try {
+        const res = await accessRequestsApi.listRequests(activeClinic.id, 'approved');
+        setAuthorizedGrants(res.access_requests || []);
+      } catch (err: any) {
+        setErrorMsg('Failed to load authorized patients. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, [activeClinic?.id]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -70,23 +65,19 @@ export default function NewEncounterPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredPatients = availablePatients.filter((pat) => {
+  const filteredGrants = authorizedGrants.filter((grant) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
-    const fullName = `${pat.first_name} ${pat.last_name}`.toLowerCase();
-    return (
-      fullName.includes(q) ||
-      pat.phone.toLowerCase().includes(q) ||
-      pat.email.toLowerCase().includes(q) ||
-      (pat.national_id && pat.national_id.toLowerCase().includes(q))
-    );
+    const fullName = getAccessRequestPatientName(grant).toLowerCase();
+    const email = (grant.patient?.email || '').toLowerCase();
+    return fullName.includes(q) || email.includes(q);
   });
 
-  const selectedPatient = availablePatients.find((p) => p.id === patientId);
+  const selectedGrant = authorizedGrants.find((g) => g.patient_id === patientId);
 
-  const handleSelectPatient = (pat: Patient) => {
-    setPatientId(pat.id);
-    setSearchQuery(`${pat.first_name} ${pat.last_name}`);
+  const handleSelectPatient = (grant: AccessRequest) => {
+    setPatientId(grant.patient_id);
+    setSearchQuery(getAccessRequestPatientName(grant));
     setIsDropdownOpen(false);
   };
 
@@ -101,24 +92,36 @@ export default function NewEncounterPage() {
     setSearchQuery(val);
     setIsDropdownOpen(true);
 
-    if (selectedPatient && val !== `${selectedPatient.first_name} ${selectedPatient.last_name}`) {
+    if (selectedGrant && val !== getAccessRequestPatientName(selectedGrant)) {
       setPatientId('');
     }
   };
 
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!patientId || !selectedPatient) return;
-
+    if (!patientId || !selectedGrant) return;
+    setErrorMsg(null);
     setIsSubmitting(true);
     try {
-      const newEnc = await createEncounter(patientId, type, chiefComplaint);
+      const newEnc = await startEncounterAction(patientId, type);
+
+      if (chiefComplaint.trim()) {
+        await clinicalEvaluationsApi.create(newEnc.id, {
+          chief_complaint: chiefComplaint,
+          history_of_present_illness: chiefComplaint,
+        });
+      }
+
       router.push(`/doctor/encounters/${newEnc.id}`);
-    } catch {
+    } catch (err: any) {
+      if (err.status === 403) {
+        setErrorMsg('Patient access grant has expired or has not been approved yet.');
+      } else {
+        setErrorMsg(err.message || 'Failed to initialize encounter.');
+      }
       setIsSubmitting(false);
     }
   };
-
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 select-none">
@@ -139,85 +142,37 @@ export default function NewEncounterPage() {
         </div>
       </div>
 
-      {/* 1. Active Open Encounters Banner */}
-      {patientsWithActiveEncounters.length > 0 && (
-        <div className="p-5 rounded-2xl bg-amber-50/90 border border-amber-200 shadow-2xs space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-600 animate-pulse" />
-              <span className="font-bold text-xs text-amber-900">
-                Patients Currently in Active Encounters ({patientsWithActiveEncounters.length})
-              </span>
-            </div>
-            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300 uppercase">
-              Session Open
-            </span>
-          </div>
-
-          <p className="text-xs text-amber-800 leading-relaxed">
-            The patient(s) below already have an active open consultation session. To avoid duplicate encounters, you can resume their existing recording workspace directly:
-          </p>
-
-          <div className="space-y-2.5 pt-1">
-            {patientsWithActiveEncounters.map(({ patient: pat, activeEncounter: enc }) => (
-              <div
-                key={pat.id}
-                className="p-3.5 bg-white rounded-xl border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs"
-              >
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-bold text-slate-900 text-xs">
-                      {pat.first_name} {pat.last_name}
-                    </span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#E8F5E9] text-[#1B5E20] border border-[#C8E6C9]">
-                      {enc.type}
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Phone: {pat.phone}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 italic">
-                    Chief Complaint: &ldquo;{enc.notes || 'Active consultation in progress'}&rdquo;
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => router.push(`/doctor/encounters/${enc.id}`)}
-                  className="px-4 py-2 bg-[#2E7D32] hover:bg-[#1B5E20] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
-                >
-                  <span>Resume Consultation</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-white" />
-                </button>
-              </div>
-            ))}
+      {errorMsg && (
+        <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2.5 shadow-2xs">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-bold">Encounter Initialization Failed</p>
+            <p className="mt-0.5">{errorMsg}</p>
           </div>
         </div>
       )}
 
-      {/* 2. Form Card */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-2xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
           <div>
             <h3 className="text-sm font-bold text-slate-900">Clinical Consultation Parameters</h3>
             <p className="text-xs text-slate-500">
-              Type a patient&apos;s name to search and select their chart for consultation.
+              Type a patient's name to search and select their chart for consultation.
             </p>
           </div>
           <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
-            {availablePatients.length} Eligible
+            {authorizedGrants.length} Eligible
           </span>
         </div>
 
         <form onSubmit={handleStart} className="p-6 sm:p-8 space-y-6">
-          {/* SEARCHABLE PATIENT COMBOBOX INPUT */}
           <div className="space-y-2 relative" ref={comboboxRef}>
             <label className="text-xs font-semibold text-slate-800 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
                 <User className="w-4 h-4 text-[#2E7D32]" />
                 <span>Search Patient by Name <span className="text-rose-500">*</span></span>
               </span>
-              {selectedPatient ? (
+              {selectedGrant ? (
                 <span className="text-[11px] font-mono text-[#2E7D32] font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-[#2E7D32]" />
                   Patient Selected
@@ -229,7 +184,11 @@ export default function NewEncounterPage() {
               )}
             </label>
 
-            {availablePatients.length === 0 ? (
+            {isLoading ? (
+              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-400 italic">
+                Loading authorized patients...
+              </div>
+            ) : authorizedGrants.length === 0 ? (
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2.5">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
@@ -248,9 +207,9 @@ export default function NewEncounterPage() {
                     value={searchQuery}
                     onFocus={() => setIsDropdownOpen(true)}
                     onChange={handleInputChange}
-                    placeholder="Type patient's name, phone, or ID to filter..."
+                    placeholder="Type patient's name or email to filter..."
                     className={`w-full pl-10 pr-16 py-2.5 text-xs bg-white border rounded-xl text-slate-900 focus:outline-none transition-all shadow-2xs font-medium ${
-                      selectedPatient
+                      selectedGrant
                         ? 'border-[#81C784] ring-2 ring-[#388E3C]/10 text-[#1B5E20]'
                         : 'border-slate-200 focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C]'
                     }`}
@@ -276,25 +235,25 @@ export default function NewEncounterPage() {
                   </div>
                 </div>
 
-                {/* Filtered Search Results Dropdown Overlay */}
                 {isDropdownOpen && (
                   <div className="absolute left-0 right-0 top-full mt-1.5 z-30 bg-white rounded-2xl border border-slate-200 shadow-xl max-h-64 overflow-y-auto p-2 space-y-1 animate-in fade-in zoom-in-95 duration-100">
                     <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
-                      <span>Eligible Patients ({filteredPatients.length})</span>
+                      <span>Eligible Patients ({filteredGrants.length})</span>
                       <span>Click to Select</span>
                     </div>
 
-                    {filteredPatients.length === 0 ? (
+                    {filteredGrants.length === 0 ? (
                       <div className="p-4 text-center text-xs text-slate-400 italic">
-                        No eligible patients match &ldquo;{searchQuery}&rdquo;
+                        No eligible patients match "{searchQuery}"
                       </div>
                     ) : (
-                      filteredPatients.map((pat) => {
-                        const isSelected = pat.id === patientId;
+                      filteredGrants.map((grant) => {
+                        const isSelected = grant.patient_id === patientId;
+                        const pName = getAccessRequestPatientName(grant);
                         return (
                           <div
-                            key={pat.id}
-                            onClick={() => handleSelectPatient(pat)}
+                            key={grant.id}
+                            onClick={() => handleSelectPatient(grant)}
                             className={`p-3 rounded-xl flex items-center justify-between gap-3 cursor-pointer transition-colors ${
                               isSelected
                                 ? 'bg-[#E8F5E9] border border-[#C8E6C9] text-[#1B5E20]'
@@ -309,15 +268,14 @@ export default function NewEncounterPage() {
                                     : 'bg-slate-100 text-slate-700'
                                 }`}
                               >
-                                {pat.first_name[0]}
-                                {pat.last_name[0]}
+                                {pName[0]}
                               </div>
                               <div>
                                 <p className="font-bold text-xs text-slate-900">
-                                  {pat.first_name} {pat.last_name}
+                                  {pName}
                                 </p>
                                 <p className="text-[11px] text-slate-500">
-                                  Phone: {pat.phone} • DOB: {pat.date_of_birth} ({pat.sex}) • Blood: {pat.blood_group}
+                                  Email: {grant.patient?.email || 'N/A'}
                                 </p>
                               </div>
                             </div>
@@ -335,21 +293,19 @@ export default function NewEncounterPage() {
             )}
           </div>
 
-          {/* Selected Patient Preview Card */}
-          {selectedPatient && (
+          {selectedGrant && (
             <div className="p-4 rounded-2xl bg-[#E8F5E9]/50 border border-[#C8E6C9] text-xs space-y-2 animate-in fade-in duration-150">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-[#388E3C] text-white font-bold flex items-center justify-center text-sm shadow-2xs">
-                    {selectedPatient.first_name[0]}
-                    {selectedPatient.last_name[0]}
+                    {getAccessRequestPatientName(selectedGrant)[0]}
                   </div>
                   <div>
                     <h4 className="font-bold text-slate-900 text-sm">
-                      {selectedPatient.first_name} {selectedPatient.last_name}
+                      {getAccessRequestPatientName(selectedGrant)}
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      DOB: {selectedPatient.date_of_birth} ({selectedPatient.sex}) • Phone: {selectedPatient.phone}
+                      ID: {selectedGrant.patient_id}
                     </p>
                   </div>
                 </div>
@@ -359,27 +315,9 @@ export default function NewEncounterPage() {
                   Consent Verified
                 </span>
               </div>
-
-              <div className="pt-2 border-t border-[#C8E6C9]/60 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
-                <div>
-                  <span className="text-slate-400 block text-[10px]">Blood Group:</span>
-                  <span className="font-bold text-slate-800">{selectedPatient.blood_group}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px]">Allergies:</span>
-                  <span className="font-bold text-rose-700">
-                    {selectedPatient.allergies?.join(', ') || 'None Known'}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px]">Active Status:</span>
-                  <span className="font-bold text-emerald-800">Ready for Consultation</span>
-                </div>
-              </div>
             </div>
           )}
 
-          {/* Encounter Type */}
           <div className="space-y-2">
             <label className="block text-xs font-semibold text-slate-800">Encounter Classification</label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -394,7 +332,7 @@ export default function NewEncounterPage() {
                 <button
                   key={t.id}
                   type="button"
-                  onClick={() => setType(t.id)}
+                  onClick={() => setType(t.id as EncounterType)}
                   className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
                     type === t.id
                       ? 'border-[#388E3C] bg-[#E8F5E9]/60 text-[#1B5E20] shadow-2xs font-semibold ring-1 ring-[#388E3C]/30'
@@ -408,7 +346,6 @@ export default function NewEncounterPage() {
             </div>
           </div>
 
-          {/* Chief Complaint */}
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-slate-800">
               Initial Chief Complaint / Presenting Symptoms
@@ -418,7 +355,7 @@ export default function NewEncounterPage() {
               rows={3}
               value={chiefComplaint}
               onChange={(e) => setChiefComplaint(e.target.value)}
-              placeholder="e.g. Patient presents with 3-day history of throbbing frontal headache, episodic nausea, and elevated home blood pressure readings..."
+              placeholder="e.g. Patient presents with 3-day history of throbbing frontal headache..."
               className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] shadow-2xs"
             />
           </div>
@@ -433,7 +370,7 @@ export default function NewEncounterPage() {
             </Button>
             <Button
               type="submit"
-              disabled={availablePatients.length === 0 || !patientId}
+              disabled={authorizedGrants.length === 0 || !patientId}
               isLoading={isSubmitting}
               leftIcon={<Stethoscope className="w-4 h-4" />}
             >
