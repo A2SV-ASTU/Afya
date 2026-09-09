@@ -4,49 +4,60 @@ import { useState, useEffect } from 'react';
 import { vitalsApi } from '@/lib/api';
 import { VitalsTrendPoint } from '../types';
 
-export function useVitalsTrends(patientId: string) {
+interface UseVitalsTrendsResult {
+  trends: VitalsTrendPoint[];
+  isLoading: boolean;
+  error: string | null;
+}
+
+/**
+ * Loads a patient's recorded vital signs (`GET /patients/:id/vitals`) and shapes
+ * them into chart points for the longitudinal BP / pulse / glucose trend chart.
+ */
+export function useVitalsTrends(patientId: string): UseVitalsTrendsResult {
   const [trends, setTrends] = useState<VitalsTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-    if (!patientId) return;
+    if (!patientId) {
+      setIsLoading(false);
+      return;
+    }
 
-    vitalsApi.listForPatient(patientId)
+    let cancelled = false;
+    setIsLoading(true);
+    setError(null);
+
+    vitalsApi
+      .listForPatient(patientId)
       .then((res) => {
-        if (!mounted) return;
-        const vitals = res.vitals || [];
-        const points: VitalsTrendPoint[] = [];
-
-        vitals.forEach((vit) => {
-          if (vit.systolic_bp && vit.diastolic_bp) {
-            points.push({
-              date: new Date(vit.recorded_at || vit.created_at || new Date()).toLocaleDateString(undefined, {
-                month: 'short',
-                day: 'numeric',
-              }),
-              systolic: vit.systolic_bp,
-              diastolic: vit.diastolic_bp,
-              pulse: vit.pulse || 72,
-              bloodSugar: vit.blood_sugar,
-            });
-          }
-        });
-
-        // Optionally sort by date here if needed
+        if (cancelled) return;
+        const points: VitalsTrendPoint[] = (res.vital_signs ?? [])
+          .filter((v) => v.systolic_bp != null && v.diastolic_bp != null)
+          .map((v) => ({
+            date: new Date(v.recorded_at || v.created_at || Date.now()).toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+            }),
+            systolic: v.systolic_bp as number,
+            diastolic: v.diastolic_bp as number,
+            pulse: v.pulse ?? 0,
+            bloodSugar: v.blood_sugar,
+          }));
         setTrends(points);
         setIsLoading(false);
       })
       .catch((err) => {
-        if (!mounted) return;
-        console.error('Error fetching vitals trends', err);
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Failed to load vitals trends.');
         setIsLoading(false);
       });
 
     return () => {
-      mounted = false;
+      cancelled = true;
     };
   }, [patientId]);
 
-  return { trends, isLoading };
+  return { trends, isLoading, error };
 }

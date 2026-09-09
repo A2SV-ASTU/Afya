@@ -1,4 +1,4 @@
-import { Patient, Encounter, VitalSign, LabResult, Prescription, Diagnosis } from '@/types/database';
+import { Encounter, LabResult, Diagnosis } from '@/types/database';
 
 export interface TimelinePrescriptionItem {
   medication_name: string;

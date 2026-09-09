@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Activity,
   FlaskConical,
@@ -16,10 +16,7 @@ import {
   Thermometer,
   Scale,
   FileText,
-  Clock,
-  Sparkles,
   ShieldCheck,
-  CheckCircle2,
 } from 'lucide-react';
 import { usePatientTimeline } from '../hooks/usePatientTimeline';
 import { formatDateTime } from '@/modules/core/lib/utils';
@@ -30,12 +27,16 @@ interface TimelineProps {
 }
 
 export function Timeline({ patientId }: TimelineProps) {
-  const encounters = usePatientTimeline(patientId);
+  const { timeline: encounters, isLoading, error } = usePatientTimeline(patientId);
 
-  // Default first encounter card expanded
-  const [expandedIds, setExpandedIds] = useState<string[]>(() => {
-    return encounters.length > 0 ? [encounters[0].encounter_id] : [];
-  });
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+
+  // Auto-expand the most recent encounter once records have loaded.
+  useEffect(() => {
+    if (encounters.length > 0) {
+      setExpandedIds((prev) => (prev.length === 0 ? [encounters[0].encounter_id] : prev));
+    }
+  }, [encounters]);
 
   const toggleExpand = (id: string) => {
     setExpandedIds((prev) =>
@@ -50,6 +51,22 @@ export function Timeline({ patientId }: TimelineProps) {
   const collapseAll = () => {
     setExpandedIds([]);
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-10 text-center bg-white rounded-3xl border border-slate-200 text-xs text-slate-500 shadow-2xs">
+        Loading longitudinal health records…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-10 text-center bg-white rounded-3xl border border-rose-200 text-xs text-rose-600 shadow-2xs">
+        {error}
+      </div>
+    );
+  }
 
   if (encounters.length === 0) {
     return (

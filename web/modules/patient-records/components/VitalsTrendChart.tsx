@@ -10,7 +10,23 @@ interface VitalsTrendChartProps {
 }
 
 export function VitalsTrendChart({ patientId }: VitalsTrendChartProps) {
-  const trends = useVitalsTrends(patientId);
+  const { trends, isLoading, error } = useVitalsTrends(patientId);
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 text-xs text-slate-500">
+        Loading vitals trends…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-rose-200 text-xs text-rose-600">
+        {error}
+      </div>
+    );
+  }
 
   if (trends.length === 0) {
     return (

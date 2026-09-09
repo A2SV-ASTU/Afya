@@ -2,26 +2,40 @@
 
 import React from 'react';
 import { FlaskConical } from 'lucide-react';
-import { useStore } from '@/lib/store';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
 import { formatDateTime } from '@/modules/core/lib/utils';
+import { usePatientEncounters } from '../hooks/usePatientEncounters';
 
 interface LabHistoryListProps {
   patientId: string;
 }
 
 export function LabHistoryList({ patientId }: LabHistoryListProps) {
-  const { encounters } = useStore();
+  const { encounters, isLoading, error } = usePatientEncounters(patientId);
 
-  const patientLabs = encounters
-    .filter((e) => e.patient_id === patientId)
-    .flatMap((e) =>
-      (e.labs || []).map((lab) => ({
-        ...lab,
-        encounterType: e.type,
-        clinicName: e.clinic_name,
-      }))
+  const patientLabs = encounters.flatMap((e) =>
+    (e.labs || []).map((lab) => ({
+      ...lab,
+      encounterType: e.type,
+      clinicName: e.clinic_name,
+    }))
+  );
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 text-xs text-slate-500">
+        Loading laboratory history…
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-rose-200 text-xs text-rose-600">
+        {error}
+      </div>
+    );
+  }
 
   if (patientLabs.length === 0) {
     return (
