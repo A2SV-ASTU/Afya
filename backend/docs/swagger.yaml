@@ -61,6 +61,9 @@ definitions:
         description: Doctor / Clinic Admin specific fields (nullable)
         example: 550e8400-e29b-41d4-a716-446655440001
         type: string
+      clinic_name:
+        example: Afya Central Clinic
+        type: string
       clinic_status:
         example: active
         type: string
@@ -1199,6 +1202,9 @@ definitions:
         description: Doctor / Clinic Admin specific fields (nullable)
         example: 550e8400-e29b-41d4-a716-446655440001
         type: string
+      clinic_name:
+        example: Afya Central Clinic
+        type: string
       clinic_status:
         example: active
         type: string
@@ -1354,7 +1360,6 @@ definitions:
   src_vitals.VitalSign:
     properties:
       bloodSugar:
-        format: float64
         type: number
       clientID:
         description: nullable client-generated dedup token
@@ -1377,15 +1382,12 @@ definitions:
       source:
         $ref: '#/definitions/src_vitals.VitalSource'
       spO2:
-        format: float64
         type: number
       systolicBP:
         type: integer
       temperature:
-        format: float64
         type: number
       weight:
-        format: float64
         type: number
     type: object
   src_vitals.VitalSource:

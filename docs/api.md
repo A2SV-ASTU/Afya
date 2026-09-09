@@ -223,7 +223,7 @@ All error responses adhere to a consistent error schema:
   }
 }
 ```
-- **200 OK** (Clinic Admin / Doctor Example):
+- **200 OK** (Clinic Admin Example):
 ```json
 {
   "data": {
@@ -235,6 +235,7 @@ All error responses adhere to a consistent error schema:
       "phone": "+254700112233",
       "email": "admin@afyaclinic.com",
       "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "clinic_name": "Afya Central Clinic",
       "clinic_status": "active",
       "created_at": "2026-08-27T12:00:00Z",
       "updated_at": "2026-08-27T12:00:00Z"
@@ -242,19 +243,23 @@ All error responses adhere to a consistent error schema:
   }
 }
 ```
-- **200 OK** (Clinic Admin / Doctor Example):
+- **200 OK** (Doctor Example):
 ```json
 {
   "data": {
     "user": {
-      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-      "first_name": "Dr. Sarah",
-      "last_name": "Smith",
-      "role": "clinic_admin",
-      "phone": "+254700112233",
-      "email": "admin@afyaclinic.com",
+      "id": "d2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
+      "first_name": "Dr. Jane",
+      "last_name": "Doe",
+      "role": "doctor",
+      "phone": "+254712345678",
+      "email": "dr.jane@example.com",
       "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "clinic_name": "Afya Central Clinic",
       "clinic_status": "active",
+      "specialization": "Cardiology",
+      "license_number": "LIC-12345",
+      "doctor_status": "active",
       "created_at": "2026-08-27T12:00:00Z",
       "updated_at": "2026-08-27T12:00:00Z"
     }
