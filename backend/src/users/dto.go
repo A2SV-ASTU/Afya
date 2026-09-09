@@ -23,6 +23,7 @@ type UserResponse struct {
 
 	// Doctor / Clinic Admin specific fields (nullable)
 	ClinicID       *uuid.UUID    `json:"clinic_id,omitempty" example:"550e8400-e29b-41d4-a716-446655440001"`
+	ClinicName     *string       `json:"clinic_name,omitempty" example:"Afya Central Clinic"`
 	ClinicStatus   *string       `json:"clinic_status,omitempty" example:"active"`
 	Specialization *string       `json:"specialization,omitempty" example:"Cardiology"`
 	LicenseNumber  *string       `json:"license_number,omitempty" example:"LIC-12345"`
@@ -78,6 +79,7 @@ func ToUserResponse(u *User) *UserResponse {
 		EmergencyContactName:  u.EmergencyContactName,
 		EmergencyContactPhone: u.EmergencyContactPhone,
 		ClinicID:              u.ClinicID,
+		ClinicName:            u.ClinicName,
 		ClinicStatus:          u.ClinicStatus,
 		Specialization:        u.Specialization,
 		LicenseNumber:         u.LicenseNumber,
