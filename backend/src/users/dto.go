@@ -22,10 +22,11 @@ type UserResponse struct {
 	EmergencyContactPhone *string    `json:"emergency_contact_phone,omitempty" example:"+254700000000"`
 
 	// Doctor specific fields (nullable)
-	ClinicID       *uuid.UUID    `json:"clinic_id,omitempty" example:"550e8400-e29b-41d4-a716-446655440001"`
-	Specialization *string       `json:"specialization,omitempty" example:"Cardiology"`
-	LicenseNumber  *string       `json:"license_number,omitempty" example:"LIC-12345"`
-	DoctorStatus   *DoctorStatus `json:"doctor_status,omitempty" example:"active"`
+	ClinicID       *uuid.UUID     `json:"clinic_id,omitempty" example:"550e8400-e29b-41d4-a716-446655440001"`
+	Clinic         *ClinicSummary `json:"clinic,omitempty"`
+	Specialization *string        `json:"specialization,omitempty" example:"Cardiology"`
+	LicenseNumber  *string        `json:"license_number,omitempty" example:"LIC-12345"`
+	DoctorStatus   *DoctorStatus  `json:"doctor_status,omitempty" example:"active"`
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
@@ -77,6 +78,7 @@ func ToUserResponse(u *User) *UserResponse {
 		EmergencyContactName:  u.EmergencyContactName,
 		EmergencyContactPhone: u.EmergencyContactPhone,
 		ClinicID:              u.ClinicID,
+		Clinic:                u.Clinic,
 		Specialization:        u.Specialization,
 		LicenseNumber:         u.LicenseNumber,
 		DoctorStatus:          u.DoctorStatus,

@@ -131,6 +131,42 @@ func TestUserService_GetProfile(t *testing.T) {
 	if appErr == nil || appErr.Code != "not_found" {
 		t.Errorf("expected not_found error for non-existent user, got: %v", appErr)
 	}
+
+	// Doctor profile with clinic populated
+	clinicID := uuid.New()
+	spec := "Cardiology"
+	lic := "LIC-123"
+	status := DoctorStatusActive
+	doctorUser := &User{
+		Email:          "doctor@example.com",
+		FirstName:      "Doctor",
+		LastName:       "Who",
+		Role:           RoleDoctor,
+		ClinicID:       &clinicID,
+		Specialization: &spec,
+		LicenseNumber:  &lic,
+		DoctorStatus:   &status,
+		Clinic: &ClinicSummary{
+			ID:      clinicID,
+			Name:    "Central Hospital",
+			Email:   "info@hospital.org",
+			Phone:   "+254700112233",
+			Address: "123 Main St",
+			Status:  "active",
+		},
+	}
+	_ = repo.Create(context.Background(), doctorUser)
+
+	docProfile, appErr := svc.GetProfile(context.Background(), doctorUser.ID)
+	if appErr != nil {
+		t.Fatalf("unexpected error getting doctor profile: %v", appErr)
+	}
+	if docProfile.Clinic == nil {
+		t.Fatal("expected clinic details to be populated")
+	}
+	if docProfile.Clinic.Name != "Central Hospital" || docProfile.Clinic.ID != clinicID {
+		t.Errorf("unexpected clinic data: %+v", docProfile.Clinic)
+	}
 }
 
 func TestUserService_UpdateProfile(t *testing.T) {

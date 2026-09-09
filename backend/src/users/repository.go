@@ -33,7 +33,16 @@ func NewRepository(db database.DBTX) Repository {
 	return &repository{db: db}
 }
 
-const userColumns = `id, first_name, last_name, role, phone, email, password_hash, date_of_birth, sex, blood_type, emergency_contact_name, emergency_contact_phone, clinic_id, specialization, license_number, doctor_status, invited_by, created_at, updated_at`
+const selectUserWithClinic = `
+	SELECT 
+		u.id, u.first_name, u.last_name, u.role, u.phone, u.email, u.password_hash,
+		u.date_of_birth, u.sex, u.blood_type, u.emergency_contact_name, u.emergency_contact_phone,
+		u.clinic_id, u.specialization, u.license_number, u.doctor_status, u.invited_by,
+		u.created_at, u.updated_at,
+		c.id, c.name, c.email, c.phone, c.address, c.status
+	FROM users u
+	LEFT JOIN clinics c ON u.clinic_id = c.id
+`
 
 type scanner interface {
 	Scan(dest ...interface{}) error
@@ -41,6 +50,9 @@ type scanner interface {
 
 func scanUser(s scanner) (*User, error) {
 	u := &User{}
+	var cID uuid.NullUUID
+	var cName, cEmail, cPhone, cAddress, cStatus sql.NullString
+
 	err := s.Scan(
 		&u.ID,
 		&u.FirstName,
@@ -61,6 +73,12 @@ func scanUser(s scanner) (*User, error) {
 		&u.InvitedBy,
 		&u.CreatedAt,
 		&u.UpdatedAt,
+		&cID,
+		&cName,
+		&cEmail,
+		&cPhone,
+		&cAddress,
+		&cStatus,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -68,26 +86,38 @@ func scanUser(s scanner) (*User, error) {
 		}
 		return nil, err
 	}
+
+	if cID.Valid {
+		u.Clinic = &ClinicSummary{
+			ID:      cID.UUID,
+			Name:    cName.String,
+			Email:   cEmail.String,
+			Phone:   cPhone.String,
+			Address: cAddress.String,
+			Status:  cStatus.String,
+		}
+	}
+
 	return u, nil
 }
 
 func (r *repository) FindByID(ctx context.Context, id uuid.UUID) (*User, error) {
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE id = $1`, userColumns)
+	query := selectUserWithClinic + ` WHERE u.id = $1`
 	return scanUser(r.db.QueryRowContext(ctx, query, id))
 }
 
 func (r *repository) FindByEmail(ctx context.Context, email string) (*User, error) {
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE email = $1`, userColumns)
+	query := selectUserWithClinic + ` WHERE u.email = $1`
 	return scanUser(r.db.QueryRowContext(ctx, query, email))
 }
 
 func (r *repository) FindByPhone(ctx context.Context, phone string) (*User, error) {
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE phone = $1`, userColumns)
+	query := selectUserWithClinic + ` WHERE u.phone = $1`
 	return scanUser(r.db.QueryRowContext(ctx, query, phone))
 }
 
 func (r *repository) FindByLogin(ctx context.Context, login string) (*User, error) {
-	query := fmt.Sprintf(`SELECT %s FROM users WHERE email = $1 OR phone = $1`, userColumns)
+	query := selectUserWithClinic + ` WHERE u.email = $1 OR u.phone = $1`
 	return scanUser(r.db.QueryRowContext(ctx, query, login))
 }
 
@@ -172,16 +202,15 @@ func (r *repository) UpdateProfile(ctx context.Context, id uuid.UUID, req Update
 		currentUser.EmergencyContactPhone = req.EmergencyContactPhone
 	}
 
-	query := fmt.Sprintf(`
+	query := `
 		UPDATE users
 		SET first_name = $1, last_name = $2, email = $3, phone = $4, date_of_birth = $5, sex = $6,
 		    blood_type = $7, emergency_contact_name = $8, emergency_contact_phone = $9,
 		    updated_at = NOW()
 		WHERE id = $10
-		RETURNING %s
-	`, userColumns)
+	`
 
-	return scanUser(r.db.QueryRowContext(
+	_, err = r.db.ExecContext(
 		ctx,
 		query,
 		currentUser.FirstName,
@@ -194,7 +223,12 @@ func (r *repository) UpdateProfile(ctx context.Context, id uuid.UUID, req Update
 		currentUser.EmergencyContactName,
 		currentUser.EmergencyContactPhone,
 		id,
-	))
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update user profile: %w", err)
+	}
+
+	return r.FindByID(ctx, id)
 }
 
 func (r *repository) UpdatePassword(ctx context.Context, id uuid.UUID, passwordHash string) error {

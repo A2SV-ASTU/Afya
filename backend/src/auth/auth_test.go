@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type mockAuthRepo struct {
@@ -248,6 +249,61 @@ func TestAuthHandlers_HTTPIntegration(t *testing.T) {
 
 		if w.Code != http.StatusOK {
 			t.Fatalf("expected 200 OK, got %d. Body: %s", w.Code, w.Body.String())
+		}
+	})
+
+	// 2b. POST /v1/auth/login for Doctor with Clinic
+	t.Run("POST /v1/auth/login for Doctor with Clinic", func(t *testing.T) {
+		doctorClinicID := uuid.New()
+		hashedPass, _ := bcrypt.GenerateFromPassword([]byte("doctorPass123"), bcrypt.DefaultCost)
+		docUser := &users.User{
+			ID:           uuid.New(),
+			FirstName:    "Gregory",
+			LastName:     "House",
+			Role:         users.RoleDoctor,
+			Email:        "house@princeton.org",
+			Phone:        "+251922334455",
+			PasswordHash: string(hashedPass),
+			ClinicID:     &doctorClinicID,
+			Clinic: &users.ClinicSummary{
+				ID:      doctorClinicID,
+				Name:    "Princeton-Plainsboro",
+				Email:   "clinic@princeton.org",
+				Phone:   "+254711998877",
+				Address: "New Jersey",
+				Status:  "active",
+			},
+		}
+		_ = repo.Create(context.Background(), docUser)
+
+		body, _ := json.Marshal(LoginRequest{Email: "house@princeton.org", Password: "doctorPass123"})
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", bytes.NewBuffer(body))
+		req.Header.Set("Content-Type", "application/json")
+		w := httptest.NewRecorder()
+
+		r.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Fatalf("expected 200 OK, got %d. Body: %s", w.Code, w.Body.String())
+		}
+
+		var resp struct {
+			Data struct {
+				User users.UserResponse `json:"user"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		if resp.Data.User.Role != users.RoleDoctor {
+			t.Errorf("expected role doctor, got %s", resp.Data.User.Role)
+		}
+		if resp.Data.User.Clinic == nil {
+			t.Fatal("expected clinic to be populated in response, but was nil")
+		}
+		if resp.Data.User.Clinic.Name != "Princeton-Plainsboro" || resp.Data.User.Clinic.ID != doctorClinicID {
+			t.Errorf("unexpected clinic details: %+v", resp.Data.User.Clinic)
 		}
 	})
 
