@@ -8,6 +8,7 @@ class AccessRequestModel extends AccessRequestEntity {
     required super.doctorName,
     required super.reason,
     required super.status,
+    super.isUrgent,
     required super.expiresAt,
     required super.createdAt,
   });
@@ -23,6 +24,7 @@ class AccessRequestModel extends AccessRequestEntity {
       doctorName: (json['doctor_name'] ?? 'Unknown Doctor') as String,
       reason: (json['reason'] ?? '') as String,
       status: json['status'] as String,
+      isUrgent: (json['is_urgent'] ?? false) as bool,
       expiresAt: DateTime.parse(json['expires_at'] as String).toLocal(),
       createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
@@ -36,6 +38,7 @@ class AccessRequestModel extends AccessRequestEntity {
       'doctor_name': doctorName,
       'reason': reason,
       'status': status,
+      'is_urgent': isUrgent,
       'expires_at': expiresAt.toIso8601String(),
       'created_at': createdAt.toIso8601String(),
     };
