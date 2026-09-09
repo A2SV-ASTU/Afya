@@ -5,27 +5,25 @@ import { useRouter } from 'next/navigation';
 import {
   Stethoscope,
   ArrowLeft,
-  ShieldCheck,
   CheckCircle2,
   User,
-  ArrowRight,
   AlertCircle,
   Search,
   X,
   ChevronDown,
   Check,
 } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { useAuth } from '@/modules/core/context/AuthContext';
 import { Button } from '@/modules/core/ui/Button';
 import { EncounterType, AccessRequest, getAccessRequestPatientName } from '@/types/database';
 import { accessRequestsApi, clinicalEvaluationsApi } from '@/lib/api';
+import { ApiError, getApiErrorMessage } from '@/lib/api/client';
 import { startEncounterAction } from '@/modules/clinical-workspace/actions/startEncounter';
 
 export default function NewEncounterPage() {
   const router = useRouter();
-  const { currentUser, clinics } = useStore();
-
-  const activeClinic = clinics.find((c) => c.id === currentUser?.clinic_id) || clinics[0];
+  const { currentUser, isReady } = useAuth();
+  const clinicId = currentUser?.clinic_id ?? null;
 
   const [authorizedGrants, setAuthorizedGrants] = useState<AccessRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,19 +39,33 @@ export default function NewEncounterPage() {
   const comboboxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    async function loadData() {
-      if (!activeClinic?.id) return;
+    if (!isReady) return;
+
+    if (!clinicId) {
+      setIsLoading(false);
+      setErrorMsg('Your account is not affiliated with a clinic, so patient access grants cannot be loaded.');
+      return;
+    }
+
+    let cancelled = false;
+    async function loadData(activeClinicId: string) {
+      setIsLoading(true);
       try {
-        const res = await accessRequestsApi.listRequests(activeClinic.id, 'approved');
-        setAuthorizedGrants(res.access_requests || []);
-      } catch (err: any) {
-        setErrorMsg('Failed to load authorized patients. Please try again.');
+        const res = await accessRequestsApi.listRequests(activeClinicId, 'approved');
+        if (!cancelled) setAuthorizedGrants(res.access_requests || []);
+      } catch (err) {
+        if (!cancelled) {
+          setErrorMsg(getApiErrorMessage(err, 'Failed to load authorized patients. Please try again.'));
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     }
-    loadData();
-  }, [activeClinic?.id]);
+    loadData(clinicId);
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, clinicId]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -102,25 +114,38 @@ export default function NewEncounterPage() {
     if (!patientId || !selectedGrant) return;
     setErrorMsg(null);
     setIsSubmitting(true);
+
+    let newEncounterId: string;
     try {
       const newEnc = await startEncounterAction(patientId, type);
-
-      if (chiefComplaint.trim()) {
-        await clinicalEvaluationsApi.create(newEnc.id, {
-          chief_complaint: chiefComplaint,
-          history_of_present_illness: chiefComplaint,
-        });
-      }
-
-      router.push(`/doctor/encounters/${newEnc.id}`);
-    } catch (err: any) {
-      if (err.status === 403) {
+      newEncounterId = newEnc.id;
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
         setErrorMsg('Patient access grant has expired or has not been approved yet.');
       } else {
-        setErrorMsg(err.message || 'Failed to initialize encounter.');
+        setErrorMsg(getApiErrorMessage(err, 'Failed to initialize encounter.'));
       }
       setIsSubmitting(false);
+      return;
     }
+
+    // Persist the initial chief complaint as the encounter's clinical evaluation.
+    // A failure here should not strand the doctor — the encounter already exists
+    // and the note can be completed from the workspace's Clinical Notes tab.
+    if (chiefComplaint.trim()) {
+      try {
+        await clinicalEvaluationsApi.create(newEncounterId, {
+          chief_complaint: chiefComplaint.trim(),
+          history_of_present_illness: chiefComplaint.trim(),
+        });
+      } catch (err) {
+        if (!(err instanceof ApiError && err.status === 409)) {
+          console.error('Failed to record initial clinical evaluation', err);
+        }
+      }
+    }
+
+    router.push(`/doctor/encounters/${newEncounterId}`);
   };
 
   return (
@@ -157,7 +182,7 @@ export default function NewEncounterPage() {
           <div>
             <h3 className="text-sm font-bold text-slate-900">Clinical Consultation Parameters</h3>
             <p className="text-xs text-slate-500">
-              Type a patient's name to search and select their chart for consultation.
+              Type a patient&apos;s name to search and select their chart for consultation.
             </p>
           </div>
           <span className="text-xs font-mono font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
@@ -244,7 +269,7 @@ export default function NewEncounterPage() {
 
                     {filteredGrants.length === 0 ? (
                       <div className="p-4 text-center text-xs text-slate-400 italic">
-                        No eligible patients match "{searchQuery}"
+                        No eligible patients match &ldquo;{searchQuery}&rdquo;
                       </div>
                     ) : (
                       filteredGrants.map((grant) => {

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Stethoscope, CheckCircle2, Search } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { Stethoscope, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/modules/core/ui/Button';
 import { Input } from '@/modules/core/ui/Input';
 import { Encounter, DiagnosisType } from '@/types/database';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { saveDiagnosisAction } from '../actions/startEncounter';
 
 interface DiagnosisPickerProps {
   encounter: Encounter;
@@ -24,27 +25,33 @@ const COMMON_ICD_CODES = [
 ];
 
 export function DiagnosisPicker({ encounter, onSaved }: DiagnosisPickerProps) {
-  const { addDiagnosis } = useStore();
-
   const [diagnosisText, setDiagnosisText] = useState('Essential (primary) hypertension');
   const [icdCode, setIcdCode] = useState('I10');
   const [type, setType] = useState<DiagnosisType>('final');
   const [notes, setNotes] = useState('Controlled under current outpatient medical protocol');
   const [isSaved, setIsSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    await addDiagnosis(encounter.id, {
-      diagnosis_text: diagnosisText,
-      icd_code: icdCode,
-      diagnosis_type: type,
-      notes: notes || undefined,
-    });
-
-    setIsSaved(true);
-    if (onSaved) onSaved();
-    setTimeout(() => setIsSaved(false), 3000);
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await saveDiagnosisAction(encounter.id, {
+        diagnosis_text: diagnosisText,
+        icd_code: icdCode || undefined,
+        diagnosis_type: type,
+        notes: notes || undefined,
+      });
+      setIsSaved(true);
+      if (onSaved) onSaved();
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to record diagnosis. Please try again.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -88,6 +95,13 @@ export function DiagnosisPicker({ encounter, onSaved }: DiagnosisPickerProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-2">
             <Input
@@ -130,7 +144,7 @@ export function DiagnosisPicker({ encounter, onSaved }: DiagnosisPickerProps) {
         </div>
 
         <div className="flex items-center justify-end">
-          <Button type="submit" leftIcon={<CheckCircle2 className="w-4 h-4" />}>
+          <Button type="submit" isLoading={isSubmitting} leftIcon={<CheckCircle2 className="w-4 h-4" />}>
             Attach Diagnosis
           </Button>
         </div>

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Calendar, CheckCircle2, Clock } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/modules/core/ui/Button';
 import { Input } from '@/modules/core/ui/Input';
 import { Encounter } from '@/types/database';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { scheduleAppointmentAction } from '../actions/startEncounter';
 
 interface AppointmentSchedulerProps {
   encounter: Encounter;
@@ -13,25 +14,37 @@ interface AppointmentSchedulerProps {
 }
 
 export function AppointmentScheduler({ encounter, onSaved }: AppointmentSchedulerProps) {
-  const { addEncounterAppointment } = useStore();
-
-  const [date, setDate] = useState('2025-04-15');
+  const [date, setDate] = useState('');
   const [time, setTime] = useState('10:00');
-  const [notes, setNotes] = useState('4-week routine clinical review of BP response to Amlodipine');
+  const [notes, setNotes] = useState('4-week routine clinical review');
   const [isSaved, setIsSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
-    const scheduledAt = `${date}T${time}:00Z`;
-    await addEncounterAppointment(encounter.id, {
-      scheduled_at: scheduledAt,
-      notes,
-    });
+    if (!date) {
+      setError('Select an appointment date.');
+      return;
+    }
 
-    setIsSaved(true);
-    if (onSaved) onSaved();
-    setTimeout(() => setIsSaved(false), 3000);
+    setIsSubmitting(true);
+    try {
+      const scheduledAt = new Date(`${date}T${time}:00`).toISOString();
+      await scheduleAppointmentAction(encounter.patient_id, {
+        scheduled_at: scheduledAt,
+        notes,
+      });
+      setIsSaved(true);
+      if (onSaved) onSaved();
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to book the follow-up appointment. Please try again.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -54,6 +67,13 @@ export function AppointmentScheduler({ encounter, onSaved }: AppointmentSchedule
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Input
             label="Appointment Date"
@@ -81,7 +101,7 @@ export function AppointmentScheduler({ encounter, onSaved }: AppointmentSchedule
         />
 
         <div className="flex items-center justify-end">
-          <Button type="submit" leftIcon={<CheckCircle2 className="w-4 h-4" />}>
+          <Button type="submit" isLoading={isSubmitting} leftIcon={<CheckCircle2 className="w-4 h-4" />}>
             Book Follow-up Date
           </Button>
         </div>

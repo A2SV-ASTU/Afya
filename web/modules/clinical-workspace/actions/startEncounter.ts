@@ -1,11 +1,11 @@
 import {
-  VitalsInput,
   LabResultInput,
   DiagnosisInput,
   PrescriptionItemInput,
   ScheduleAppointmentInput,
+  VitalsInput,
 } from '../types';
-import { Encounter, VitalSign, LabResult, Diagnosis, Prescription, Appointment } from '@/types/database';
+import { Encounter, EncounterType } from '@/types/database';
 import {
   encountersApi,
   vitalsApi,
@@ -14,19 +14,32 @@ import {
   prescriptionsApi,
   appointmentsApi,
 } from '@/lib/api';
+import {
+  PLACEHOLDER_CLINIC_NAME,
+  PLACEHOLDER_DOCTOR_NAME,
+  PLACEHOLDER_PATIENT_NAME,
+  parseMeasurements,
+} from '../lib/encounterMappers';
+
+/**
+ * Server actions for the clinical workspace. Every call goes straight to the
+ * backend REST API — there are no mock fallbacks or fabricated identifiers, and
+ * any 4xx/5xx is thrown so the calling component can surface it to the user.
+ */
 
 export async function startEncounterAction(
   patientId: string,
-  type: 'outpatient' | 'inpatient' | 'emergency' | 'telehealth' = 'outpatient'
+  type: EncounterType = 'outpatient'
 ): Promise<Encounter> {
   const res = await encountersApi.open(patientId);
+  const enc = res.encounter;
   return {
-    ...res.encounter,
-    patient_name: 'Patient', // Assuming the caller will fill these or the API returns it
-    opened_by_doctor_id: res.encounter.doctor_id || 'doctor',
-    opened_by_doctor_name: 'Attending Physician',
-    clinic_id: res.encounter.clinic_id || '',
-    clinic_name: 'AfyaMind Clinic (Placeholder)',
+    ...enc,
+    patient_name: PLACEHOLDER_PATIENT_NAME,
+    opened_by_doctor_id: enc.opened_by_doctor_id || enc.doctor_id || '',
+    opened_by_doctor_name: PLACEHOLDER_DOCTOR_NAME,
+    clinic_id: enc.clinic_id || '',
+    clinic_name: PLACEHOLDER_CLINIC_NAME,
     type,
     status: 'open',
     vitals: [],
@@ -36,53 +49,59 @@ export async function startEncounterAction(
   };
 }
 
-export async function saveVitalsAction(encounterId: string, vitals: VitalsInput): Promise<VitalSign> {
-  const res = await vitalsApi.recordForEncounter(encounterId, vitals);
-  return res.vital_sign;
+export async function saveVitalsAction(encounterId: string, vitals: VitalsInput): Promise<void> {
+  await vitalsApi.recordForEncounter(encounterId, vitals);
 }
 
-export async function saveLabResultAction(encounterId: string, lab: LabResultInput): Promise<LabResult> {
-  const res = await labsApi.create(encounterId, {
+export async function saveLabResultAction(encounterId: string, lab: LabResultInput): Promise<void> {
+  await labsApi.create(encounterId, {
     test_name: lab.test_name,
     category: lab.category,
-    summary_notes: lab.summary_notes,
-    measurements: lab.measurements,
+    summary_notes: lab.summary_notes || undefined,
+    measurements: parseMeasurements(lab.measurements),
     flag: lab.flag,
   });
-  return res.lab_result;
 }
 
-export async function saveDiagnosisAction(encounterId: string, diag: DiagnosisInput): Promise<Diagnosis> {
-  const res = await diagnosesApi.create(encounterId, diag);
-  return res.diagnosis;
-}
-
-export async function savePrescriptionAction(encounterId: string, item: PrescriptionItemInput): Promise<Prescription> {
-  const res = await prescriptionsApi.create(encounterId, {
-    items: [item],
+export async function saveDiagnosisAction(encounterId: string, diag: DiagnosisInput): Promise<void> {
+  await diagnosesApi.create(encounterId, {
+    diagnosis_text: diag.diagnosis_text,
+    diagnosis_type: diag.diagnosis_type,
+    icd_code: diag.icd_code || undefined,
+    notes: diag.notes || undefined,
   });
-  return res.prescription;
+}
+
+export async function savePrescriptionAction(
+  encounterId: string,
+  item: PrescriptionItemInput
+): Promise<void> {
+  await prescriptionsApi.create(encounterId, {
+    items: [
+      {
+        medication_name: item.medication_name,
+        dose: item.dose,
+        route: item.route,
+        frequency: item.frequency,
+        duration_value: item.duration_value,
+        duration_unit: item.duration_unit,
+        instructions: item.instructions || undefined,
+      },
+    ],
+  });
 }
 
 export async function scheduleAppointmentAction(
-  encounterId: string,
-  appt: ScheduleAppointmentInput,
-  patientId = 'pat-001'
-): Promise<Appointment> {
-  const res = await appointmentsApi.create({
+  patientId: string,
+  appt: ScheduleAppointmentInput
+): Promise<void> {
+  await appointmentsApi.create({
     patient_id: patientId,
     scheduled_at: appt.scheduled_at,
-    notes: appt.notes,
+    notes: appt.notes || undefined,
   });
-  return {
-    ...res.appointment,
-    clinic_name: 'AfyaMind Clinic (Placeholder)',
-    doctor_name: 'Doctor',
-    patient_name: 'Patient',
-  };
 }
 
-export async function closeEncounterAction(encounterId: string): Promise<boolean> {
+export async function closeEncounterAction(encounterId: string): Promise<void> {
   await encountersApi.close(encounterId);
-  return true;
 }

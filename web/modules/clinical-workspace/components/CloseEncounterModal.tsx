@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, AlertTriangle, CheckCircle2, Lock } from 'lucide-react';
+import { AlertTriangle, Lock } from 'lucide-react';
 import { Modal } from '@/modules/core/ui/Modal';
 import { Button } from '@/modules/core/ui/Button';
 import { Encounter } from '@/types/database';
@@ -11,6 +11,7 @@ interface CloseEncounterModalProps {
   onClose: () => void;
   onConfirm: () => void;
   encounter: Encounter;
+  isConfirming?: boolean;
 }
 
 export function CloseEncounterModal({
@@ -18,6 +19,7 @@ export function CloseEncounterModal({
   onClose,
   onConfirm,
   encounter,
+  isConfirming = false,
 }: CloseEncounterModalProps) {
   return (
     <Modal
@@ -28,13 +30,14 @@ export function CloseEncounterModal({
       maxWidth="md"
       footer={
         <div className="flex items-center justify-end gap-2.5 w-full">
-          <Button variant="outline" size="sm" onClick={onClose}>
+          <Button variant="outline" size="sm" onClick={onClose} disabled={isConfirming}>
             Back to Editing
           </Button>
           <Button
             variant="brand"
             size="sm"
             onClick={onConfirm}
+            isLoading={isConfirming}
             leftIcon={<Lock className="w-3.5 h-3.5" />}
           >
             Sign & Close Encounter
