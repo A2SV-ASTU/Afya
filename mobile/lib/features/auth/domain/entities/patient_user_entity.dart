@@ -29,6 +29,34 @@ class PatientUserEntity extends Equatable {
 
   String get fullName => '$firstName $lastName'.trim();
 
+  PatientUserEntity copyWith({
+    String? id,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? email,
+    String? dateOfBirth,
+    String? sex,
+    String? bloodType,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    bool? hasPin,
+  }) {
+    return PatientUserEntity(
+      id: id ?? this.id,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      sex: sex ?? this.sex,
+      bloodType: bloodType ?? this.bloodType,
+      emergencyContactName: emergencyContactName ?? this.emergencyContactName,
+      emergencyContactPhone: emergencyContactPhone ?? this.emergencyContactPhone,
+      hasPin: hasPin ?? this.hasPin,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,

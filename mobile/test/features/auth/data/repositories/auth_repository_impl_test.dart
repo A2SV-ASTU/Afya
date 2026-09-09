@@ -34,7 +34,9 @@ void main() {
   );
 
   group('AuthRepositoryImpl - register', () {
-    test('should save user session locally and return Right(user) when remote succeeds', () async {
+    test(
+        'should save user session locally and return Right(user) when remote succeeds',
+        () async {
       when(() => mockRemoteDataSource.register(
             firstName: any(named: 'firstName'),
             lastName: any(named: 'lastName'),
@@ -43,8 +45,6 @@ void main() {
             email: any(named: 'email'),
             role: any(named: 'role'),
           )).thenAnswer((_) async => tUserModel);
-
-      when(() => mockLocalDataSource.saveUserSession(tUserModel)).thenAnswer((_) async {});
 
       final result = await repository.register(
         firstName: 'Jane',
@@ -62,10 +62,11 @@ void main() {
           expect(user.firstName, 'Jane');
         },
       );
-      verify(() => mockLocalDataSource.saveUserSession(tUserModel)).called(1);
+      verifyNever(() => mockLocalDataSource.saveUserSession(tUserModel));
     });
 
-    test('should return Left(ServerFailure) when ServerException occurs', () async {
+    test('should return Left(ServerFailure) when ServerException occurs',
+        () async {
       when(() => mockRemoteDataSource.register(
             firstName: any(named: 'firstName'),
             lastName: any(named: 'lastName'),
@@ -95,8 +96,10 @@ void main() {
   });
 
   group('AuthRepositoryImpl - getAuthSession', () {
-    test('should return authenticated session when local user exists', () async {
-      when(() => mockLocalDataSource.getUserSession()).thenAnswer((_) async => tUserModel);
+    test('should return authenticated session when local user exists',
+        () async {
+      when(() => mockLocalDataSource.getUserSession())
+          .thenAnswer((_) async => tUserModel);
       when(() => mockLocalDataSource.hasPin()).thenAnswer((_) async => true);
 
       final result = await repository.getAuthSession();

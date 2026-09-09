@@ -67,6 +67,16 @@ class RegisterSubmitted extends AuthEvent {
       ];
 }
 
+class VerifyEmailSubmitted extends AuthEvent {
+  final String email;
+  final String otp;
+
+  const VerifyEmailSubmitted({required this.email, required this.otp});
+
+  @override
+  List<Object?> get props => [email, otp];
+}
+
 class LogoutSubmitted extends AuthEvent {
   const LogoutSubmitted();
 }
@@ -87,4 +97,8 @@ class SetPinSubmitted extends AuthEvent {
 
   @override
   List<Object?> get props => [pin];
+}
+
+class AppLockRequested extends AuthEvent {
+  const AppLockRequested();
 }
