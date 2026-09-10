@@ -1,11 +1,13 @@
 import { apiClient } from './client';
-import { LabResult, LabFlag, LabCategory } from '@/types/database';
+import { LabResult, LabFlag } from '@/types/database';
 
 export interface CreateLabResultPayload {
   test_name: string;
-  category: LabCategory;
+  /** Backend enum: laboratory | imaging | pathology | other */
+  category: string;
   summary_notes?: string;
-  measurements: Record<string, unknown> | string;
+  /** Backend expects a JSON object keyed by analyte name. */
+  measurements?: Record<string, unknown>;
   flag?: LabFlag;
 }
 

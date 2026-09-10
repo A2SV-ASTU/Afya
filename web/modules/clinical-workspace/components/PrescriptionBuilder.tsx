@@ -2,11 +2,17 @@
 
 import React, { useState } from 'react';
 import { Pill, CheckCircle2, Calculator, AlertCircle } from 'lucide-react';
-import { useStore } from '@/lib/store';
 import { Button } from '@/modules/core/ui/Button';
 import { Input } from '@/modules/core/ui/Input';
 import { Encounter } from '@/types/database';
 import { useMedicationCalculator } from '../hooks/useMedicationCalculator';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { savePrescriptionAction } from '../actions/startEncounter';
+import {
+  PRESCRIPTION_ROUTE_OPTIONS,
+  PRESCRIPTION_FREQUENCY_OPTIONS,
+  DURATION_UNIT_OPTIONS,
+} from '../lib/encounterMappers';
 
 interface PrescriptionBuilderProps {
   encounter: Encounter;
@@ -14,33 +20,48 @@ interface PrescriptionBuilderProps {
 }
 
 export function PrescriptionBuilder({ encounter, onSaved }: PrescriptionBuilderProps) {
-  const { addPrescription } = useStore();
-
   const [medName, setMedName] = useState('Amlodipine Besylate');
   const [dose, setDose] = useState('5mg');
-  const [route, setRoute] = useState('Oral');
-  const [frequency, setFrequency] = useState('Once daily (OD) in the morning');
-  const [duration, setDuration] = useState('30 days');
+  const [route, setRoute] = useState('oral');
+  const [frequency, setFrequency] = useState('OD');
+  const [durationValue, setDurationValue] = useState('30');
+  const [durationUnit, setDurationUnit] = useState('day');
   const [instructions, setInstructions] = useState('Take with or after breakfast. Do not miss doses.');
   const [isSaved, setIsSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const calc = useMedicationCalculator(dose, frequency, duration);
+  const calc = useMedicationCalculator(dose, frequency, `${durationValue} ${durationUnit}`);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
 
-    await addPrescription(encounter.id, {
-      medication_name: medName,
-      dose,
-      route,
-      frequency,
-      duration,
-      instructions,
-    });
+    const parsedDuration = parseInt(durationValue, 10);
+    if (!parsedDuration || parsedDuration <= 0) {
+      setError('Treatment duration must be a positive number.');
+      return;
+    }
 
-    setIsSaved(true);
-    if (onSaved) onSaved();
-    setTimeout(() => setIsSaved(false), 3000);
+    setIsSubmitting(true);
+    try {
+      await savePrescriptionAction(encounter.id, {
+        medication_name: medName,
+        dose,
+        route,
+        frequency,
+        duration_value: parsedDuration,
+        duration_unit: durationUnit,
+        instructions: instructions || undefined,
+      });
+      setIsSaved(true);
+      if (onSaved) onSaved();
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to sign prescription. Please try again.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -63,6 +84,13 @@ export function PrescriptionBuilder({ encounter, onSaved }: PrescriptionBuilderP
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="sm:col-span-2">
             <Input
@@ -83,7 +111,7 @@ export function PrescriptionBuilder({ encounter, onSaved }: PrescriptionBuilderP
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold text-slate-700">Route of Administration</label>
             <select
@@ -91,31 +119,53 @@ export function PrescriptionBuilder({ encounter, onSaved }: PrescriptionBuilderP
               onChange={(e) => setRoute(e.target.value)}
               className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] text-slate-800"
             >
-              <option value="Oral">Oral (PO)</option>
-              <option value="Intravenous">Intravenous (IV)</option>
-              <option value="Intramuscular">Intramuscular (IM)</option>
-              <option value="Subcutaneous">Subcutaneous (SC)</option>
-              <option value="Inhalation">Inhalation</option>
-              <option value="Topical">Topical</option>
-              <option value="Ophthalmic">Ophthalmic (Eye Drops)</option>
+              {PRESCRIPTION_ROUTE_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Dosing Frequency</label>
+            <select
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+              className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] text-slate-800"
+            >
+              {PRESCRIPTION_FREQUENCY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
 
           <Input
-            label="Dosing Frequency"
-            placeholder="e.g. Twice daily (BD) after meals"
-            value={frequency}
-            onChange={(e) => setFrequency(e.target.value)}
+            label="Duration"
+            type="number"
+            min={1}
+            placeholder="e.g. 30"
+            value={durationValue}
+            onChange={(e) => setDurationValue(e.target.value)}
             required
           />
 
-          <Input
-            label="Treatment Duration"
-            placeholder="e.g. 7 days, 30 days"
-            value={duration}
-            onChange={(e) => setDuration(e.target.value)}
-            required
-          />
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-slate-700">Duration Unit</label>
+            <select
+              value={durationUnit}
+              onChange={(e) => setDurationUnit(e.target.value)}
+              className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] text-slate-800"
+            >
+              {DURATION_UNIT_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <Input
@@ -139,7 +189,7 @@ export function PrescriptionBuilder({ encounter, onSaved }: PrescriptionBuilderP
         </div>
 
         <div className="flex items-center justify-end">
-          <Button type="submit" leftIcon={<CheckCircle2 className="w-4 h-4" />}>
+          <Button type="submit" isLoading={isSubmitting} leftIcon={<CheckCircle2 className="w-4 h-4" />}>
             Sign & Add to E-Prescriptions
           </Button>
         </div>

@@ -1,45 +1,66 @@
 'use client';
 
 import React from 'react';
-import { Pill, CheckCircle2 } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { Pill } from 'lucide-react';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
-import { formatDateTime } from '@/modules/core/lib/utils';
+import { usePatientEncounters } from '../hooks/usePatientEncounters';
 
 interface MedicationListProps {
   patientId: string;
 }
 
 export function MedicationList({ patientId }: MedicationListProps) {
-  const { encounters } = useStore();
+  const { encounters, isLoading, error, incompleteCount } = usePatientEncounters(patientId);
 
-  const allItems = encounters
-    .filter((e) => e.patient_id === patientId)
-    .flatMap((e) =>
-      (e.prescriptions || []).flatMap((rx) =>
-        (rx.items || []).map((item) => ({
-          ...item,
-          prescribedAt: rx.prescribed_at,
-          clinicName: e.clinic_name,
-          doctorName: e.opened_by_doctor_name,
-        }))
-      )
+  const allItems = encounters.flatMap((e) =>
+    (e.prescriptions || []).flatMap((rx) =>
+      (rx.items || []).map((item) => ({
+        ...item,
+        prescribedAt: rx.prescribed_at,
+        clinicName: e.clinic_name,
+        doctorName: e.opened_by_doctor_name,
+      }))
+    )
+  );
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 text-xs text-slate-500">
+        Loading medication history…
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-rose-200 text-xs text-rose-600">
+        {error}
+      </div>
+    );
+  }
 
   if (allItems.length === 0) {
     return (
       <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 text-xs text-slate-500">
-        No active or historical medications recorded for this patient.
+        {incompleteCount > 0
+          ? 'Medication records could not be loaded for this patient. This list may be incomplete.'
+          : 'No active or historical medications recorded for this patient.'}
       </div>
     );
   }
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+      {incompleteCount > 0 && (
+        <div className="p-3.5 bg-amber-50 border-b border-amber-200 text-xs text-amber-900">
+          {incompleteCount} encounter{incompleteCount === 1 ? '' : 's'} could not be loaded — this
+          medication list may be incomplete.
+        </div>
+      )}
       <div className="p-6 border-b border-slate-100 flex items-center justify-between">
         <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
           <Pill className="w-5 h-5 text-[#2E7D32]" />
-          Longitudinal E-Prescriptions & Active Medication History ({allItems.length})
+          Longitudinal E-Prescriptions &amp; Active Medication History ({allItems.length})
         </h3>
       </div>
 
@@ -47,9 +68,9 @@ export function MedicationList({ patientId }: MedicationListProps) {
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="border-b border-slate-100 bg-slate-50/75 text-slate-500 font-semibold uppercase tracking-wider text-[11px]">
-              <th className="py-3 px-6">Medication & Strength</th>
-              <th className="py-3 px-6">Regimen & Route</th>
-              <th className="py-3 px-6">Duration & Instructions</th>
+              <th className="py-3 px-6">Medication &amp; Strength</th>
+              <th className="py-3 px-6">Regimen &amp; Route</th>
+              <th className="py-3 px-6">Duration &amp; Instructions</th>
               <th className="py-3 px-6">Status</th>
               <th className="py-3 px-6">Prescribing Facility</th>
             </tr>

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Activity, Heart, Thermometer, Droplets, CheckCircle2, Wind, Scale } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { Activity, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/modules/core/ui/Button';
 import { Input } from '@/modules/core/ui/Input';
 import { Encounter } from '@/types/database';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { saveVitalsAction } from '../actions/startEncounter';
 
 interface VitalsRecorderProps {
   encounter: Encounter;
@@ -13,8 +14,6 @@ interface VitalsRecorderProps {
 }
 
 export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
-  const { addVitals } = useStore();
-
   const [systolic, setSystolic] = useState('120');
   const [diastolic, setDiastolic] = useState('80');
   const [pulse, setPulse] = useState('72');
@@ -25,25 +24,33 @@ export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
   const [weight, setWeight] = useState('70');
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    await addVitals(encounter.id, {
-      systolic_bp: systolic ? parseInt(systolic, 10) : undefined,
-      diastolic_bp: diastolic ? parseInt(diastolic, 10) : undefined,
-      pulse: pulse ? parseInt(pulse, 10) : undefined,
-      spo2: spo2 ? parseInt(spo2, 10) : undefined,
-      temperature: temperature ? parseFloat(temperature) : undefined,
-      blood_sugar: bloodSugar ? parseFloat(bloodSugar) : undefined,
-      respiratory_rate: respiratoryRate ? parseInt(respiratoryRate, 10) : undefined,
-      weight: weight ? parseFloat(weight) : undefined,
-      notes: notes || undefined,
-    });
-
-    setIsSaved(true);
-    if (onSaved) onSaved();
-    setTimeout(() => setIsSaved(false), 3000);
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await saveVitalsAction(encounter.id, {
+        systolic_bp: systolic ? parseInt(systolic, 10) : undefined,
+        diastolic_bp: diastolic ? parseInt(diastolic, 10) : undefined,
+        pulse: pulse ? parseInt(pulse, 10) : undefined,
+        spo2: spo2 ? parseFloat(spo2) : undefined,
+        temperature: temperature ? parseFloat(temperature) : undefined,
+        blood_sugar: bloodSugar ? parseFloat(bloodSugar) : undefined,
+        respiratory_rate: respiratoryRate ? parseInt(respiratoryRate, 10) : undefined,
+        weight: weight ? parseFloat(weight) : undefined,
+        notes: notes || undefined,
+      });
+      setIsSaved(true);
+      if (onSaved) onSaved();
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to record vitals. Please try again.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -68,6 +75,13 @@ export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
           <Input
             label="Blood Pressure (Systolic)"
@@ -161,7 +175,7 @@ export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
         </div>
 
         <div className="flex items-center justify-end">
-          <Button type="submit" leftIcon={<CheckCircle2 className="w-4 h-4" />}>
+          <Button type="submit" isLoading={isSubmitting} leftIcon={<CheckCircle2 className="w-4 h-4" />}>
             Record & Sign Vitals
           </Button>
         </div>

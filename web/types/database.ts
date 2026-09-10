@@ -13,6 +13,7 @@ export interface User {
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;
   clinic_id?: string | null;
+  clinic_name?: string | null;
   clinic_status?: 'active' | 'deactivated' | null;
   specialization?: string | null;
   license_number?: string | null;
@@ -313,5 +314,3 @@ export interface MedicalHistoryEntry {
     pulse?: number;
   };
 }
-
-
