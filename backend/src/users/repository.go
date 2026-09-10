@@ -42,7 +42,7 @@ func NewRepository(db database.DBTX) Repository {
 	return &repository{db: db}
 }
 
-const userSelectColumns = `u.id, u.first_name, u.last_name, u.role, u.phone, u.email, u.password_hash, u.date_of_birth, u.sex, u.blood_type, u.emergency_contact_name, u.emergency_contact_phone, u.clinic_id, c.status AS clinic_status, u.specialization, u.license_number, u.doctor_status, u.invited_by, u.is_email_verified, u.email_verified_at, u.created_at, u.updated_at`
+const userSelectColumns = `u.id, u.first_name, u.last_name, u.role, u.phone, u.email, u.password_hash, u.date_of_birth, u.sex, u.blood_type, u.emergency_contact_name, u.emergency_contact_phone, u.clinic_id, c.name AS clinic_name, c.status AS clinic_status, u.specialization, u.license_number, u.doctor_status, u.invited_by, u.is_email_verified, u.email_verified_at, u.created_at, u.updated_at`
 
 type scanner interface {
 	Scan(dest ...interface{}) error
@@ -50,6 +50,7 @@ type scanner interface {
 
 func scanUser(s scanner) (*User, error) {
 	u := &User{}
+	var clinicName sql.NullString
 	var clinicStatus sql.NullString
 	err := s.Scan(
 		&u.ID,
@@ -65,6 +66,7 @@ func scanUser(s scanner) (*User, error) {
 		&u.EmergencyContactName,
 		&u.EmergencyContactPhone,
 		&u.ClinicID,
+		&clinicName,
 		&clinicStatus,
 		&u.Specialization,
 		&u.LicenseNumber,
@@ -80,6 +82,9 @@ func scanUser(s scanner) (*User, error) {
 			return nil, ErrUserNotFound
 		}
 		return nil, err
+	}
+	if clinicName.Valid {
+		u.ClinicName = &clinicName.String
 	}
 	if clinicStatus.Valid {
 		u.ClinicStatus = &clinicStatus.String
