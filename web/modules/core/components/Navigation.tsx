@@ -17,7 +17,7 @@ import {
   ChevronRight,
   User,
 } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { useAuth } from '@/modules/core/context/AuthContext';
 import { cn } from '../lib/utils';
 
 export interface NavItem {
@@ -35,17 +35,7 @@ interface NavigationProps {
 
 export function Navigation({ onItemClick, collapsed = false }: NavigationProps) {
   const pathname = usePathname();
-  const { currentRole, activeClinic, currentUser, accessRequests, appointments } = useStore();
-
-  const pendingRequests = accessRequests.filter(
-    (r) => r.clinic_id === activeClinic.id && r.status === 'pending'
-  );
-  const activeGrants = accessRequests.filter(
-    (r) => r.clinic_id === activeClinic.id && r.status === 'approved'
-  );
-  const scheduledAppointments = appointments.filter(
-    (a) => currentUser && a.doctor_id === currentUser.id && a.status === 'scheduled'
-  );
+  const { currentRole } = useAuth();
 
   const adminNav: NavItem[] = [
     {
@@ -85,14 +75,11 @@ export function Navigation({ onItemClick, collapsed = false }: NavigationProps) 
       name: 'Access Requests',
       href: '/clinic/requests',
       icon: <KeyRound className="w-4 h-4" />,
-      badge: pendingRequests.length > 0 ? pendingRequests.length : undefined,
-      highlight: pendingRequests.length > 0,
     },
     {
       name: 'Active Patient Grants',
       href: '/clinic/active-access',
       icon: <ShieldCheck className="w-4 h-4" />,
-      badge: activeGrants.length > 0 ? activeGrants.length : undefined,
     },
     {
       name: 'Facility Profile',
@@ -109,6 +96,11 @@ export function Navigation({ onItemClick, collapsed = false }: NavigationProps) 
       icon: <Stethoscope className="w-4 h-4" />,
     },
     {
+      name: 'Clinical Encounters',
+      href: '/doctor/encounters',
+      icon: <Layers className="w-4 h-4" />,
+    },
+    {
       name: 'Start Encounter',
       href: '/doctor/encounters/new',
       icon: <PlusCircle className="w-4 h-4" />,
@@ -123,7 +115,6 @@ export function Navigation({ onItemClick, collapsed = false }: NavigationProps) 
       name: 'Follow-up Schedule',
       href: '/doctor/appointments',
       icon: <Calendar className="w-4 h-4" />,
-      badge: scheduledAppointments.length > 0 ? scheduledAppointments.length : undefined,
     },
     {
       name: 'Doctor Profile',

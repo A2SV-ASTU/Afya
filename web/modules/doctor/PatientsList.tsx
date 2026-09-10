@@ -83,7 +83,9 @@ export function PatientsList() {
   // Revoking a grant only stamps revoked_at — the row keeps status 'approved',
   // so the server-side status filter alone is not enough to exclude it.
   const authorizedPatients = useMemo(() => {
-    const live = grants.filter((g) => g.status === 'approved' && !g.revoked_at);
+    const live = grants.filter(
+      (g) => g.status === 'approved' && !g.revoked_at
+    );
 
     // A patient may hold several approved grants for this clinic; show the newest.
     const newestPerPatient = new Map<string, AccessRequest>();

@@ -9,9 +9,11 @@ import {
   Clock,
   ArrowRight,
   ShieldCheck,
+  Activity,
+  FolderOpen,
 } from 'lucide-react';
 import { useAuth } from '@/modules/core/context/AuthContext';
-import { accessRequestsApi } from '@/lib/api';
+import { accessRequestsApi, encountersApi } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api/client';
 import {
   AccessRequest,
@@ -21,6 +23,7 @@ import {
 import { StatCard } from '@/modules/core/ui/StatCard';
 import { Button } from '@/modules/core/ui/Button';
 import { PLACEHOLDER_CLINIC_NAME } from '@/modules/clinical-workspace/lib/encounterMappers';
+import { formatDateTime } from '@/modules/core/lib/utils';
 
 function formatDate(value?: string): string {
   if (!value) return '—';
@@ -29,11 +32,19 @@ function formatDate(value?: string): string {
   return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(date);
 }
 
+interface OpenEncounterSummary {
+  id: string;
+  patient_id: string;
+  patient_name: string;
+  started_at: string;
+}
+
 export default function DoctorDashboardPage() {
   const { currentUser, isReady } = useAuth();
   const clinicId = currentUser?.clinic_id ?? null;
 
   const [approvedGrants, setApprovedGrants] = useState<AccessRequest[]>([]);
+  const [openEncounters, setOpenEncounters] = useState<OpenEncounterSummary[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,8 +62,52 @@ export default function DoctorDashboardPage() {
         accessRequestsApi.listRequests(clinicId, 'approved'),
         accessRequestsApi.listRequests(clinicId, 'pending'),
       ]);
-      setApprovedGrants(approved.access_requests || []);
+
+      // Exclude revoked grants
+      const validApproved = (approved.access_requests || []).filter(
+        (g) => g.status === 'approved' && !g.revoked_at
+      );
+
+      // Deduplicate by patient_id, keeping the newest
+      const uniquePatients = new Map<string, AccessRequest>();
+      for (const g of validApproved) {
+        if (!uniquePatients.has(g.patient_id) || new Date(g.created_at) > new Date(uniquePatients.get(g.patient_id)!.created_at)) {
+          uniquePatients.set(g.patient_id, g);
+        }
+      }
+
+      const grantsList = Array.from(uniquePatients.values());
+      setApprovedGrants(grantsList);
       setPendingCount((pending.access_requests || []).length);
+
+      // Check open encounters for authorized patients
+      if (grantsList.length > 0) {
+        const encounterOutcomes = await Promise.allSettled(
+          grantsList.map(async (g) => {
+            const res = await encountersApi.listForPatient(g.patient_id);
+            const open = (res.encounters || []).find((e) => e.status === 'open');
+            if (open) {
+              return {
+                id: open.id,
+                patient_id: g.patient_id,
+                patient_name: getAccessRequestPatientName(g),
+                started_at: open.started_at,
+              };
+            }
+            return null;
+          })
+        );
+
+        const foundOpen: OpenEncounterSummary[] = [];
+        for (const out of encounterOutcomes) {
+          if (out.status === 'fulfilled' && out.value) {
+            foundOpen.push(out.value);
+          }
+        }
+        setOpenEncounters(foundOpen);
+      } else {
+        setOpenEncounters([]);
+      }
     } catch (err) {
       setError(getApiErrorMessage(err, 'Failed to load dashboard metrics.'));
     } finally {
@@ -84,11 +139,18 @@ export default function DoctorDashboardPage() {
           </div>
         </div>
 
-        <Link href="/doctor/encounters/new">
-          <Button size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
-            Start Clinical Encounter
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2.5">
+          <Link href="/doctor/encounters">
+            <Button size="sm" variant="outline" leftIcon={<FolderOpen className="w-4 h-4" />}>
+              Clinical Encounters
+            </Button>
+          </Link>
+          <Link href="/doctor/encounters/new">
+            <Button size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
+              Start Encounter
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -97,8 +159,52 @@ export default function DoctorDashboardPage() {
         </div>
       )}
 
+      {/* Active Consultations Quick-Resume Widget */}
+      {openEncounters.length > 0 && (
+        <div className="bg-emerald-50/80 border border-emerald-300 rounded-3xl p-5 shadow-xs space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-emerald-950 font-bold text-sm">
+              <Activity className="w-4 h-4 text-emerald-600 animate-pulse" />
+              <span>Active Consultations in Progress ({openEncounters.length})</span>
+            </div>
+            <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
+              Action Needed
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {openEncounters.map((enc) => (
+              <div
+                key={enc.id}
+                className="bg-white rounded-2xl p-4 border border-emerald-200 shadow-2xs flex flex-col justify-between gap-3 hover:border-emerald-400 transition-colors"
+              >
+                <div>
+                  <p className="font-bold text-slate-900 text-sm">{enc.patient_name}</p>
+                  <p className="text-slate-500 text-[11px] mt-0.5">
+                    Opened on {formatDateTime(enc.started_at)}
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                  <Link
+                    href={`/doctor/patients/${enc.patient_id}`}
+                    className="text-[11px] text-slate-500 hover:text-slate-800 font-medium"
+                  >
+                    View Chart
+                  </Link>
+                  <Link href={`/doctor/encounters/${enc.id}`}>
+                    <Button size="sm" variant="brand" className="text-xs">
+                      Resume ➔
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* KPI Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Authorized Patients"
           value={isLoading ? '—' : approvedGrants.length}
@@ -107,7 +213,14 @@ export default function DoctorDashboardPage() {
           icon={<Users className="w-5 h-5" />}
         />
         <StatCard
-          title="Pending Access Requests"
+          title="Active Encounters"
+          value={isLoading ? '—' : openEncounters.length}
+          subtitle="In-progress clinical sessions"
+          badge={openEncounters.length > 0 ? 'Open' : 'None'}
+          icon={<Activity className="w-5 h-5" />}
+        />
+        <StatCard
+          title="Pending Requests"
           value={isLoading ? '—' : pendingCount}
           subtitle="Awaiting patient approval"
           badge={pendingCount > 0 ? 'Waiting' : 'Clear'}

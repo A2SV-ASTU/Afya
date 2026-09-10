@@ -296,13 +296,46 @@ export interface AggregatedEncounterResponse {
   prescriptions: Prescription[];
 }
 
+export interface MedicalHistoryPrescriptionItem {
+  medication_name: string;
+  dose: string;
+  route?: string;
+  frequency: string;
+  duration_value?: number;
+  duration_unit?: string;
+}
+
+export interface MedicalHistoryVitals {
+  systolic?: number;
+  diastolic?: number;
+  pulse?: number;
+  respiratory_rate?: number;
+  temperature?: number;
+  spo2?: number;
+  blood_sugar?: number;
+  weight?: number;
+}
+
+export interface MedicalHistoryResponse {
+  encounter_id: string;
+  date: string;
+  chief_complaint?: string;
+  diagnosis?: string;
+  prescription?: MedicalHistoryPrescriptionItem[];
+  vitals?: MedicalHistoryVitals;
+}
+
 export interface MedicalHistoryEntry {
   encounter_id: string;
-  encounter_date: string;
-  clinic_name: string;
-  doctor_name: string;
-  diagnoses: string[];
-  prescriptions: Array<{
+  encounter_date?: string;
+  date?: string;
+  clinic_name?: string;
+  doctor_name?: string;
+  chief_complaint?: string;
+  diagnosis?: string;
+  diagnoses?: string[];
+  prescription?: MedicalHistoryPrescriptionItem[];
+  prescriptions?: Array<{
     medication_name: string;
     dose: string;
     frequency: string;
@@ -311,6 +344,11 @@ export interface MedicalHistoryEntry {
   vitals?: {
     systolic_bp?: number;
     diastolic_bp?: number;
+    systolic?: number;
+    diastolic?: number;
     pulse?: number;
+    temperature?: number;
+    blood_sugar?: number;
+    weight?: number;
   };
 }

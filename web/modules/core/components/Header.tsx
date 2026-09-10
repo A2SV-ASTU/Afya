@@ -12,7 +12,6 @@ import {
   User,
 } from 'lucide-react';
 import { useAuth } from '@/modules/core/context/AuthContext';
-import { useStore } from '@/lib/store';
 
 interface HeaderProps {
   onOpenMobileNav?: () => void;
@@ -21,7 +20,6 @@ interface HeaderProps {
 export function Header({ onOpenMobileNav }: HeaderProps) {
   const [isMounted, setIsMounted] = useState(false);
   const { currentUser, currentRole } = useAuth();
-  const { activeClinic } = useStore();
   const router = useRouter();
 
   useEffect(() => {
@@ -48,7 +46,7 @@ export function Header({ onOpenMobileNav }: HeaderProps) {
   // Secondary context
   const secondaryContext =
     currentRole === 'clinic_admin'
-      ? activeClinic?.name || 'Healthcare Facility'
+      ? currentUser?.clinic_name || 'Healthcare Facility'
       : currentRole === 'doctor'
         ? currentUser?.license_number ? `Lic: ${currentUser.license_number}` : 'KMPDC Licensed'
         : currentRole === 'super_admin'

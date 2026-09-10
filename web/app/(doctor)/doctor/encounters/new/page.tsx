@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   Stethoscope,
   ArrowLeft,
@@ -12,34 +13,41 @@ import {
   X,
   ChevronDown,
   Check,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '@/modules/core/context/AuthContext';
 import { Button } from '@/modules/core/ui/Button';
-import { EncounterType, AccessRequest, getAccessRequestPatientName } from '@/types/database';
-import { accessRequestsApi, clinicalEvaluationsApi } from '@/lib/api';
+import { AccessRequest, getAccessRequestPatientName } from '@/types/database';
+import { accessRequestsApi, encountersApi } from '@/lib/api';
 import { ApiError, getApiErrorMessage } from '@/lib/api/client';
 import { startEncounterAction } from '@/modules/clinical-workspace/actions/startEncounter';
+import { formatDateTime } from '@/modules/core/lib/utils';
 
-export default function NewEncounterPage() {
+interface ActiveOpenEncounter {
+  id: string;
+  started_at: string;
+  doctor_name?: string;
+  clinic_name?: string;
+}
+
+function NewEncounterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialPatientId = searchParams.get('patientId') || '';
+
   const { currentUser, isReady } = useAuth();
   const clinicId = currentUser?.clinic_id ?? null;
 
   const [authorizedGrants, setAuthorizedGrants] = useState<AccessRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  /** Set when the encounter was created but a follow-up write failed, so the
-   * doctor can still continue into the workspace instead of being stranded. */
-  const [pendingEncounterId, setPendingEncounterId] = useState<string | null>(null);
-
-  const [patientId, setPatientId] = useState<string>('');
+  const [patientId, setPatientId] = useState<string>(initialPatientId);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [type, setType] = useState<EncounterType>('outpatient');
-  const [chiefComplaint, setChiefComplaint] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const comboboxRef = useRef<HTMLDivElement>(null);
+  // Active open encounter state for the selected patient
+  const [activeOpenEncounter, setActiveOpenEncounter] = useState<ActiveOpenEncounter | null>(null);
+  const [isCheckingOpenEncounter, setIsCheckingOpenEncounter] = useState(false);
 
   useEffect(() => {
     if (!isReady) return;
@@ -55,7 +63,24 @@ export default function NewEncounterPage() {
       setIsLoading(true);
       try {
         const res = await accessRequestsApi.listRequests(activeClinicId, 'approved');
-        if (!cancelled) setAuthorizedGrants(res.access_requests || []);
+        const rawGrants = res.access_requests || [];
+        const now = new Date();
+
+        // Exclude revoked access grants
+        const activeGrants = rawGrants.filter(
+          (g) => g.status === 'approved' && !g.revoked_at
+        );
+
+        // Deduplicate by patient_id, keeping the newest active grant
+        const newestPerPatient = new Map<string, AccessRequest>();
+        for (const grant of activeGrants) {
+          const existing = newestPerPatient.get(grant.patient_id);
+          if (!existing || new Date(grant.created_at) > new Date(existing.created_at)) {
+            newestPerPatient.set(grant.patient_id, grant);
+          }
+        }
+
+        if (!cancelled) setAuthorizedGrants(Array.from(newestPerPatient.values()));
       } catch (err) {
         if (!cancelled) {
           setErrorMsg(getApiErrorMessage(err, 'Failed to load authorized patients. Please try again.'));
@@ -69,6 +94,60 @@ export default function NewEncounterPage() {
       cancelled = true;
     };
   }, [isReady, clinicId]);
+
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const comboboxRef = useRef<HTMLDivElement>(null);
+
+  const selectedGrant = authorizedGrants.find((g) => g.patient_id === patientId);
+
+  // Auto-select patient from URL query param if present
+  useEffect(() => {
+    if (initialPatientId && authorizedGrants.length > 0 && !patientId) {
+      const target = authorizedGrants.find((g) => g.patient_id === initialPatientId);
+      if (target) {
+        setPatientId(target.patient_id);
+        setSearchQuery(getAccessRequestPatientName(target));
+      }
+    }
+  }, [initialPatientId, authorizedGrants, patientId]);
+
+  // Check if the selected patient already has an active open encounter
+  useEffect(() => {
+    if (!patientId) {
+      setActiveOpenEncounter(null);
+      return;
+    }
+
+    let cancelled = false;
+    setIsCheckingOpenEncounter(true);
+
+    encountersApi
+      .listForPatient(patientId)
+      .then((res) => {
+        if (cancelled) return;
+        const openEnc = (res.encounters || []).find((e) => e.status === 'open');
+        if (openEnc) {
+          setActiveOpenEncounter({
+            id: openEnc.id,
+            started_at: openEnc.started_at,
+            doctor_name: openEnc.opened_by_doctor_name,
+            clinic_name: openEnc.clinic_name,
+          });
+        } else {
+          setActiveOpenEncounter(null);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setActiveOpenEncounter(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsCheckingOpenEncounter(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [patientId]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -87,8 +166,6 @@ export default function NewEncounterPage() {
     const email = (grant.patient?.email || '').toLowerCase();
     return fullName.includes(q) || email.includes(q);
   });
-
-  const selectedGrant = authorizedGrants.find((g) => g.patient_id === patientId);
 
   const handleSelectPatient = (grant: AccessRequest) => {
     setPatientId(grant.patient_id);
@@ -120,37 +197,35 @@ export default function NewEncounterPage() {
 
     let newEncounterId: string;
     try {
-      const newEnc = await startEncounterAction(patientId, type);
+      const newEnc = await startEncounterAction(patientId);
       newEncounterId = newEnc.id;
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
         setErrorMsg('Patient access grant has expired or has not been approved yet.');
+      } else if (
+        err instanceof ApiError &&
+        (err.status === 409 || err.code === 'open_encounter_exists' || err.message?.includes('open encounter'))
+      ) {
+        try {
+          const res = await encountersApi.listForPatient(patientId);
+          const openEnc = (res.encounters || []).find((e) => e.status === 'open');
+          if (openEnc) {
+            setActiveOpenEncounter({
+              id: openEnc.id,
+              started_at: openEnc.started_at,
+              doctor_name: openEnc.opened_by_doctor_name,
+              clinic_name: openEnc.clinic_name,
+            });
+          }
+        } catch {
+          // ignore lookup error
+        }
+        setErrorMsg('Patient already has an active open encounter in progress. Resume and finalize it first.');
       } else {
         setErrorMsg(getApiErrorMessage(err, 'Failed to initialize encounter.'));
       }
       setIsSubmitting(false);
       return;
-    }
-
-    // Persist the initial chief complaint as the encounter's clinical evaluation.
-    // The encounter already exists at this point, so a failure here is surfaced
-    // rather than swallowed, and the doctor is offered the workspace to finish in.
-    if (chiefComplaint.trim()) {
-      try {
-        await clinicalEvaluationsApi.create(newEncounterId, {
-          chief_complaint: chiefComplaint.trim(),
-          history_of_present_illness: chiefComplaint.trim(),
-        });
-      } catch (err) {
-        if (!(err instanceof ApiError && err.status === 409)) {
-          setPendingEncounterId(newEncounterId);
-          setErrorMsg(
-            `${getApiErrorMessage(err, 'The initial chief complaint could not be saved.')} The encounter was created — record the complaint in the Clinical Notes tab.`
-          );
-          setIsSubmitting(false);
-          return;
-        }
-      }
     }
 
     router.push(`/doctor/encounters/${newEncounterId}`);
@@ -179,19 +254,8 @@ export default function NewEncounterPage() {
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2.5 shadow-2xs">
           <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
           <div>
-            <p className="font-bold">
-              {pendingEncounterId ? 'Encounter created with a problem' : 'Encounter Initialization Failed'}
-            </p>
+            <p className="font-bold">Encounter Initialization Failed</p>
             <p className="mt-0.5">{errorMsg}</p>
-            {pendingEncounterId && (
-              <button
-                type="button"
-                onClick={() => router.push(`/doctor/encounters/${pendingEncounterId}`)}
-                className="mt-2 font-bold underline underline-offset-2 cursor-pointer"
-              >
-                Continue to encounter workspace
-              </button>
-            )}
           </div>
         </div>
       )}
@@ -362,47 +426,37 @@ export default function NewEncounterPage() {
             </div>
           )}
 
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold text-slate-800">Encounter Classification</label>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {(
-                [
-                  { id: 'outpatient', label: 'Outpatient (OPD)', desc: 'Routine consultation & clinic review' },
-                  { id: 'inpatient', label: 'Inpatient (IPD)', desc: 'Ward rounds & inpatient review' },
-                  { id: 'emergency', label: 'Emergency (ER)', desc: 'Acute urgent triage & care' },
-                  { id: 'telehealth', label: 'Telehealth', desc: 'Remote telemedicine session' },
-                ] as const
-              ).map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setType(t.id as EncounterType)}
-                  className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    type === t.id
-                      ? 'border-[#388E3C] bg-[#E8F5E9]/60 text-[#1B5E20] shadow-2xs font-semibold ring-1 ring-[#388E3C]/30'
-                      : 'border-slate-200 bg-white hover:border-slate-300 text-slate-700'
-                  }`}
-                >
-                  <p className="font-bold text-xs">{t.label}</p>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-snug">{t.desc}</p>
-                </button>
-              ))}
-            </div>
-          </div>
+          {/* Active Open Encounter Alert Banner */}
+          {activeOpenEncounter && (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-xs space-y-3 animate-in fade-in duration-150 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 border border-amber-200 flex items-center justify-center shrink-0">
+                    <Activity className="w-5 h-5 text-amber-700 animate-pulse" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-amber-950 text-sm">
+                      Active Encounter Session In Progress
+                    </h4>
+                    <p className="text-amber-800 text-[11px] mt-0.5">
+                      Opened on <strong>{formatDateTime(activeOpenEncounter.started_at)}</strong>
+                      {activeOpenEncounter.doctor_name ? ` by Dr. ${activeOpenEncounter.doctor_name}` : ''}
+                      {activeOpenEncounter.clinic_name ? ` • ${activeOpenEncounter.clinic_name}` : ''}
+                    </p>
+                  </div>
+                </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-800">
-              Initial Chief Complaint / Presenting Symptoms
-            </label>
-            <textarea
-              id="new-encounter-chief-complaint"
-              rows={3}
-              value={chiefComplaint}
-              onChange={(e) => setChiefComplaint(e.target.value)}
-              placeholder="e.g. Patient presents with 3-day history of throbbing frontal headache..."
-              className="w-full px-3.5 py-2.5 text-xs bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] shadow-2xs"
-            />
-          </div>
+                <Link href={`/doctor/encounters/${activeOpenEncounter.id}`}>
+                  <Button size="sm" variant="brand">
+                    Resume Open Encounter ➔
+                  </Button>
+                </Link>
+              </div>
+              <p className="text-[11px] text-amber-900/90 leading-relaxed bg-amber-100/60 p-2.5 rounded-xl border border-amber-200/60">
+                Afya enforces single-active encounter governance. A new clinical encounter cannot be initialized while this session remains open. Please resume this session to finish your clinical evaluation, vitals, prescriptions, or seal and sign the encounter.
+              </p>
+            </div>
+          )}
 
           <div className="pt-4 flex items-center justify-end gap-3 border-t border-slate-100">
             <Button
@@ -412,17 +466,43 @@ export default function NewEncounterPage() {
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={authorizedGrants.length === 0 || !patientId}
-              isLoading={isSubmitting}
-              leftIcon={<Stethoscope className="w-4 h-4" />}
-            >
-              Open Encounter Recording Workspace
-            </Button>
+            {activeOpenEncounter ? (
+              <Link href={`/doctor/encounters/${activeOpenEncounter.id}`}>
+                <Button
+                  type="button"
+                  variant="brand"
+                  leftIcon={<Activity className="w-4 h-4 animate-pulse" />}
+                >
+                  Resume Active Consultation ➔
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                type="submit"
+                disabled={authorizedGrants.length === 0 || !patientId || isCheckingOpenEncounter}
+                isLoading={isSubmitting}
+                leftIcon={<Stethoscope className="w-4 h-4" />}
+              >
+                Open Encounter Recording Workspace
+              </Button>
+            )}
           </div>
         </form>
       </div>
     </div>
+  );
+}
+
+export default function NewEncounterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-3xl mx-auto p-12 text-center bg-white rounded-3xl border border-slate-200 text-xs text-slate-500">
+          Loading encounter initialization…
+        </div>
+      }
+    >
+      <NewEncounterContent />
+    </Suspense>
   );
 }

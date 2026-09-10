@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { KeyRound, PlusCircle, RefreshCw, AlertCircle, Ban, ArrowRight, Clock, ShieldCheck } from 'lucide-react';
-import { useStore } from '@/lib/store';
 import { accessRequestsApi } from '@/lib/api/access-requests';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { Button } from '@/modules/core/ui/Button';
