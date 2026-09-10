@@ -22,7 +22,6 @@ export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
   const [bloodSugar, setBloodSugar] = useState('5.4');
   const [respiratoryRate, setRespiratoryRate] = useState('16');
   const [weight, setWeight] = useState('70');
-  const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +40,6 @@ export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
         blood_sugar: bloodSugar ? parseFloat(bloodSugar) : undefined,
         respiratory_rate: respiratoryRate ? parseInt(respiratoryRate, 10) : undefined,
         weight: weight ? parseFloat(weight) : undefined,
-        notes: notes || undefined,
       });
       setIsSaved(true);
       if (onSaved) onSaved();
@@ -160,17 +158,6 @@ export function VitalsRecorder({ encounter, onSaved }: VitalsRecorderProps) {
             suffix="kg"
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-slate-700">Clinical Observations & Vitals Notes</label>
-          <input
-            type="text"
-            placeholder="e.g. Patient rested 5 mins prior to blood pressure reading. Regular pulse rhythm."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] text-slate-800"
           />
         </div>
 

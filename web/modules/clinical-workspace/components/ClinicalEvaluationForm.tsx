@@ -19,6 +19,10 @@ interface EvaluationFields {
   family_history: string;
   allergies_notes: string;
   general_appearance: string;
+  cvs_exam: string;
+  respiratory_exam: string;
+  abdomen_exam: string;
+  cns_exam: string;
 }
 
 const EMPTY_FIELDS: EvaluationFields = {
@@ -28,6 +32,10 @@ const EMPTY_FIELDS: EvaluationFields = {
   family_history: '',
   allergies_notes: '',
   general_appearance: '',
+  cvs_exam: '',
+  respiratory_exam: '',
+  abdomen_exam: '',
+  cns_exam: '',
 };
 
 export function ClinicalEvaluationForm({ encounterId, isClosed, onSaved }: ClinicalEvaluationFormProps) {
@@ -43,6 +51,7 @@ export function ClinicalEvaluationForm({ encounterId, isClosed, onSaved }: Clini
       const res = await clinicalEvaluationsApi.getByEncounterId(encounterId);
       const evaluation = res.clinical_evaluation;
       if (evaluation) {
+        const sys = (evaluation.system_examination as Record<string, unknown>) || {};
         setFormData({
           chief_complaint: evaluation.chief_complaint || '',
           history_of_present_illness: evaluation.history_of_present_illness || '',
@@ -50,6 +59,10 @@ export function ClinicalEvaluationForm({ encounterId, isClosed, onSaved }: Clini
           family_history: evaluation.family_history || '',
           allergies_notes: evaluation.allergies_notes || '',
           general_appearance: evaluation.general_appearance || '',
+          cvs_exam: typeof sys.cardiovascular === 'string' ? sys.cardiovascular : '',
+          respiratory_exam: typeof sys.respiratory === 'string' ? sys.respiratory : '',
+          abdomen_exam: typeof sys.abdomen === 'string' ? sys.abdomen : '',
+          cns_exam: typeof sys.cns === 'string' ? sys.cns : '',
         });
         setAlreadyRecorded(true);
       }
@@ -57,6 +70,18 @@ export function ClinicalEvaluationForm({ encounterId, isClosed, onSaved }: Clini
       // A 404 simply means no evaluation has been recorded yet — that is expected.
       if (!(err instanceof ApiError && err.status === 404)) {
         setError(getApiErrorMessage(err, 'Failed to load clinical evaluation.'));
+      } else {
+        // If not recorded yet, check if an initial chief complaint was forwarded in the URL
+        if (typeof window !== 'undefined') {
+          const params = new URLSearchParams(window.location.search);
+          const initialComplaint = params.get('chief_complaint');
+          if (initialComplaint) {
+            setFormData((prev) => ({
+              ...prev,
+              chief_complaint: prev.chief_complaint || initialComplaint,
+            }));
+          }
+        }
       }
     } finally {
       setIsLoading(false);
@@ -81,6 +106,12 @@ export function ClinicalEvaluationForm({ encounterId, isClosed, onSaved }: Clini
       return;
     }
 
+    const systemExam: Record<string, unknown> = {};
+    if (formData.cvs_exam.trim()) systemExam['cardiovascular'] = formData.cvs_exam.trim();
+    if (formData.respiratory_exam.trim()) systemExam['respiratory'] = formData.respiratory_exam.trim();
+    if (formData.abdomen_exam.trim()) systemExam['abdomen'] = formData.abdomen_exam.trim();
+    if (formData.cns_exam.trim()) systemExam['cns'] = formData.cns_exam.trim();
+
     setIsSaving(true);
     try {
       await clinicalEvaluationsApi.create(encounterId, {
@@ -90,12 +121,13 @@ export function ClinicalEvaluationForm({ encounterId, isClosed, onSaved }: Clini
         family_history: formData.family_history.trim() || undefined,
         allergies_notes: formData.allergies_notes.trim() || undefined,
         general_appearance: formData.general_appearance.trim() || undefined,
+        system_examination: Object.keys(systemExam).length > 0 ? systemExam : undefined,
       });
       setAlreadyRecorded(true);
       onSaved();
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        // Another writer (or the "new encounter" step) already created it — reload it.
+        // Another writer already created it — reload it.
         setAlreadyRecorded(true);
         await loadExisting();
       } else {
@@ -222,7 +254,70 @@ export function ClinicalEvaluationForm({ encounterId, isClosed, onSaved }: Clini
               disabled={readOnly}
               className={fieldClass}
               rows={2}
+              placeholder="e.g. Well-oriented, alert, no acute distress, mildly pale"
             />
+          </div>
+        </div>
+
+        {/* Systemic Physical Examination (Supported by backend system_examination JSON) */}
+        <div className="pt-3 border-t border-slate-100 space-y-3">
+          <div>
+            <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Systemic Physical Examination</h4>
+            <p className="text-[11px] text-slate-500">Document system-by-system physical examination findings</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-800">Cardiovascular System</label>
+              <textarea
+                name="cvs_exam"
+                value={formData.cvs_exam}
+                onChange={handleChange}
+                disabled={readOnly}
+                className={fieldClass}
+                rows={2}
+                placeholder="e.g. Normal S1/S2, no murmurs, regular rhythm, peripheral pulses intact"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-800">Respiratory System</label>
+              <textarea
+                name="respiratory_exam"
+                value={formData.respiratory_exam}
+                onChange={handleChange}
+                disabled={readOnly}
+                className={fieldClass}
+                rows={2}
+                placeholder="e.g. Bilateral vesicular breath sounds, no crackles or wheezing"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-800">Abdomen & Gastrointestinal</label>
+              <textarea
+                name="abdomen_exam"
+                value={formData.abdomen_exam}
+                onChange={handleChange}
+                disabled={readOnly}
+                className={fieldClass}
+                rows={2}
+                placeholder="e.g. Soft, non-tender, non-distended, normal bowel sounds, no organomegaly"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-800">Central Nervous System (CNS)</label>
+              <textarea
+                name="cns_exam"
+                value={formData.cns_exam}
+                onChange={handleChange}
+                disabled={readOnly}
+                className={fieldClass}
+                rows={2}
+                placeholder="e.g. GCS 15/15, cranial nerves II-XII grossly intact, power 5/5 bilateral"
+              />
+            </div>
           </div>
         </div>
 

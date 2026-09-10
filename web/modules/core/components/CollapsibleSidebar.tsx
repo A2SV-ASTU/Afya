@@ -10,14 +10,14 @@ import {
   Shield,
   Activity,
 } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { useAuth } from '@/modules/core/context/AuthContext';
 import { Navigation } from './Navigation';
 import { cn } from '../lib/utils';
 import { LogoutButton } from '@/components/auth/LogoutButton';
 
 export function CollapsibleSidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { currentRole, activeClinic, currentUser } = useStore();
+  const { currentRole, currentUser } = useAuth();
 
   return (
     <aside
@@ -88,7 +88,9 @@ export function CollapsibleSidebar() {
                   <span className="text-[9px] font-extrabold text-[#2E7D32] uppercase tracking-wider block">
                     Active Facility
                   </span>
-                  <p className="text-xs font-bold text-slate-900 truncate">{activeClinic.name}</p>
+                  <p className="text-xs font-bold text-slate-900 truncate">
+                    {currentUser?.clinic_name || 'Healthcare Facility'}
+                  </p>
                 </div>
               </div>
             )}
@@ -103,7 +105,7 @@ export function CollapsibleSidebar() {
                     Physician Scope
                   </span>
                   <p className="text-xs font-bold text-slate-900 truncate">
-                    Dr. {currentUser?.first_name} {currentUser?.last_name}
+                    {currentUser ? `Dr. ${currentUser.first_name} ${currentUser.last_name}` : 'Attending Physician'}
                   </p>
                 </div>
               </div>

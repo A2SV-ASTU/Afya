@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, PlusCircle, Activity, FileText, FlaskConical, Pill } from 'lucide-react';
+import { ArrowLeft, PlusCircle, Activity, FileText, FlaskConical, Pill, Calendar } from 'lucide-react';
 import { useAuth } from '@/modules/core/context/AuthContext';
 import { accessRequestsApi } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api/client';
@@ -18,14 +18,18 @@ import { VitalsTrendChart } from '@/modules/patient-records/components/VitalsTre
 import { Timeline } from '@/modules/patient-records/components/Timeline';
 import { LabHistoryList } from '@/modules/patient-records/components/LabHistoryList';
 import { MedicationList } from '@/modules/patient-records/components/MedicationList';
+import { PatientAppointmentsList } from '@/modules/patient-records/components/PatientAppointmentsList';
+import { usePatientEncounters } from '@/modules/patient-records/hooks/usePatientEncounters';
+import { formatDateTime } from '@/modules/core/lib/utils';
 
-type ChartTab = 'timeline' | 'vitals' | 'labs' | 'medications';
+type ChartTab = 'timeline' | 'vitals' | 'labs' | 'medications' | 'appointments';
 
 const TABS: { id: ChartTab; label: string; icon: React.ReactNode }[] = [
   { id: 'timeline', label: 'History', icon: <FileText className="w-4 h-4 text-[#2E7D32]" /> },
   { id: 'vitals', label: 'Vitals Trends', icon: <Activity className="w-4 h-4 text-[#2E7D32]" /> },
   { id: 'labs', label: 'Diagnostic Labs', icon: <FlaskConical className="w-4 h-4 text-[#2E7D32]" /> },
   { id: 'medications', label: 'Prescriptions & Meds', icon: <Pill className="w-4 h-4 text-[#2E7D32]" /> },
+  { id: 'appointments', label: 'Follow-ups & Reviews', icon: <Calendar className="w-4 h-4 text-[#2E7D32]" /> },
 ];
 
 function identityFromGrant(grant: AccessRequest): PatientIdentity {
@@ -51,6 +55,10 @@ export default function PatientChartDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ChartTab>('timeline');
 
+  // Load patient encounters to detect if there is an active open encounter in progress
+  const { encounters } = usePatientEncounters(patientId);
+  const openEncounter = encounters.find((e) => e.status === 'open');
+
   const loadIdentity = useCallback(async () => {
     if (!clinicId) {
       setIsLoading(false);
@@ -61,7 +69,12 @@ export default function PatientChartDetailPage() {
     setError(null);
     try {
       const res = await accessRequestsApi.listRequests(clinicId, 'approved');
-      const grant = (res.access_requests || []).find((r) => r.patient_id === patientId);
+      const validGrants = (res.access_requests || []).filter(
+        (r) => r.patient_id === patientId && r.status === 'approved' && !r.revoked_at
+      );
+      const grant = validGrants.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )[0];
       if (!grant) {
         setIdentity(null);
         setError('Your clinic does not hold an active access grant for this patient.');
@@ -119,13 +132,46 @@ export default function PatientChartDetailPage() {
         </div>
 
         <div>
-          <Link href={`/doctor/encounters/new?patientId=${identity.id}`}>
-            <Button size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
-              Start Encounter
+          {openEncounter ? (
+            <Link href={`/doctor/encounters/${openEncounter.id}`}>
+              <Button size="sm" variant="brand" leftIcon={<Activity className="w-4 h-4 animate-pulse" />}>
+                Resume Active Encounter
+              </Button>
+            </Link>
+          ) : (
+            <Link href={`/doctor/encounters/new?patientId=${identity.id}`}>
+              <Button size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
+                Start Encounter
+              </Button>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Active Encounter Banner */}
+      {openEncounter && (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-300 flex flex-wrap items-center justify-between gap-3 text-xs shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0">
+              <Activity className="w-5 h-5 text-emerald-700 animate-pulse" />
+            </div>
+            <div>
+              <p className="font-bold text-emerald-950 text-sm">Active Consultation in Progress</p>
+              <p className="text-emerald-800 mt-0.5">
+                A clinical encounter is currently open for this patient (opened on{' '}
+                <strong>{formatDateTime(openEncounter.started_at)}</strong>
+                {openEncounter.opened_by_doctor_name ? ` by Dr. ${openEncounter.opened_by_doctor_name}` : ''}).
+                You can resume recording vitals, evaluations, prescriptions, or seal and sign the visit.
+              </p>
+            </div>
+          </div>
+          <Link href={`/doctor/encounters/${openEncounter.id}`}>
+            <Button size="sm" variant="brand">
+              Continue Active Encounter ➔
             </Button>
           </Link>
         </div>
-      </div>
+      )}
 
       <PatientProfileCard patient={identity} />
 
@@ -151,6 +197,7 @@ export default function PatientChartDetailPage() {
       {activeTab === 'vitals' && <VitalsTrendChart patientId={identity.id} />}
       {activeTab === 'labs' && <LabHistoryList patientId={identity.id} />}
       {activeTab === 'medications' && <MedicationList patientId={identity.id} />}
+      {activeTab === 'appointments' && <PatientAppointmentsList patientId={identity.id} />}
     </div>
   );
 }

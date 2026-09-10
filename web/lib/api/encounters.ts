@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { Encounter, AggregatedEncounterResponse, MedicalHistoryEntry } from '@/types/database';
+import { Encounter, AggregatedEncounterResponse, MedicalHistoryResponse } from '@/types/database';
 
 export interface EncounterResponse {
   encounter: Encounter;
@@ -35,7 +35,7 @@ export const encountersApi = {
     }),
 
   getMedicalHistory: (encounterId: string) =>
-    apiClient<MedicalHistoryEntry[]>(`/encounters/${encounterId}/medical-history`, {
+    apiClient<MedicalHistoryResponse>(`/encounters/${encounterId}/medical-history`, {
       method: 'GET',
     }),
 };

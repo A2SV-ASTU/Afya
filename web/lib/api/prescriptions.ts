@@ -31,6 +31,13 @@ export interface StatusResponse {
   status: string;
 }
 
+export interface PatientPrescriptionsListResponse {
+  prescriptions: Prescription[];
+  page?: number;
+  limit?: number;
+  total?: number;
+}
+
 export const prescriptionsApi = {
   create: (encounterId: string, payload: CreatePrescriptionPayload) =>
     apiClient<PrescriptionResponse>(`/encounters/${encounterId}/prescriptions`, {
@@ -41,6 +48,12 @@ export const prescriptionsApi = {
   listForEncounter: (encounterId: string) =>
     apiClient<PrescriptionsListResponse>(`/encounters/${encounterId}/prescriptions`, {
       method: 'GET',
+    }),
+
+  listForPatient: (patientId: string, page = 1, limit = 50) =>
+    apiClient<PatientPrescriptionsListResponse>(`/patients/${patientId}/prescriptions`, {
+      method: 'GET',
+      params: { page: String(page), limit: String(limit) },
     }),
 
   update: (

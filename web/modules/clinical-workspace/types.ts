@@ -1,6 +1,6 @@
 import { LabFlag, DiagnosisType } from '@/types/database';
 
-export type WorkspaceTab = 'evaluation' | 'vitals' | 'labs' | 'diagnoses' | 'prescriptions' | 'appointment' | 'summary';
+export type WorkspaceTab = 'evaluation' | 'vitals' | 'labs' | 'diagnoses' | 'prescriptions' | 'appointment' | 'history' | 'summary';
 
 export interface VitalsInput {
   systolic_bp?: number;
@@ -11,7 +11,6 @@ export interface VitalsInput {
   blood_sugar?: number;
   respiratory_rate?: number;
   weight?: number;
-  notes?: string;
 }
 
 export interface LabResultInput {

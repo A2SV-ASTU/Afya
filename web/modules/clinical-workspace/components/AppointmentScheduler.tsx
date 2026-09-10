@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Calendar, CheckCircle2, AlertCircle, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/modules/core/ui/Button';
 import { Input } from '@/modules/core/ui/Input';
-import { Encounter } from '@/types/database';
+import { Appointment, Encounter } from '@/types/database';
+import { appointmentsApi } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api/client';
+import { formatDateTime } from '@/modules/core/lib/utils';
 import { scheduleAppointmentAction } from '../actions/startEncounter';
 
 interface AppointmentSchedulerProps {
@@ -20,6 +22,25 @@ export function AppointmentScheduler({ encounter, onSaved }: AppointmentSchedule
   const [isSaved, setIsSaved] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [existingAppointments, setExistingAppointments] = useState<Appointment[]>([]);
+  const [isLoadingAppointments, setIsLoadingAppointments] = useState(false);
+
+  const loadExistingAppointments = useCallback(async () => {
+    setIsLoadingAppointments(true);
+    try {
+      const res = await appointmentsApi.listForPatient(encounter.patient_id, 'scheduled');
+      setExistingAppointments(res.appointments || []);
+    } catch {
+      // Non-critical, ignore
+    } finally {
+      setIsLoadingAppointments(false);
+    }
+  }, [encounter.patient_id]);
+
+  useEffect(() => {
+    loadExistingAppointments();
+  }, [loadExistingAppointments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +59,7 @@ export function AppointmentScheduler({ encounter, onSaved }: AppointmentSchedule
         notes,
       });
       setIsSaved(true);
+      await loadExistingAppointments();
       if (onSaved) onSaved();
       setTimeout(() => setIsSaved(false), 3000);
     } catch (err) {
@@ -106,6 +128,50 @@ export function AppointmentScheduler({ encounter, onSaved }: AppointmentSchedule
           </Button>
         </div>
       </form>
+
+      {/* Existing Upcoming Appointments for this Patient */}
+      <div className="pt-4 border-t border-slate-100 space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 uppercase tracking-wider">
+            <Clock className="w-3.5 h-3.5 text-[#2E7D32]" />
+            Upcoming Scheduled Appointments for Patient ({existingAppointments.length})
+          </h4>
+          {isLoadingAppointments && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+        </div>
+
+        {existingAppointments.length === 0 ? (
+          <p className="text-xs text-slate-400 italic">No other future appointments booked for this patient.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {existingAppointments.map((apt) => (
+              <div
+                key={apt.id}
+                className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs space-y-1"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900">
+                    {formatDateTime(apt.scheduled_at)}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#E8F5E9] text-[#1B5E20] border border-[#C8E6C9] uppercase">
+                    {apt.status}
+                  </span>
+                </div>
+                {apt.clinic_name && (
+                  <p className="text-[11px] text-slate-500">Facility: {apt.clinic_name}</p>
+                )}
+                {apt.doctor_name && (
+                  <p className="text-[11px] text-slate-500">Doctor: Dr. {apt.doctor_name}</p>
+                )}
+                {apt.notes && (
+                  <p className="text-[11px] text-slate-700 italic mt-1 bg-white p-2 rounded-xl border border-slate-100">
+                    &ldquo;{apt.notes}&rdquo;
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

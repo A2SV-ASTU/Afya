@@ -124,17 +124,44 @@ export function LabResultsForm({ encounter, onSaved }: LabResultsFormProps) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-slate-700">Analyte Measurements</label>
+          <div className="flex items-center justify-between">
+            <label className="block text-xs font-semibold text-slate-700">Analyte Measurements (Structured Key: Value Pairs)</label>
+            <span className="text-[10px] text-slate-400">Comma-separated pairs</span>
+          </div>
           <textarea
             rows={2}
-            placeholder="analyte: value pairs, e.g. hemoglobin: 13.8, platelets: 240, wbc: 6.8"
+            placeholder="analyte: value pairs, e.g. hemoglobin: 13.8, platelets: 240, wbc: 6.8, glucose: 5.4"
             value={measurements}
             onChange={(e) => setMeasurements(e.target.value)}
-            className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] text-slate-800"
+            className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] text-slate-800 font-mono"
           />
-          <p className="text-[10px] text-slate-400">
-            Enter one or more <span className="font-mono">name: value</span> pairs separated by commas.
-          </p>
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <span className="text-[10px] font-semibold text-slate-500">Quick Insert:</span>
+            {[
+              'hemoglobin: 13.5',
+              'platelets: 250',
+              'wbc: 6.5',
+              'glucose: 5.2',
+              'creatinine: 88',
+              'potassium: 4.1',
+              'hba1c: 5.8',
+            ].map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => {
+                  setMeasurements((prev) => {
+                    const trimmed = prev.trim();
+                    if (!trimmed) return chip;
+                    return `${trimmed}, ${chip}`;
+                  });
+                }}
+                className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-[#E8F5E9] hover:text-[#1B5E20] hover:border-[#C8E6C9] border border-slate-200 text-[10px] font-mono text-slate-600 transition-colors cursor-pointer"
+              >
+                + {chip}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex items-center justify-end">
