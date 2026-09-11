@@ -6,6 +6,7 @@ class ClinicGrantModel extends ClinicGrantEntity {
     required super.clinicId,
     required super.clinicName,
     required super.grantedAt,
+    super.status,
   });
 
   factory ClinicGrantModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +21,7 @@ class ClinicGrantModel extends ClinicGrantEntity {
       grantedAt: DateTime.parse(
         (json['granted_at'] ?? json['created_at']) as String,
       ).toLocal(),
+      status: (json['status'] ?? 'active') as String,
     );
   }
 
@@ -29,6 +31,7 @@ class ClinicGrantModel extends ClinicGrantEntity {
       'clinic_id': clinicId,
       'clinic_name': clinicName,
       'granted_at': grantedAt.toIso8601String(),
+      'status': status,
     };
   }
 }

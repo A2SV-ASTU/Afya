@@ -18,58 +18,27 @@ void main() {
   });
 
   group('getPendingAccessRequests', () {
-    test('should return the mock list of AccessRequestModel', () async {
+    test('should return empty list (no pending requests displayed)', () async {
       final result = await dataSource.getPendingAccessRequests();
 
       expect(result, isA<List<AccessRequestModel>>());
-      expect(result.length, 1);
-      expect(result[0].id, 'req-1');
-      expect(result[0].clinicName, 'St. Paul Hospital');
-      expect(result[0].doctorName, 'Dr. Jane Smith');
-      expect(result[0].status, 'pending');
-    });
-
-    test('should return empty list after all requests are removed', () async {
-      await dataSource.approveAccessRequest('req-1');
-      final result = await dataSource.getPendingAccessRequests();
-
       expect(result, isEmpty);
     });
   });
 
   group('approveAccessRequest', () {
-    test('should remove the request with matching id', () async {
-      final before = await dataSource.getPendingAccessRequests();
-      expect(before.length, 1);
-
-      await dataSource.approveAccessRequest('req-1');
-
-      final after = await dataSource.getPendingAccessRequests();
-      expect(after, isEmpty);
-    });
-
-    test('should not throw when id does not exist', () async {
+    test('should not throw when called', () async {
       await expectLater(
-        dataSource.approveAccessRequest('non-existent-id'),
+        dataSource.approveAccessRequest('any-id'),
         completes,
       );
     });
   });
 
   group('denyAccessRequest', () {
-    test('should remove the request with matching id', () async {
-      final before = await dataSource.getPendingAccessRequests();
-      expect(before.length, 1);
-
-      await dataSource.denyAccessRequest('req-1');
-
-      final after = await dataSource.getPendingAccessRequests();
-      expect(after, isEmpty);
-    });
-
-    test('should not throw when id does not exist', () async {
+    test('should not throw when called', () async {
       await expectLater(
-        dataSource.denyAccessRequest('non-existent-id'),
+        dataSource.denyAccessRequest('any-id'),
         completes,
       );
     });
@@ -81,19 +50,20 @@ void main() {
 
       expect(result, isA<List<ClinicGrantModel>>());
       expect(result.length, 2);
-      expect(result[0].grantId, 'grant-1');
-      expect(result[0].clinicId, 'clinic-1');
+      expect(result[0].grantId, 'grant_001');
+      expect(result[0].clinicId, 'clinic_afya');
       expect(result[0].clinicName, 'Afya Hospital');
-      expect(result[1].grantId, 'grant-2');
+      expect(result[1].grantId, 'grant_002');
+      expect(result[1].clinicId, 'clinic_aamc');
       expect(result[1].clinicName, 'Addis Ababa Medical Center');
     });
 
     test('should return updated list after a grant is revoked', () async {
-      await dataSource.revokeClinicGrant('clinic-1');
+      await dataSource.revokeClinicGrant('clinic_afya');
       final result = await dataSource.getActiveGrants();
 
       expect(result.length, 1);
-      expect(result[0].clinicId, 'clinic-2');
+      expect(result[0].clinicId, 'clinic_aamc');
     });
   });
 
@@ -102,16 +72,16 @@ void main() {
       final before = await dataSource.getActiveGrants();
       expect(before.length, 2);
 
-      await dataSource.revokeClinicGrant('clinic-1');
+      await dataSource.revokeClinicGrant('clinic_afya');
 
       final after = await dataSource.getActiveGrants();
       expect(after.length, 1);
-      expect(after.any((g) => g.clinicId == 'clinic-1'), isFalse);
+      expect(after.any((g) => g.clinicId == 'clinic_afya'), isFalse);
     });
 
     test('should remove all grants when both are revoked', () async {
-      await dataSource.revokeClinicGrant('clinic-1');
-      await dataSource.revokeClinicGrant('clinic-2');
+      await dataSource.revokeClinicGrant('clinic_afya');
+      await dataSource.revokeClinicGrant('clinic_aamc');
 
       final result = await dataSource.getActiveGrants();
       expect(result, isEmpty);

@@ -8,6 +8,7 @@ void main() {
     'clinic_id': 'c1',
     'clinic_name': 'Clinic A',
     'granted_at': '2026-01-01T00:00:00.000',
+    'status': 'active',
   };
 
   final tModel = ClinicGrantModel(
@@ -40,6 +41,7 @@ void main() {
         'clinic_id': 'c2',
         'clinic_name': 'Clinic B',
         'granted_at': '2026-06-01T12:30:00.000',
+        'status': 'revoked',
       };
 
       final result = ClinicGrantModel.fromJson(differentJson);
@@ -48,6 +50,7 @@ void main() {
       expect(result.clinicId, 'c2');
       expect(result.clinicName, 'Clinic B');
       expect(result.grantedAt, DateTime(2026, 6, 1, 12, 30));
+      expect(result.status, 'revoked');
     });
   });
 }

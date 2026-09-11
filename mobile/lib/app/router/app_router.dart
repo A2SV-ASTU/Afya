@@ -165,7 +165,7 @@ class AppRouter {
             routes: [
               GoRoute(
                 path: RoutePaths.access,
-                builder: (context, state) => const AccessPlaceholderScreen(),
+                builder: (context, state) => const ClinicGrantsScreen(),
               ),
             ],
           ),

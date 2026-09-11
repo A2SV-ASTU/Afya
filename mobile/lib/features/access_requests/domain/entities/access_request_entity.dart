@@ -7,6 +7,7 @@ class AccessRequestEntity extends Equatable {
   final String doctorName;
   final String reason;
   final String status;
+  final bool isUrgent;
   final DateTime expiresAt;
   final DateTime createdAt;
 
@@ -17,6 +18,7 @@ class AccessRequestEntity extends Equatable {
     required this.doctorName,
     required this.reason,
     required this.status,
+    this.isUrgent = false,
     required this.expiresAt,
     required this.createdAt,
   });
@@ -29,6 +31,7 @@ class AccessRequestEntity extends Equatable {
         doctorName,
         reason,
         status,
+        isUrgent,
         expiresAt,
         createdAt,
       ];
