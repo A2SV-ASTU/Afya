@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import React, { useCallback, useEffect, useState, Suspense } from 'react';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, PlusCircle, Activity, FileText, FlaskConical, Pill, Calendar } from 'lucide-react';
 import { useAuth } from '@/modules/core/context/AuthContext';
@@ -42,9 +42,10 @@ function identityFromGrant(grant: AccessRequest): PatientIdentity {
   };
 }
 
-export default function PatientChartDetailPage() {
+function PatientChartDetailContent() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const patientId = (params?.patientId as string) || '';
 
   const { currentUser, isReady } = useAuth();
@@ -53,11 +54,21 @@ export default function PatientChartDetailPage() {
   const [identity, setIdentity] = useState<PatientIdentity | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ChartTab>('timeline');
 
   // Load patient encounters to detect if there is an active open encounter in progress
   const { encounters } = usePatientEncounters(patientId);
   const openEncounter = encounters.find((e) => e.status === 'open');
+
+  // Check if we arrived from an active encounter
+  const fromEncounter = searchParams.get('fromEncounter') || openEncounter?.id;
+  const initialTabParam = searchParams.get('tab') as ChartTab | null;
+
+  const [activeTab, setActiveTab] = useState<ChartTab>(() => {
+    if (initialTabParam && TABS.some((t) => t.id === initialTabParam)) {
+      return initialTabParam;
+    }
+    return 'timeline';
+  });
 
   const loadIdentity = useCallback(async () => {
     if (!clinicId) {
@@ -118,8 +129,15 @@ export default function PatientChartDetailPage() {
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => router.push('/doctor/patients')}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            onClick={() => {
+              if (fromEncounter) {
+                router.push(`/doctor/encounters/${fromEncounter}`);
+              } else {
+                router.push('/doctor/patients');
+              }
+            }}
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            title={fromEncounter ? 'Return to Encounter' : 'Back to Patients'}
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -199,5 +217,13 @@ export default function PatientChartDetailPage() {
       {activeTab === 'medications' && <MedicationList patientId={identity.id} />}
       {activeTab === 'appointments' && <PatientAppointmentsList patientId={identity.id} />}
     </div>
+  );
+}
+
+export default function PatientChartDetailPage() {
+  return (
+    <Suspense fallback={<div className="p-12 text-center text-xs text-slate-500">Loading patient chart…</div>}>
+      <PatientChartDetailContent />
+    </Suspense>
   );
 }

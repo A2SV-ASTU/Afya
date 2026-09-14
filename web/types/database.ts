@@ -226,7 +226,9 @@ export interface PrescriptionItem {
   dose: string;
   route: string;
   frequency: string;
-  duration: string;
+  duration?: string;
+  duration_value?: number;
+  duration_unit?: string;
   instructions?: string;
   status: PrescriptionItemStatus;
   started_at: string;
@@ -306,6 +308,8 @@ export interface MedicalHistoryPrescriptionItem {
 }
 
 export interface MedicalHistoryVitals {
+  systolic_bp?: number;
+  diastolic_bp?: number;
   systolic?: number;
   diastolic?: number;
   pulse?: number;

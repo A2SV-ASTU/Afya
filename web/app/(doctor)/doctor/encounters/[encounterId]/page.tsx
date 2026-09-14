@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Lock,
   AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { encountersApi } from '@/lib/api/encounters';
 import { accessRequestsApi } from '@/lib/api/access-requests';
@@ -176,9 +177,9 @@ export default function EncounterWorkspacePage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Link href={`/doctor/patients/${encounter.patient_id}`}>
-            <Button size="sm" variant="outline">
-              View Longitudinal Chart
+          <Link href={`/doctor/patients/${encounter.patient_id}?fromEncounter=${encounter.id}`}>
+            <Button size="sm" variant="outline" leftIcon={<FileText className="w-3.5 h-3.5 text-[#2E7D32]" />}>
+              Open Full Patient Chart
             </Button>
           </Link>
 
@@ -327,18 +328,16 @@ export default function EncounterWorkspacePage() {
                         return (
                           <div
                             key={item.id}
-                            className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${
-                              isItemActive
+                            className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${isItemActive
                                 ? 'bg-[#E8F5E9]/50 border-[#C8E6C9] text-[#1B5E20]'
                                 : 'bg-slate-50 border-slate-200 text-slate-500'
-                            }`}
+                              }`}
                           >
                             <div>
                               <div className="flex items-center gap-2">
                                 <p
-                                  className={`font-bold ${
-                                    isItemActive ? 'text-slate-900' : 'text-slate-500 line-through'
-                                  }`}
+                                  className={`font-bold ${isItemActive ? 'text-slate-900' : 'text-slate-500 line-through'
+                                    }`}
                                 >
                                   {item.medication_name} — {item.dose}
                                 </p>
@@ -389,6 +388,22 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'history' && (
         <div className="space-y-6">
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white text-[#2E7D32] border border-slate-200 flex items-center justify-center font-bold">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-800">Reviewing Single Historical Baseline</p>
+                <p className="text-slate-500">Need the patient&apos;s complete cross-visit timeline, lab trends, or active medications?</p>
+              </div>
+            </div>
+            <Link href={`/doctor/patients/${encounter.patient_id}?fromEncounter=${encounter.id}`}>
+              <Button size="sm" variant="outline" className="text-xs">
+                Open Complete Patient Chart ➔
+              </Button>
+            </Link>
+          </div>
           <MedicalHistoryViewer encounterId={encounter.id} patientName={encounter.patient_name} />
         </div>
       )}
@@ -411,7 +426,7 @@ export default function EncounterWorkspacePage() {
               {encounter.diagnoses?.length ? (
                 <ul className="space-y-1.5 text-slate-700">
                   {encounter.diagnoses.map((d) => (
-                     <li key={d.id} className="flex items-center gap-2">
+                    <li key={d.id} className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#388E3C]" />
                       <strong>{d.icd_code || 'DX'}</strong> — {d.diagnosis_text} ({d.diagnosis_type})
                     </li>

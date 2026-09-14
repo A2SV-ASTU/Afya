@@ -111,11 +111,11 @@ export default function ClinicRequestsPage() {
             Refresh
           </Button>
 
-          {/* <Link href="/clinic/requests/new">
+          <Link href="/clinic/lookup">
             <Button size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
               + Request Patient Access
             </Button>
-          </Link> */}
+          </Link>
         </div>
       </div>
 

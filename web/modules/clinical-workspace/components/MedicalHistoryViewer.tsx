@@ -113,14 +113,19 @@ export function MedicalHistoryViewer({ encounterId, patientName }: MedicalHistor
 
           {history.vitals ? (
             <div className="grid grid-cols-2 gap-2.5 pt-1">
-              {history.vitals.systolic !== undefined && history.vitals.diastolic !== undefined && (
-                <div className="p-2.5 bg-white rounded-xl border border-slate-100">
-                  <p className="text-[10px] text-slate-400">Blood Pressure</p>
-                  <p className="font-bold text-slate-800">
-                    {history.vitals.systolic}/{history.vitals.diastolic} <span className="text-[10px] font-normal text-slate-500">mmHg</span>
-                  </p>
-                </div>
-              )}
+              {(() => {
+                const systolic = history.vitals.systolic_bp ?? history.vitals.systolic;
+                const diastolic = history.vitals.diastolic_bp ?? history.vitals.diastolic;
+                if (systolic === undefined || diastolic === undefined) return null;
+                return (
+                  <div className="p-2.5 bg-white rounded-xl border border-slate-100">
+                    <p className="text-[10px] text-slate-400">Blood Pressure</p>
+                    <p className="font-bold text-slate-800">
+                      {systolic}/{diastolic} <span className="text-[10px] font-normal text-slate-500">mmHg</span>
+                    </p>
+                  </div>
+                );
+              })()}
               {history.vitals.pulse !== undefined && (
                 <div className="p-2.5 bg-white rounded-xl border border-slate-100">
                   <p className="text-[10px] text-slate-400">Heart Rate / Pulse</p>
