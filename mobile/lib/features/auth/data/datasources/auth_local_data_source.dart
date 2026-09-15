@@ -34,7 +34,12 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   Future<void> savePin(String pin) async {
     final trimmed = pin.trim();
     // Primary: Hive (always works on all Android devices)
-    _localDb.getBox(AppKeys.authBox).put(_kHivePinKey, trimmed);
+    await _localDb
+    .getBox(AppKeys.authBox)
+    .put(
+      _kHivePinKey,
+      trimmed,
+    );
     // Secondary: Secure Storage (best-effort)
     try {
       await _secureStorage.write(key: '${AppKeys.authBox}_pin', value: trimmed);

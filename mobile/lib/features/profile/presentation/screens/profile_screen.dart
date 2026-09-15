@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../../app/router/route_paths.dart';
 import '../../../../core/di/injection_container.dart';
+import '../../../auth/data/datasources/auth_local_data_source.dart';
 import '../bloc/profile_bloc.dart';
 import '../bloc/profile_event.dart';
 import '../bloc/profile_state.dart';
@@ -19,10 +20,13 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<ProfileBloc>()..add(LoadProfile()),
-      child: const _ProfileView(),
-    );
+    return BlocProvider<ProfileBloc>(
+  create: (_) => sl<ProfileBloc>()
+    ..add(
+      LoadProfile(),
+    ),
+  child: const _ProfileView(),
+);
   }
 }
 
@@ -100,12 +104,19 @@ class _ProfileViewState extends State<_ProfileView> {
   bool _healthTips = false;
 
   // ============================================================
+  // PIN
+  // ============================================================
+
+  bool _hasPin = false;
+
+  // ============================================================
   // INIT / DISPOSE
   // ============================================================
 
   @override
   void initState() {
     super.initState();
+    _loadPinStatus();
   }
 
   @override
@@ -143,10 +154,8 @@ class _ProfileViewState extends State<_ProfileView> {
             'MMM dd, yyyy',
           ).format(profile.dateOfBirth!);
 
-    // Blood type
     _bloodTypeValue = profile.bloodType ?? '';
 
-    // Emergency contact
     _emergencyContactNameController.text =
         profile.emergencyContactName ?? '';
 
@@ -156,6 +165,30 @@ class _ProfileViewState extends State<_ProfileView> {
     _loadSavedProfileImage();
 
     _loadNotificationSettings();
+  }
+
+  // ============================================================
+  // PIN STATUS
+  // ============================================================
+
+  Future<void> _loadPinStatus() async {
+    try {
+      final authLocalDataSource =
+          sl<AuthLocalDataSource>();
+
+      final hasPin =
+          await authLocalDataSource.hasPin();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _hasPin = hasPin;
+      });
+    } catch (_) {
+      // Keep default value.
+    }
   }
 
   // ============================================================
@@ -214,28 +247,22 @@ class _ProfileViewState extends State<_ProfileView> {
           UpdateProfileRequested(
             firstName:
                 _firstNameController.text.trim(),
-
             lastName:
                 _lastNameController.text.trim(),
-
             phone:
                 _phoneController.text.trim().isEmpty
                     ? null
                     : _phoneController.text.trim(),
-
             gender:
                 _genderValue.isEmpty
                     ? null
                     : _genderValue,
-
             dateOfBirth:
                 _selectedDate,
-
             bloodType:
                 _bloodTypeValue.isEmpty
                     ? null
                     : _bloodTypeValue,
-
             emergencyContactName:
                 _emergencyContactNameController
                         .text
@@ -263,72 +290,71 @@ class _ProfileViewState extends State<_ProfileView> {
   // PROFILE IMAGE
   // ============================================================
 
-  
-Future<void> _pickProfileImage() async {
-  try {
-    final XFile? pickedImage = await _imagePicker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
+  Future<void> _pickProfileImage() async {
+    try {
+      final XFile? pickedImage =
+          await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
 
-    if (pickedImage == null) {
-      return;
-    }
+      if (pickedImage == null) {
+        return;
+      }
 
-    final directory = await getApplicationDocumentsDirectory();
+      final directory =
+          await getApplicationDocumentsDirectory();
 
-    final imageDirectory = Directory(
-      '${directory.path}/profile_images',
-    );
+      final imageDirectory = Directory(
+        '${directory.path}/profile_images',
+      );
 
-    if (!await imageDirectory.exists()) {
-      await imageDirectory.create(
-        recursive: true,
+      if (!await imageDirectory.exists()) {
+        await imageDirectory.create(
+          recursive: true,
+        );
+      }
+
+      final userId =
+          _currentUserId ?? 'current_user';
+
+      final timestamp =
+          DateTime.now().millisecondsSinceEpoch;
+
+      final savedImage = File(
+        '${imageDirectory.path}/profile_${userId}_$timestamp.jpg',
+      );
+
+      await File(pickedImage.path).copy(
+        savedImage.path,
+      );
+
+      final box =
+          await Hive.openBox('profileBox');
+
+      await box.put(
+        'profileImage_$userId',
+        savedImage.path,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _profileImage = savedImage;
+      });
+
+      _showMessage(
+        'Profile picture updated.',
+      );
+    } catch (e) {
+      _showMessage(
+        'Unable to select profile picture.',
+        error: true,
       );
     }
-
-    final userId = _currentUserId ?? 'current_user';
-
-    // Create a unique filename for every new profile picture.
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-
-    final savedImage = File(
-      '${imageDirectory.path}/profile_${userId}_$timestamp.jpg',
-    );
-
-    // Copy the newly selected image to the new path.
-    await File(pickedImage.path).copy(
-      savedImage.path,
-    );
-
-    // Save the NEW path in Hive.
-    final box = await Hive.openBox('profileBox');
-
-    await box.put(
-      'profileImage_$userId',
-      savedImage.path,
-    );
-
-    if (!mounted) {
-      return;
-    }
-
-    // Immediately show the newly selected image.
-    setState(() {
-      _profileImage = savedImage;
-    });
-
-    _showMessage(
-      'Profile picture updated.',
-    );
-  } catch (e) {
-    _showMessage(
-      'Unable to select profile picture.',
-      error: true,
-    );
   }
-}
-
 
   Future<void> _loadSavedProfileImage() async {
     if (_currentUserId == null) {
@@ -336,9 +362,8 @@ Future<void> _pickProfileImage() async {
     }
 
     try {
-      final box = await Hive.openBox(
-        'profileBox',
-      );
+      final box =
+          await Hive.openBox('profileBox');
 
       final savedPath = box.get(
         'profileImage_$_currentUserId',
@@ -378,9 +403,8 @@ Future<void> _pickProfileImage() async {
     }
 
     try {
-      final box = await Hive.openBox(
-        'profileBox',
-      );
+      final box =
+          await Hive.openBox('profileBox');
 
       if (!mounted) {
         return;
@@ -419,9 +443,8 @@ Future<void> _pickProfileImage() async {
     }
 
     try {
-      final box = await Hive.openBox(
-        'profileBox',
-      );
+      final box =
+          await Hive.openBox('profileBox');
 
       await box.put(
         '${key}_$_currentUserId',
@@ -433,47 +456,180 @@ Future<void> _pickProfileImage() async {
   }
 
   // ============================================================
-  // CHANGE PASSWORD
+  // ADD / CHANGE PIN
   // ============================================================
 
-  Future<void> _showChangePasswordDialog() async {
-    final profileBloc = context.read<ProfileBloc>();
+  Future<void> _showPinSheet() async {
+    final authLocalDataSource =
+    sl<AuthLocalDataSource>();
+
     final formKey =
         GlobalKey<FormState>();
 
-    final oldPasswordController =
+    final currentPinController =
         TextEditingController();
 
-    final newPasswordController =
+    final newPinController =
         TextEditingController();
 
-    final confirmPasswordController =
+    final confirmPinController =
         TextEditingController();
 
-    bool obscureOld = true;
+    bool obscureCurrent = true;
     bool obscureNew = true;
     bool obscureConfirm = true;
 
-    await showDialog(
-      context: context,
-      builder: (dialogContext) {
-        return BlocProvider.value(
-          value: profileBloc,
-          child: StatefulBuilder(
-            builder: (
-              context,
-              setDialogState,
-            ) {
-            return AlertDialog(
-              title: const Text(
-                'Change Password',
-                style: TextStyle(
-                  fontWeight:
-                      FontWeight.bold,
+    bool loading = false;
+
+    final isChangingPin = _hasPin;
+
+    final pinUpdated = await showModalBottomSheet<bool>(
+  context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (
+            context,
+            setSheetState,
+          ) {
+            Future<void> submitPin() async {
+              if (!formKey.currentState!.validate()) {
+                return;
+              }
+
+              setSheetState(() {
+                loading = true;
+              });
+
+              try {
+                // ----------------------------------------------
+                // VERIFY CURRENT PIN
+                // ----------------------------------------------
+
+                if (isChangingPin) {
+                  final currentPin =
+                      currentPinController.text.trim();
+
+                  final isValid =
+                      await authLocalDataSource
+                          .verifyPin(
+                    currentPin,
+                  );
+
+                  if (!isValid) {
+                    if (!sheetContext.mounted) {
+                      return;
+                    }
+
+                    setSheetState(() {
+                      loading = false;
+                    });
+
+                    ScaffoldMessenger.of(
+                      sheetContext,
+                    )
+                      ..hideCurrentSnackBar()
+                      ..showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Current PIN is incorrect.',
+                          ),
+                          backgroundColor:
+                              errorRed,
+                        ),
+                      );
+
+                    return;
+                  }
+                }
+
+                // ----------------------------------------------
+                // SAVE PIN
+                // ----------------------------------------------
+
+                await authLocalDataSource.savePin(
+  newPinController.text.trim(),
+);
+
+if (!sheetContext.mounted) {
+  return;
+}
+
+
+
+if (!sheetContext.mounted) {
+  return;
+}
+
+Navigator.of(sheetContext).pop(true);
+
+if (mounted) {
+  _showMessage(
+    isChangingPin
+        ? 'PIN changed successfully.'
+        : 'PIN added successfully.',
+  );
+}
+
+Future.delayed(
+  const Duration(milliseconds: 300),
+  () {
+    if (mounted) {
+      _showMessage(
+        isChangingPin
+            ? 'PIN changed successfully.'
+            : 'PIN added successfully.',
+      );
+    }
+  },
+);
+              } catch (_) {
+                if (!sheetContext.mounted) {
+                  return;
+                }
+
+                setSheetState(() {
+                  loading = false;
+                });
+
+                ScaffoldMessenger.of(
+                  sheetContext,
+                )
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Unable to update PIN. Please try again.',
+                      ),
+                      backgroundColor:
+                          errorRed,
+                    ),
+                  );
+              }
+            }
+
+            return Container(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 12,
+                bottom:
+                    MediaQuery.of(context)
+                            .viewInsets
+                            .bottom +
+                        24,
+              ),
+              decoration:
+                  const BoxDecoration(
+                color: Colors.white,
+                borderRadius:
+                    BorderRadius.vertical(
+                  top: Radius.circular(28),
                 ),
               ),
-
-              content:
+              child:
                   SingleChildScrollView(
                 child: Form(
                   key: formKey,
@@ -481,68 +637,239 @@ Future<void> _pickProfileImage() async {
                     mainAxisSize:
                         MainAxisSize.min,
                     children: [
-                      TextFormField(
-                        controller:
-                            oldPasswordController,
-                        obscureText:
-                            obscureOld,
+                      // ------------------------------------------
+                      // HANDLE
+                      // ------------------------------------------
+
+                      Container(
+                        width: 42,
+                        height: 5,
                         decoration:
-                            InputDecoration(
-                          labelText:
-                              'Current Password',
-                          border:
-                              const OutlineInputBorder(),
-                          suffixIcon:
-                              IconButton(
-                            onPressed: () {
-                              setDialogState(
-                                () {
-                                  obscureOld =
-                                      !obscureOld;
-                                },
-                              );
-                            },
-                            icon: Icon(
-                              obscureOld
-                                  ? Icons
-                                      .visibility_outlined
-                                  : Icons
-                                      .visibility_off_outlined,
-                            ),
+                            BoxDecoration(
+                          color: borderColor,
+                          borderRadius:
+                              BorderRadius.circular(
+                            10,
                           ),
                         ),
-                        validator:
-                            (value) {
-                          if (value ==
-                                  null ||
-                              value
-                                  .isEmpty) {
-                            return 'Enter current password';
-                          }
-
-                          return null;
-                        },
                       ),
 
                       const SizedBox(
-                        height: 12,
+                        height: 24,
                       ),
+
+                      // ------------------------------------------
+                      // ICON
+                      // ------------------------------------------
+
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration:
+                            BoxDecoration(
+                          color:
+                              highlightGreen
+                                  .withValues(
+                            alpha: .25,
+                          ),
+                          shape:
+                              BoxShape.circle,
+                        ),
+                        child:
+                            const Icon(
+                          Icons
+                              .lock_outline_rounded,
+                          color:
+                              primaryGreen,
+                          size: 30,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 16,
+                      ),
+
+                      // ------------------------------------------
+                      // TITLE
+                      // ------------------------------------------
+
+                      Text(
+                        isChangingPin
+                            ? 'Change PIN'
+                            : 'Add PIN',
+                        style:
+                            const TextStyle(
+                          fontSize: 22,
+                          fontWeight:
+                              FontWeight.bold,
+                          color: textDark,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 8,
+                      ),
+
+                      Text(
+                        isChangingPin
+                            ? 'Update your 4-digit PIN to keep your account secure.'
+                            : 'Create a 4-digit PIN for quick and secure access.',
+                        textAlign:
+                            TextAlign.center,
+                        style:
+                            const TextStyle(
+                          fontSize: 14,
+                          height: 1.4,
+                          color: textMuted,
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 24,
+                      ),
+
+                      // ------------------------------------------
+                      // CURRENT PIN
+                      // ------------------------------------------
+
+                      if (isChangingPin) ...[
+                        TextFormField(
+                          controller:
+                              currentPinController,
+                          obscureText:
+                              obscureCurrent,
+                          keyboardType:
+                              TextInputType.number,
+                          maxLength: 4,
+                          textInputAction:
+                              TextInputAction.next,
+                          decoration:
+                              InputDecoration(
+                            labelText:
+                                'Current PIN',
+                            hintText:
+                                'Enter current PIN',
+                            counterText: '',
+                            prefixIcon:
+                                const Icon(
+                              Icons
+                                  .lock_clock_outlined,
+                              color:
+                                  primaryGreen,
+                            ),
+                            suffixIcon:
+                                IconButton(
+                              onPressed: () {
+                                setSheetState(
+                                  () {
+                                    obscureCurrent =
+                                        !obscureCurrent;
+                                  },
+                                );
+                              },
+                              icon: Icon(
+                                obscureCurrent
+                                    ? Icons
+                                        .visibility_outlined
+                                    : Icons
+                                        .visibility_off_outlined,
+                                color:
+                                    textMuted,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor:
+                                backgroundColor,
+                            border:
+                                OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                14,
+                              ),
+                              borderSide:
+                                  BorderSide.none,
+                            ),
+                            enabledBorder:
+                                OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                14,
+                              ),
+                              borderSide:
+                                  const BorderSide(
+                                color:
+                                    borderColor,
+                              ),
+                            ),
+                            focusedBorder:
+                                OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                14,
+                              ),
+                              borderSide:
+                                  const BorderSide(
+                                color:
+                                    primaryGreen,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value == null ||
+                                value.length != 4) {
+                              return 'Enter your 4-digit PIN';
+                            }
+
+                            if (!RegExp(
+                              r'^\d{4}$',
+                            ).hasMatch(value)) {
+                              return 'PIN must contain only numbers';
+                            }
+
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(
+                          height: 14,
+                        ),
+                      ],
+
+                      // ------------------------------------------
+                      // NEW PIN
+                      // ------------------------------------------
 
                       TextFormField(
                         controller:
-                            newPasswordController,
+                            newPinController,
                         obscureText:
                             obscureNew,
+                        keyboardType:
+                            TextInputType.number,
+                        maxLength: 4,
+                        textInputAction:
+                            TextInputAction.next,
                         decoration:
                             InputDecoration(
                           labelText:
-                              'New Password',
-                          border:
-                              const OutlineInputBorder(),
+                              isChangingPin
+                                  ? 'New PIN'
+                                  : 'Create PIN',
+                          hintText:
+                              'Enter 4-digit PIN',
+                          counterText: '',
+                          prefixIcon:
+                              const Icon(
+                            Icons
+                                .lock_outline_rounded,
+                            color:
+                                primaryGreen,
+                          ),
                           suffixIcon:
                               IconButton(
                             onPressed: () {
-                              setDialogState(
+                              setSheetState(
                                 () {
                                   obscureNew =
                                       !obscureNew;
@@ -555,16 +882,65 @@ Future<void> _pickProfileImage() async {
                                       .visibility_outlined
                                   : Icons
                                       .visibility_off_outlined,
+                              color:
+                                  textMuted,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor:
+                              backgroundColor,
+                          border:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              14,
+                            ),
+                            borderSide:
+                                BorderSide.none,
+                          ),
+                          enabledBorder:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              14,
+                            ),
+                            borderSide:
+                                const BorderSide(
+                              color:
+                                  borderColor,
+                            ),
+                          ),
+                          focusedBorder:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              14,
+                            ),
+                            borderSide:
+                                const BorderSide(
+                              color:
+                                  primaryGreen,
+                              width: 1.5,
                             ),
                           ),
                         ),
-                        validator:
-                            (value) {
-                          if (value ==
-                                  null ||
-                              value.length <
-                                  8) {
-                            return 'Minimum 8 characters';
+                        validator: (value) {
+                          if (value == null ||
+                              value.length != 4) {
+                            return 'Enter a 4-digit PIN';
+                          }
+
+                          if (!RegExp(
+                            r'^\d{4}$',
+                          ).hasMatch(value)) {
+                            return 'PIN must contain only numbers';
+                          }
+
+                          if (isChangingPin &&
+                              value ==
+                                  currentPinController
+                                      .text) {
+                            return 'New PIN must be different';
                           }
 
                           return null;
@@ -572,24 +948,46 @@ Future<void> _pickProfileImage() async {
                       ),
 
                       const SizedBox(
-                        height: 12,
+                        height: 14,
                       ),
+
+                      // ------------------------------------------
+                      // CONFIRM PIN
+                      // ------------------------------------------
 
                       TextFormField(
                         controller:
-                            confirmPasswordController,
+                            confirmPinController,
                         obscureText:
                             obscureConfirm,
+                        keyboardType:
+                            TextInputType.number,
+                        maxLength: 4,
+                        textInputAction:
+                            TextInputAction.done,
+                        onFieldSubmitted: (_) {
+                          if (!loading) {
+                            submitPin();
+                          }
+                        },
                         decoration:
                             InputDecoration(
                           labelText:
-                              'Confirm New Password',
-                          border:
-                              const OutlineInputBorder(),
+                              'Confirm PIN',
+                          hintText:
+                              'Re-enter your PIN',
+                          counterText: '',
+                          prefixIcon:
+                              const Icon(
+                            Icons
+                                .verified_user_outlined,
+                            color:
+                                primaryGreen,
+                          ),
                           suffixIcon:
                               IconButton(
                             onPressed: () {
-                              setDialogState(
+                              setSheetState(
                                 () {
                                   obscureConfirm =
                                       !obscureConfirm;
@@ -602,114 +1000,198 @@ Future<void> _pickProfileImage() async {
                                       .visibility_outlined
                                   : Icons
                                       .visibility_off_outlined,
+                              color:
+                                  textMuted,
+                            ),
+                          ),
+                          filled: true,
+                          fillColor:
+                              backgroundColor,
+                          border:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              14,
+                            ),
+                            borderSide:
+                                BorderSide.none,
+                          ),
+                          enabledBorder:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              14,
+                            ),
+                            borderSide:
+                                const BorderSide(
+                              color:
+                                  borderColor,
+                            ),
+                          ),
+                          focusedBorder:
+                              OutlineInputBorder(
+                            borderRadius:
+                                BorderRadius.circular(
+                              14,
+                            ),
+                            borderSide:
+                                const BorderSide(
+                              color:
+                                  primaryGreen,
+                              width: 1.5,
                             ),
                           ),
                         ),
-                        validator:
-                            (value) {
+                        validator: (value) {
+                          if (value == null ||
+                              value.isEmpty) {
+                            return 'Confirm your PIN';
+                          }
+
                           if (value !=
-                              newPasswordController
+                              newPinController
                                   .text) {
-                            return 'Passwords do not match';
+                            return 'PINs do not match';
                           }
 
                           return null;
                         },
                       ),
+
+                      const SizedBox(
+                        height: 24,
+                      ),
+
+                      // ------------------------------------------
+                      // SAVE BUTTON
+                      // ------------------------------------------
+
+                      SizedBox(
+                        width:
+                            double.infinity,
+                        height: 52,
+                        child:
+                            ElevatedButton(
+                          onPressed:
+                              loading
+                                  ? null
+                                  : submitPin,
+                          style:
+                              ElevatedButton
+                                  .styleFrom(
+                            backgroundColor:
+                                primaryGreen,
+                            foregroundColor:
+                                Colors.white,
+                            elevation: 0,
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(
+                                14,
+                              ),
+                            ),
+                          ),
+                          child: loading
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child:
+                                      CircularProgressIndicator(
+                                    color:
+                                        Colors.white,
+                                    strokeWidth:
+                                        2.5,
+                                  ),
+                                )
+                              : Text(
+                                  isChangingPin
+                                      ? 'Change PIN'
+                                      : 'Add PIN',
+                                  style:
+                                      const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight:
+                                        FontWeight.bold,
+                                  ),
+                                ),
+                        ),
+                      ),
+
+                      const SizedBox(
+                        height: 8,
+                      ),
+
+                      // ------------------------------------------
+                      // CANCEL
+                      // ------------------------------------------
+
+                      TextButton(
+                        onPressed:
+                            loading
+                                ? null
+                                : () {
+                                    Navigator.of(
+                                      sheetContext,
+                                    ).pop();
+                                  },
+                        child:
+                            const Text(
+                          'Cancel',
+                          style:
+                              TextStyle(
+                            color:
+                                textMuted,
+                            fontWeight:
+                                FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
-
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(
-                      dialogContext,
-                    ).pop();
-                  },
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: textMuted,
-                    ),
-                  ),
-                ),
-
-                BlocBuilder<
-                    ProfileBloc,
-                    ProfileState>(
-                  builder: (
-                    context,
-                    state,
-                  ) {
-                    final loading =
-                        state
-                            is ProfileActionLoading;
-
-                    return ElevatedButton(
-                      style:
-                          ElevatedButton.styleFrom(
-                        backgroundColor:
-                            primaryGreen,
-                        foregroundColor:
-                            Colors.white,
-                      ),
-
-                      onPressed:
-                          loading
-                              ? null
-                              : () {
-                                  if (!formKey
-                                      .currentState!
-                                      .validate()) {
-                                    return;
-                                  }
-
-                                  context
-                                      .read<
-                                          ProfileBloc>()
-                                      .add(
-                                        ChangePasswordRequested(
-                                          oldPassword:
-                                              oldPasswordController
-                                                  .text,
-                                          newPassword:
-                                              newPasswordController
-                                                  .text,
-                                        ),
-                                      );
-                                },
-
-                      child: loading
-                          ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child:
-                                  CircularProgressIndicator(
-                                color:
-                                    Colors.white,
-                                strokeWidth:
-                                    2,
-                              ),
-                            )
-                          : const Text(
-                              'Update',
-                            ),
-                    );
-                  },
-                ),
-              ],
             );
-            },
-          ),
+          },
         );
       },
     );
 
-    oldPasswordController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
+    if (mounted && pinUpdated == true) {
+  await Future.delayed(
+    const Duration(milliseconds: 100),
+  );
+
+  setState(() {
+    _hasPin = true;
+  });
+}
+
+currentPinController.dispose();
+newPinController.dispose();
+confirmPinController.dispose();
+  }
+
+  // ============================================================
+  // CHANGE PASSWORD
+  // ============================================================
+
+  Future<void> _showChangePasswordDialog() async {
+    final profileBloc = context.read<ProfileBloc>();
+
+    final passwordChanged = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _ChangePasswordDialog(
+        profileBloc: profileBloc,
+      ),
+    );
+
+    if (passwordChanged == true && mounted) {
+      _showMessage(
+        'Password changed successfully.',
+      );
+    }
   }
 
   // ============================================================
@@ -776,9 +1258,7 @@ Future<void> _pickProfileImage() async {
                   FontWeight.bold,
             ),
           ),
-
           content: Text(content),
-
           actions: [
             TextButton(
               onPressed: () {
@@ -794,7 +1274,6 @@ Future<void> _pickProfileImage() async {
                 ),
               ),
             ),
-
             ElevatedButton(
               style:
                   ElevatedButton.styleFrom(
@@ -846,19 +1325,6 @@ Future<void> _pickProfileImage() async {
 
       _showMessage(
         'Profile updated successfully.',
-      );
-
-      return;
-    }
-
-    if (state is PasswordChanged) {
-      Navigator.of(
-        context,
-        rootNavigator: true,
-      ).pop();
-
-      _showMessage(
-        'Password changed successfully.',
       );
 
       return;
@@ -954,18 +1420,13 @@ Future<void> _pickProfileImage() async {
       ) {
         _handleState(state);
       },
-
       child: Scaffold(
         backgroundColor:
             backgroundColor,
-
         appBar: AppBar(
           backgroundColor:
               backgroundColor,
           elevation: 0,
-
-          
-
           title: const Text(
             'Afya',
             style: TextStyle(
@@ -975,25 +1436,20 @@ Future<void> _pickProfileImage() async {
                   FontWeight.bold,
             ),
           ),
-
           centerTitle: true,
-
           actions: [
             Padding(
               padding:
                   const EdgeInsets.only(
                 right: 16,
               ),
-
               child: GestureDetector(
                 onTap:
                     _pickProfileImage,
-
                 child: CircleAvatar(
                   radius: 18,
                   backgroundColor:
                       highlightGreen,
-
                   backgroundImage:
                       _profileImage !=
                               null
@@ -1001,7 +1457,6 @@ Future<void> _pickProfileImage() async {
                               _profileImage!,
                             )
                           : null,
-
                   child:
                       _profileImage ==
                               null
@@ -1017,7 +1472,6 @@ Future<void> _pickProfileImage() async {
             ),
           ],
         ),
-
         body: BlocBuilder<
             ProfileBloc,
             ProfileState>(
@@ -1065,22 +1519,18 @@ Future<void> _pickProfileImage() async {
       child: Padding(
         padding:
             const EdgeInsets.all(24),
-
         child: Column(
           mainAxisSize:
               MainAxisSize.min,
-
           children: [
             const Icon(
               Icons.error_outline,
               size: 56,
               color: errorRed,
             ),
-
             const SizedBox(
               height: 16,
             ),
-
             const Text(
               'Unable to load profile',
               style: TextStyle(
@@ -1089,11 +1539,9 @@ Future<void> _pickProfileImage() async {
                     FontWeight.bold,
               ),
             ),
-
             const SizedBox(
               height: 8,
             ),
-
             Text(
               _cleanErrorMessage(
                 message,
@@ -1104,21 +1552,17 @@ Future<void> _pickProfileImage() async {
                 color: textMuted,
               ),
             ),
-
             const SizedBox(
               height: 20,
             ),
-
             ElevatedButton.icon(
               onPressed: () {
                 context
-                    .read<
-                        ProfileBloc>()
+                    .read<ProfileBloc>()
                     .add(
                       LoadProfile(),
                     );
               },
-
               style:
                   ElevatedButton.styleFrom(
                 backgroundColor:
@@ -1126,11 +1570,9 @@ Future<void> _pickProfileImage() async {
                 foregroundColor:
                     Colors.white,
               ),
-
               icon: const Icon(
                 Icons.refresh,
               ),
-
               label: const Text(
                 'Retry',
               ),
@@ -1154,7 +1596,6 @@ Future<void> _pickProfileImage() async {
         horizontal: 20,
         vertical: 12,
       ),
-
       child: Column(
         children: [
           _buildProfileHeader(),
@@ -1170,6 +1611,15 @@ Future<void> _pickProfileImage() async {
           ),
 
           _buildChangePasswordButton(
+            disabled:
+                isActionLoading,
+          ),
+
+          const SizedBox(
+            height: 12,
+          ),
+
+          _buildPinButton(
             disabled:
                 isActionLoading,
           ),
@@ -1221,38 +1671,33 @@ Future<void> _pickProfileImage() async {
         GestureDetector(
           onTap:
               _pickProfileImage,
-
           child: Stack(
             children: [
               Container(
                 width: 120,
                 height: 120,
-
                 decoration:
                     BoxDecoration(
                   shape:
                       BoxShape.circle,
-
                   color:
                       highlightGreen,
-
                   border:
                       Border.all(
                     color:
                         Colors.white,
                     width: 4,
                   ),
-
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha:
-                        .05,
+                      color:
+                          Colors.black.withValues(
+                        alpha: .05,
                       ),
                       blurRadius: 10,
                       spreadRadius: 2,
                     ),
                   ],
-
                   image:
                       _profileImage !=
                               null
@@ -1266,7 +1711,6 @@ Future<void> _pickProfileImage() async {
                             )
                           : null,
                 ),
-
                 child:
                     _profileImage ==
                             null
@@ -1275,7 +1719,6 @@ Future<void> _pickProfileImage() async {
                               _getInitials(
                                 fullName,
                               ),
-
                               style:
                                   const TextStyle(
                                 color:
@@ -1289,17 +1732,14 @@ Future<void> _pickProfileImage() async {
                           )
                         : null,
               ),
-
               Positioned(
                 bottom: 2,
                 right: 2,
-
                 child: Container(
                   padding:
                       const EdgeInsets.all(
                     7,
                   ),
-
                   decoration:
                       const BoxDecoration(
                     color:
@@ -1307,10 +1747,10 @@ Future<void> _pickProfileImage() async {
                     shape:
                         BoxShape.circle,
                   ),
-
                   child:
                       const Icon(
-                    Icons.camera_alt_outlined,
+                    Icons
+                        .camera_alt_outlined,
                     color:
                         Colors.white,
                     size: 18,
@@ -1320,16 +1760,13 @@ Future<void> _pickProfileImage() async {
             ],
           ),
         ),
-
         const SizedBox(
           height: 12,
         ),
-
         Text(
           fullName.isEmpty
               ? 'My Profile'
               : fullName,
-
           style:
               const TextStyle(
             fontSize: 20,
@@ -1372,44 +1809,38 @@ Future<void> _pickProfileImage() async {
     return Container(
       padding:
           const EdgeInsets.all(20),
-
       decoration:
           BoxDecoration(
         color: Colors.white,
-
         borderRadius:
             BorderRadius.circular(
           20,
         ),
-
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:.02),
+            color:
+                Colors.black.withValues(
+              alpha: .02,
+            ),
             blurRadius: 10,
             offset:
                 const Offset(0, 4),
           ),
         ],
       ),
-
       child: Form(
         key: _demographicsKey,
-
         child: Column(
           crossAxisAlignment:
-              CrossAxisAlignment
-                  .start,
-
+              CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment:
                   MainAxisAlignment
                       .spaceBetween,
-
               children: [
                 const Text(
                   'Personal Information',
-
                   style:
                       TextStyle(
                     fontSize: 18,
@@ -1418,14 +1849,11 @@ Future<void> _pickProfileImage() async {
                     color: textDark,
                   ),
                 ),
-
                 IconButton(
                   constraints:
                       const BoxConstraints(),
-
                   padding:
                       EdgeInsets.zero,
-
                   icon: Icon(
                     _isEditing
                         ? Icons.close
@@ -1434,7 +1862,6 @@ Future<void> _pickProfileImage() async {
                         primaryGreen,
                     size: 20,
                   ),
-
                   onPressed: () {
                     setState(() {
                       _isEditing =
@@ -1444,11 +1871,9 @@ Future<void> _pickProfileImage() async {
                 ),
               ],
             ),
-
             const SizedBox(
               height: 16,
             ),
-
             if (_isEditing)
               _buildEditForm()
             else
@@ -1471,21 +1896,17 @@ Future<void> _pickProfileImage() async {
           controller:
               _firstNameController,
         ),
-
         const SizedBox(
           height: 15,
         ),
-
         _buildTextField(
           label: 'Last Name',
           controller:
               _lastNameController,
         ),
-
         const SizedBox(
           height: 15,
         ),
-
         _buildTextField(
           label: 'Email Address',
           controller:
@@ -1495,11 +1916,9 @@ Future<void> _pickProfileImage() async {
           enabled: false,
           requiredField: false,
         ),
-
         const SizedBox(
           height: 15,
         ),
-
         _buildTextField(
           label: 'Phone Number',
           controller:
@@ -1508,25 +1927,19 @@ Future<void> _pickProfileImage() async {
               TextInputType.phone,
           requiredField: false,
         ),
-
         const SizedBox(
           height: 15,
         ),
-
         TextField(
           controller:
               _dobController,
-
           readOnly: true,
-
           onTap:
               _selectDate,
-
           decoration:
               InputDecoration(
             labelText:
                 'Date of Birth',
-
             suffixIcon:
                 const Icon(
               Icons
@@ -1534,7 +1947,6 @@ Future<void> _pickProfileImage() async {
               color:
                   primaryGreen,
             ),
-
             border:
                 OutlineInputBorder(
               borderRadius:
@@ -1542,28 +1954,24 @@ Future<void> _pickProfileImage() async {
                 12,
               ),
             ),
-
             enabledBorder:
                 OutlineInputBorder(
               borderRadius:
                   BorderRadius.circular(
                 12,
               ),
-
               borderSide:
                   const BorderSide(
                 color:
                     borderColor,
               ),
             ),
-
             focusedBorder:
                 OutlineInputBorder(
               borderRadius:
                   BorderRadius.circular(
                 12,
               ),
-
               borderSide:
                   const BorderSide(
                 color:
@@ -1573,25 +1981,17 @@ Future<void> _pickProfileImage() async {
             ),
           ),
         ),
-
         const SizedBox(
           height: 15,
         ),
-
-        // ======================================================
-        // BIOLOGICAL SEX
-        // ======================================================
-
         DropdownButtonFormField<
             String>(
           initialValue:
               _validGenderValue(),
-
           decoration:
               InputDecoration(
             labelText:
                 'Biological Sex',
-
             border:
                 OutlineInputBorder(
               borderRadius:
@@ -1599,28 +1999,24 @@ Future<void> _pickProfileImage() async {
                 12,
               ),
             ),
-
             enabledBorder:
                 OutlineInputBorder(
               borderRadius:
                   BorderRadius.circular(
                 12,
               ),
-
               borderSide:
                   const BorderSide(
                 color:
                     borderColor,
               ),
             ),
-
             focusedBorder:
                 OutlineInputBorder(
               borderRadius:
                   BorderRadius.circular(
                 12,
               ),
-
               borderSide:
                   const BorderSide(
                 color:
@@ -1629,7 +2025,6 @@ Future<void> _pickProfileImage() async {
               ),
             ),
           ),
-
           items: const [
             DropdownMenuItem(
               value: 'Male',
@@ -1647,7 +2042,6 @@ Future<void> _pickProfileImage() async {
                   Text('Other'),
             ),
           ],
-
           onChanged:
               (value) {
             setState(() {
@@ -1656,25 +2050,17 @@ Future<void> _pickProfileImage() async {
             });
           },
         ),
-
         const SizedBox(
           height: 15,
         ),
-
-        // ======================================================
-        // BLOOD TYPE
-        // ======================================================
-
         DropdownButtonFormField<
             String>(
           initialValue:
               _validBloodTypeValue(),
-
           decoration:
               InputDecoration(
             labelText:
                 'Blood Type',
-
             border:
                 OutlineInputBorder(
               borderRadius:
@@ -1682,28 +2068,24 @@ Future<void> _pickProfileImage() async {
                 12,
               ),
             ),
-
             enabledBorder:
                 OutlineInputBorder(
               borderRadius:
                   BorderRadius.circular(
                 12,
               ),
-
               borderSide:
                   const BorderSide(
                 color:
                     borderColor,
               ),
             ),
-
             focusedBorder:
                 OutlineInputBorder(
               borderRadius:
                   BorderRadius.circular(
                 12,
               ),
-
               borderSide:
                   const BorderSide(
                 color:
@@ -1712,42 +2094,48 @@ Future<void> _pickProfileImage() async {
               ),
             ),
           ),
-
           items: const [
             DropdownMenuItem(
               value: 'A+',
-              child: Text('A+'),
+              child:
+                  Text('A+'),
             ),
             DropdownMenuItem(
               value: 'A-',
-              child: Text('A-'),
+              child:
+                  Text('A-'),
             ),
             DropdownMenuItem(
               value: 'B+',
-              child: Text('B+'),
+              child:
+                  Text('B+'),
             ),
             DropdownMenuItem(
               value: 'B-',
-              child: Text('B-'),
+              child:
+                  Text('B-'),
             ),
             DropdownMenuItem(
               value: 'AB+',
-              child: Text('AB+'),
+              child:
+                  Text('AB+'),
             ),
             DropdownMenuItem(
               value: 'AB-',
-              child: Text('AB-'),
+              child:
+                  Text('AB-'),
             ),
             DropdownMenuItem(
               value: 'O+',
-              child: Text('O+'),
+              child:
+                  Text('O+'),
             ),
             DropdownMenuItem(
               value: 'O-',
-              child: Text('O-'),
+              child:
+                  Text('O-'),
             ),
           ],
-
           onChanged:
               (value) {
             setState(() {
@@ -1756,31 +2144,26 @@ Future<void> _pickProfileImage() async {
             });
           },
         ),
-
         const SizedBox(
           height: 22,
         ),
-
-        // ======================================================
-        // EMERGENCY CONTACT
-        // ======================================================
-
         const Align(
-  alignment: Alignment.centerLeft,
-  child: Text(
-    'Emergency Contact',
-    style: TextStyle(
-      fontSize: 17,
-      fontWeight: FontWeight.bold,
-      color: textDark,
-    ),
-  ),
-),
-
+          alignment:
+              Alignment.centerLeft,
+          child: Text(
+            'Emergency Contact',
+            style:
+                TextStyle(
+              fontSize: 17,
+              fontWeight:
+                  FontWeight.bold,
+              color: textDark,
+            ),
+          ),
+        ),
         const SizedBox(
           height: 12,
         ),
-
         _buildTextField(
           label:
               'Emergency Contact Name',
@@ -1788,11 +2171,9 @@ Future<void> _pickProfileImage() async {
               _emergencyContactNameController,
           requiredField: false,
         ),
-
         const SizedBox(
           height: 15,
         ),
-
         _buildTextField(
           label:
               'Emergency Contact Phone',
@@ -1802,15 +2183,9 @@ Future<void> _pickProfileImage() async {
               TextInputType.phone,
           requiredField: false,
         ),
-
         const SizedBox(
           height: 20,
         ),
-
-        // ======================================================
-        // SAVE
-        // ======================================================
-
         BlocBuilder<
             ProfileBloc,
             ProfileState>(
@@ -1826,14 +2201,12 @@ Future<void> _pickProfileImage() async {
               width:
                   double.infinity,
               height: 50,
-
               child:
                   ElevatedButton(
                 onPressed:
                     loading
                         ? null
                         : _saveProfile,
-
                 style:
                     ElevatedButton.styleFrom(
                   backgroundColor:
@@ -1841,7 +2214,6 @@ Future<void> _pickProfileImage() async {
                   foregroundColor:
                       Colors.white,
                   elevation: 0,
-
                   shape:
                       RoundedRectangleBorder(
                     borderRadius:
@@ -1850,7 +2222,6 @@ Future<void> _pickProfileImage() async {
                     ),
                   ),
                 ),
-
                 child: loading
                     ? const SizedBox(
                         width: 20,
@@ -1859,7 +2230,8 @@ Future<void> _pickProfileImage() async {
                             CircularProgressIndicator(
                           color:
                               Colors.white,
-                          strokeWidth: 2,
+                          strokeWidth:
+                              2,
                         ),
                       )
                     : const Text(
@@ -1937,45 +2309,35 @@ Future<void> _pickProfileImage() async {
               ? 'Not provided'
               : _emailController.text,
         ),
-
         _buildDivider(),
-
         _buildInfoRow(
           'Phone Number',
           _phoneController.text.isEmpty
               ? 'Not provided'
               : _phoneController.text,
         ),
-
         _buildDivider(),
-
         _buildInfoRow(
           'Date of Birth',
           _dobController.text.isEmpty
               ? 'Not provided'
               : _dobController.text,
         ),
-
         _buildDivider(),
-
         _buildInfoRow(
           'Biological Sex',
           _genderValue.isEmpty
               ? 'Not provided'
               : _genderValue,
         ),
-
         _buildDivider(),
-
         _buildInfoRow(
           'Blood Type',
           _bloodTypeValue.isEmpty
               ? 'Not provided'
               : _bloodTypeValue,
         ),
-
         _buildDivider(),
-
         _buildInfoRow(
           'Emergency Contact',
           _emergencyContactNameController
@@ -1985,14 +2347,12 @@ Future<void> _pickProfileImage() async {
               : _emergencyContactNameController
                   .text,
         ),
-
         if (_emergencyContactPhoneController
             .text
             .isNotEmpty) ...[
           const SizedBox(
             height: 8,
           ),
-
           _buildInfoRow(
             'Emergency Phone',
             _emergencyContactPhoneController
@@ -2017,16 +2377,12 @@ Future<void> _pickProfileImage() async {
   }) {
     return TextFormField(
       controller: controller,
-
       enabled: enabled,
-
       keyboardType:
           keyboardType,
-
       decoration:
           InputDecoration(
         labelText: label,
-
         border:
             OutlineInputBorder(
           borderRadius:
@@ -2034,27 +2390,23 @@ Future<void> _pickProfileImage() async {
             12,
           ),
         ),
-
         enabledBorder:
             OutlineInputBorder(
           borderRadius:
               BorderRadius.circular(
             12,
           ),
-
           borderSide:
               const BorderSide(
             color: borderColor,
           ),
         ),
-
         focusedBorder:
             OutlineInputBorder(
           borderRadius:
               BorderRadius.circular(
             12,
           ),
-
           borderSide:
               const BorderSide(
             color:
@@ -2063,15 +2415,13 @@ Future<void> _pickProfileImage() async {
           ),
         ),
       ),
-
       validator:
           (value) {
         if (!requiredField) {
           return null;
         }
 
-        if (value ==
-                null ||
+        if (value == null ||
             value.trim().isEmpty) {
           return '$label cannot be empty';
         }
@@ -2092,17 +2442,15 @@ Future<void> _pickProfileImage() async {
     return Row(
       crossAxisAlignment:
           CrossAxisAlignment.start,
-
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment:
-                CrossAxisAlignment.start,
-
+                CrossAxisAlignment
+                    .start,
             children: [
               Text(
                 label,
-
                 style:
                     const TextStyle(
                   fontSize: 12,
@@ -2111,14 +2459,11 @@ Future<void> _pickProfileImage() async {
                       FontWeight.w500,
                 ),
               ),
-
               const SizedBox(
                 height: 5,
               ),
-
               Text(
                 value,
-
                 style:
                     const TextStyle(
                   fontSize: 15,
@@ -2144,7 +2489,6 @@ Future<void> _pickProfileImage() async {
           EdgeInsets.symmetric(
         vertical: 12,
       ),
-
       child: Divider(
         color: borderColor,
         height: 1,
@@ -2164,7 +2508,6 @@ Future<void> _pickProfileImage() async {
           disabled
               ? null
               : _showChangePasswordDialog,
-
       style:
           OutlinedButton.styleFrom(
         minimumSize:
@@ -2172,14 +2515,12 @@ Future<void> _pickProfileImage() async {
           double.infinity,
           48,
         ),
-
         side:
             const BorderSide(
           color:
               primaryGreen,
           width: 1.5,
         ),
-
         shape:
             RoundedRectangleBorder(
           borderRadius:
@@ -2188,12 +2529,10 @@ Future<void> _pickProfileImage() async {
           ),
         ),
       ),
-
       icon: const Icon(
         Icons.lock_outline,
         color: primaryGreen,
       ),
-
       label: const Text(
         'Change Password',
         style: TextStyle(
@@ -2207,6 +2546,117 @@ Future<void> _pickProfileImage() async {
   }
 
   // ============================================================
+  // ADD / CHANGE PIN BUTTON
+  // ============================================================
+
+  Widget _buildPinButton({
+    required bool disabled,
+  }) {
+    return Material(
+      color: Colors.white,
+      borderRadius:
+          BorderRadius.circular(14),
+      child: InkWell(
+        onTap:
+            disabled
+                ? null
+                : _showPinSheet,
+        borderRadius:
+            BorderRadius.circular(14),
+        child: Container(
+          width: double.infinity,
+          padding:
+              const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 14,
+          ),
+          decoration:
+              BoxDecoration(
+            borderRadius:
+                BorderRadius.circular(14),
+            border:
+                Border.all(
+              color: borderColor,
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration:
+                    BoxDecoration(
+                  color:
+                      highlightGreen
+                          .withValues(
+                    alpha: .20,
+                  ),
+                  borderRadius:
+                      BorderRadius.circular(
+                    12,
+                  ),
+                ),
+                child: const Icon(
+                  Icons
+                      .lock_outline_rounded,
+                  color:
+                      primaryGreen,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(
+                width: 14,
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment:
+                      CrossAxisAlignment
+                          .start,
+                  children: [
+                    Text(
+                      _hasPin
+                          ? 'Change PIN'
+                          : 'Add PIN',
+                      style:
+                          const TextStyle(
+                        fontSize: 15,
+                        fontWeight:
+                            FontWeight.w600,
+                        color:
+                            textDark,
+                      ),
+                    ),
+                    const SizedBox(
+                      height: 3,
+                    ),
+                    Text(
+                      _hasPin
+                          ? 'Update your 4-digit security PIN'
+                          : 'Set a 4-digit PIN for quick access',
+                      style:
+                          const TextStyle(
+                        fontSize: 12,
+                        color:
+                            textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                Icons
+                    .arrow_forward_ios_rounded,
+                size: 16,
+                color: textMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
   // NOTIFICATIONS
   // ============================================================
 
@@ -2214,39 +2664,35 @@ Future<void> _pickProfileImage() async {
     return Container(
       padding:
           const EdgeInsets.all(20),
-
       decoration:
           BoxDecoration(
         color: Colors.white,
-
         borderRadius:
             BorderRadius.circular(
           20,
         ),
-
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha:.02),
+            color:
+                Colors.black.withValues(
+              alpha: .02,
+            ),
             blurRadius: 10,
           ),
         ],
       ),
-
       child: Column(
         crossAxisAlignment:
             CrossAxisAlignment
                 .start,
-
         children: [
           const Row(
             mainAxisAlignment:
                 MainAxisAlignment
                     .spaceBetween,
-
             children: [
               Text(
                 'Notifications',
-
                 style:
                     TextStyle(
                   fontSize: 18,
@@ -2255,7 +2701,6 @@ Future<void> _pickProfileImage() async {
                   color: textDark,
                 ),
               ),
-
               Icon(
                 Icons
                     .notifications_none,
@@ -2263,11 +2708,9 @@ Future<void> _pickProfileImage() async {
               ),
             ],
           ),
-
           const SizedBox(
             height: 16,
           ),
-
           _buildNotificationItem(
             title:
                 'Appointment Reminders',
@@ -2275,7 +2718,6 @@ Future<void> _pickProfileImage() async {
                 'SMS and Email alerts',
             value:
                 _appointmentReminders,
-
             onChanged:
                 (value) {
               setState(() {
@@ -2289,9 +2731,7 @@ Future<void> _pickProfileImage() async {
               );
             },
           ),
-
           _buildDivider(),
-
           _buildNotificationItem(
             title:
                 'Test Results',
@@ -2299,7 +2739,6 @@ Future<void> _pickProfileImage() async {
                 'Secure message notifications',
             value:
                 _testResults,
-
             onChanged:
                 (value) {
               setState(() {
@@ -2313,9 +2752,7 @@ Future<void> _pickProfileImage() async {
               );
             },
           ),
-
           _buildDivider(),
-
           _buildNotificationItem(
             title:
                 'Health Tips & News',
@@ -2323,7 +2760,6 @@ Future<void> _pickProfileImage() async {
                 'Weekly newsletter',
             value:
                 _healthTips,
-
             onChanged:
                 (value) {
               setState(() {
@@ -2356,11 +2792,9 @@ Future<void> _pickProfileImage() async {
             crossAxisAlignment:
                 CrossAxisAlignment
                     .start,
-
             children: [
               Text(
                 title,
-
                 style:
                     const TextStyle(
                   fontSize: 15,
@@ -2369,14 +2803,11 @@ Future<void> _pickProfileImage() async {
                   color: textDark,
                 ),
               ),
-
               const SizedBox(
                 height: 2,
               ),
-
               Text(
                 subtitle,
-
                 style:
                     const TextStyle(
                   fontSize: 12,
@@ -2386,7 +2817,6 @@ Future<void> _pickProfileImage() async {
             ],
           ),
         ),
-
         Switch(
           value: value,
           onChanged:
@@ -2412,7 +2842,6 @@ Future<void> _pickProfileImage() async {
           disabled
               ? null
               : _handleLogout,
-
       style:
           OutlinedButton.styleFrom(
         minimumSize:
@@ -2420,13 +2849,11 @@ Future<void> _pickProfileImage() async {
           double.infinity,
           48,
         ),
-
         side:
             const BorderSide(
           color: errorRed,
           width: 1.5,
         ),
-
         shape:
             RoundedRectangleBorder(
           borderRadius:
@@ -2435,25 +2862,20 @@ Future<void> _pickProfileImage() async {
           ),
         ),
       ),
-
       child: const Row(
         mainAxisAlignment:
             MainAxisAlignment
                 .center,
-
         children: [
           Icon(
             Icons.logout,
             color: errorRed,
           ),
-
           SizedBox(
             width: 8,
           ),
-
           Text(
             'Sign Out',
-
             style:
                 TextStyle(
               color:
@@ -2480,23 +2902,226 @@ Future<void> _pickProfileImage() async {
           disabled
               ? null
               : _handleDeactivate,
-
       icon: const Icon(
         Icons
             .disabled_by_default_outlined,
         color: errorRed,
         size: 18,
       ),
-
       label: const Text(
         'Delete Account',
-
         style:
             TextStyle(
           color: errorRed,
           fontWeight:
               FontWeight.bold,
         ),
+      ),
+    );
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  final ProfileBloc profileBloc;
+
+  const _ChangePasswordDialog({
+    required this.profileBloc,
+  });
+
+  @override
+  State<_ChangePasswordDialog> createState() =>
+      _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState
+    extends State<_ChangePasswordDialog> {
+  static const Color primaryGreen = Color(0xFF136043);
+  static const Color textMuted = Color(0xFF68736D);
+
+  final formKey = GlobalKey<FormState>();
+
+  late final TextEditingController oldPasswordController;
+  late final TextEditingController newPasswordController;
+  late final TextEditingController confirmPasswordController;
+
+  bool obscureOld = true;
+  bool obscureNew = true;
+  bool obscureConfirm = true;
+
+  @override
+  void initState() {
+    super.initState();
+
+    oldPasswordController = TextEditingController();
+    newPasswordController = TextEditingController();
+    confirmPasswordController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    oldPasswordController.dispose();
+    newPasswordController.dispose();
+    confirmPasswordController.dispose();
+
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<ProfileBloc, ProfileState>(
+      bloc: widget.profileBloc,
+      listener: (context, state) {
+        if (state is PasswordChanged) {
+          Navigator.of(context).pop(true);
+        }
+      },
+      child: AlertDialog(
+        title: const Text(
+          'Change Password',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: oldPasswordController,
+                  obscureText: obscureOld,
+                  decoration: InputDecoration(
+                    labelText: 'Current Password',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          obscureOld = !obscureOld;
+                        });
+                      },
+                      icon: Icon(
+                        obscureOld
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Enter current password';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: newPasswordController,
+                  obscureText: obscureNew,
+                  decoration: InputDecoration(
+                    labelText: 'New Password',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          obscureNew = !obscureNew;
+                        });
+                      },
+                      icon: Icon(
+                        obscureNew
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.length < 8) {
+                      return 'Minimum 8 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: confirmPasswordController,
+                  obscureText: obscureConfirm,
+                  decoration: InputDecoration(
+                    labelText: 'Confirm New Password',
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      onPressed: () {
+                        setState(() {
+                          obscureConfirm = !obscureConfirm;
+                        });
+                      },
+                      icon: Icon(
+                        obscureConfirm
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value != newPasswordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(false);
+            },
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: textMuted,
+              ),
+            ),
+          ),
+          BlocBuilder<ProfileBloc, ProfileState>(
+            bloc: widget.profileBloc,
+            builder: (context, state) {
+              final loading = state is ProfileActionLoading;
+
+              return ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryGreen,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: loading
+                    ? null
+                    : () {
+                        if (!formKey.currentState!.validate()) {
+                          return;
+                        }
+
+                        widget.profileBloc.add(
+                          ChangePasswordRequested(
+                            oldPassword: oldPasswordController.text,
+                            newPassword: newPasswordController.text,
+                          ),
+                        );
+                      },
+                child: loading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text('Update'),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

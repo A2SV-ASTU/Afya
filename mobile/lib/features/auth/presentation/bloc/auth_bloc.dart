@@ -76,12 +76,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     ));
 
     result.fold(
-      (failure) =>
-          emit(AuthFailure(message: failure.message, code: failure.code)),
-      (user) => emit(
-        user.hasPin ? Authenticated(user: user) : CreatePinRequired(user: user),
-      ),
-    );
+  (failure) =>
+      emit(AuthFailure(message: failure.message, code: failure.code)),
+  (user) => emit(Authenticated(user: user)),
+);
   }
 
   Future<void> _onRegisterSubmitted(
