@@ -1,7 +1,9 @@
 import 'package:injectable/injectable.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
 
 import '../../../../core/constants/api_endpoints.dart';
+import '../../../../core/errors/exceptions.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/profile_model.dart';
 import 'profile_remote_data_source.dart';
@@ -62,13 +64,26 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     required String oldPassword,
     required String newPassword,
   }) async {
-    await apiClient.dio.patch(
-      ApiEndpoints.userPassword,
-      data: {
-        'old_password': oldPassword,
-        'new_password': newPassword,
-      },
-    );
+    try {
+      await apiClient.dio.put(
+        ApiEndpoints.userPassword,
+        data: {
+          'current_password': oldPassword,
+          'new_password': newPassword,
+        },
+      );
+    } on ServerException {
+      rethrow;
+    } on DioException catch (error) {
+      final data = error.response?.data;
+      final message = data is Map && data['error'] is Map
+          ? (data['error'] as Map)['message']?.toString()
+          : null;
+      throw ServerException(
+        message ?? error.message ?? 'Unable to change password.',
+        code: error.response?.statusCode?.toString(),
+      );
+    }
   }
 
   @override

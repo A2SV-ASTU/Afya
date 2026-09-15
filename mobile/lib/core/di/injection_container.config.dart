@@ -273,6 +273,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i787.AuthRepository>(() => _i153.AuthRepositoryImpl(
           remoteDataSource: gh<_i107.AuthRemoteDataSource>(),
           localDataSource: gh<_i852.AuthLocalDataSource>(),
+            chatLocalDataSource: gh<_i94.ChatLocalDataSource>(),
         ));
     gh.lazySingleton<_i113.ClinicalHistoryRemoteDataSource>(
         () => _i113.ClinicalHistoryRemoteDataSourceImpl(gh<_i557.ApiClient>()));

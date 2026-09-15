@@ -437,6 +437,7 @@ Future<void> _pickProfileImage() async {
   // ============================================================
 
   Future<void> _showChangePasswordDialog() async {
+    final profileBloc = context.read<ProfileBloc>();
     final formKey =
         GlobalKey<FormState>();
 
@@ -456,11 +457,13 @@ Future<void> _pickProfileImage() async {
     await showDialog(
       context: context,
       builder: (dialogContext) {
-        return StatefulBuilder(
-          builder: (
-            context,
-            setDialogState,
-          ) {
+        return BlocProvider.value(
+          value: profileBloc,
+          child: StatefulBuilder(
+            builder: (
+              context,
+              setDialogState,
+            ) {
             return AlertDialog(
               title: const Text(
                 'Change Password',
@@ -698,7 +701,8 @@ Future<void> _pickProfileImage() async {
                 ),
               ],
             );
-          },
+            },
+          ),
         );
       },
     );

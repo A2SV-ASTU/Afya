@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../../core/di/injection_container.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -8,7 +9,9 @@ import '../../../../core/widgets/afya_card.dart';
 import '../../../../core/widgets/afya_status_badge.dart';
 import '../../../clinical_history/domain/entities/encounter_detail_entity.dart';
 import '../../data/datasources/medication_local_data_source.dart';
+import '../../../clinical_history/data/models/encounter_detail_model.dart';
 import '../../domain/entities/local_dose_record_entity.dart';
+import '../../domain/usecases/start_medication_tracking_usecase.dart';
 import '../widgets/today_schedule_card.dart';
 import 'prescription_detail_screen.dart';
 
@@ -51,6 +54,49 @@ class _AllMedicationsScreenState extends State<AllMedicationsScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _addDemoMedication() async {
+    const prescriptionId = 'demo_medication_notification';
+    final localDataSource = sl<MedicationLocalDataSource>();
+    final existingDoses = await localDataSource.getDoseRecords(
+      prescriptionItemId: prescriptionId,
+    );
+    for (final dose in existingDoses) {
+      await localDataSource.deleteDoseRecord(dose.id);
+    }
+
+    final prescription = EncounterPrescriptionItemModel(
+      id: prescriptionId,
+      medicationName: 'Demo Vitamin D',
+      dose: '1 tablet',
+      route: 'oral',
+      frequency: 'Once daily (OD)',
+      duration: '1 day',
+      status: EncounterPrescriptionStatus.active,
+      instructions: 'Demo reminder for notification testing',
+      startedAt: DateTime.now(),
+    );
+
+    await localDataSource.cachePrescriptions([prescription]);
+    final result = await sl<StartMedicationTrackingUseCase>()(
+      prescription: prescription.toEntity(),
+    );
+
+    if (!mounted) return;
+    result.fold(
+      (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(failure.message)),
+      ),
+      (_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Demo reminder scheduled in about 20 seconds.'),
+          ),
+        );
+        _loadData();
+      },
+    );
   }
 
   void _openPrescriptionDetail(EncounterPrescriptionItemEntity rx) {
@@ -97,6 +143,17 @@ class _AllMedicationsScreenState extends State<AllMedicationsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (kDebugMode) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: _addDemoMedication,
+                          icon: const Icon(Icons.notifications_active_outlined),
+                          label: const Text('Add demo notification'),
+                        ),
+                      ),
+                      const SizedBox(height: AppDimensions.space24),
+                    ],
                     // Section 1: Today's Complete Schedule
                     const Text(
                       "Today's Schedule",
