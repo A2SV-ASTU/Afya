@@ -8,17 +8,21 @@ import '../../domain/entities/patient_user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../datasources/auth_local_data_source.dart';
 import '../datasources/auth_remote_data_source.dart';
+import '../../../chat/data/datasources/chat_local_data_source.dart';
 
 @LazySingleton(as: AuthRepository)
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
   final AuthLocalDataSource _localDataSource;
+  final ChatLocalDataSource _chatLocalDataSource;
 
   AuthRepositoryImpl({
     required AuthRemoteDataSource remoteDataSource,
     required AuthLocalDataSource localDataSource,
+    required ChatLocalDataSource chatLocalDataSource,
   })  : _remoteDataSource = remoteDataSource,
-        _localDataSource = localDataSource;
+      _localDataSource = localDataSource,
+      _chatLocalDataSource = chatLocalDataSource;
 
   @override
   Future<Either<Failure, PatientUserEntity>> register({
@@ -48,6 +52,7 @@ class AuthRepositoryImpl implements AuthRepository {
         emergencyContactPhone: emergencyContactPhone,
         role: role,
       );
+      await _chatLocalDataSource.clearHistory();
       return Right(userModel);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message, code: e.code));

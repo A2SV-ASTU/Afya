@@ -4,6 +4,7 @@ import 'package:afyamind_mobile/features/auth/data/datasources/auth_local_data_s
 import 'package:afyamind_mobile/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:afyamind_mobile/features/auth/data/models/patient_user_model.dart';
 import 'package:afyamind_mobile/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:afyamind_mobile/features/chat/data/datasources/chat_local_data_source.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -11,17 +12,24 @@ class MockAuthRemoteDataSource extends Mock implements AuthRemoteDataSource {}
 
 class MockAuthLocalDataSource extends Mock implements AuthLocalDataSource {}
 
+class MockChatLocalDataSource extends Mock implements ChatLocalDataSource {}
+
 void main() {
   late AuthRepositoryImpl repository;
   late MockAuthRemoteDataSource mockRemoteDataSource;
   late MockAuthLocalDataSource mockLocalDataSource;
+  late MockChatLocalDataSource mockChatLocalDataSource;
 
   setUp(() {
     mockRemoteDataSource = MockAuthRemoteDataSource();
     mockLocalDataSource = MockAuthLocalDataSource();
+    mockChatLocalDataSource = MockChatLocalDataSource();
+    when(() => mockChatLocalDataSource.clearHistory())
+        .thenAnswer((_) async {});
     repository = AuthRepositoryImpl(
       remoteDataSource: mockRemoteDataSource,
       localDataSource: mockLocalDataSource,
+      chatLocalDataSource: mockChatLocalDataSource,
     );
   });
 
@@ -55,6 +63,7 @@ void main() {
       );
 
       expect(result.isRight(), isTrue);
+      verify(() => mockChatLocalDataSource.clearHistory()).called(1);
       result.fold(
         (l) => fail('Should have returned Right'),
         (user) {
