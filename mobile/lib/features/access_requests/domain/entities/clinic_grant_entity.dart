@@ -5,14 +5,16 @@ class ClinicGrantEntity extends Equatable {
   final String clinicId;
   final String clinicName;
   final DateTime grantedAt;
+  final String status;
 
   const ClinicGrantEntity({
     required this.grantId,
     required this.clinicId,
     required this.clinicName,
     required this.grantedAt,
+    this.status = 'active',
   });
 
   @override
-  List<Object?> get props => [grantId, clinicId, clinicName, grantedAt];
+  List<Object?> get props => [grantId, clinicId, clinicName, grantedAt, status];
 }

@@ -329,3 +329,52 @@ func TestUserService_DeleteAccount(t *testing.T) {
 		t.Fatalf("expected forbidden_role error when deleting super_admin account, got: %v", appErr)
 	}
 }
+
+func TestToUserResponse_ClinicDetails(t *testing.T) {
+	clinicID := uuid.New()
+	clinicName := "Afya Central Clinic"
+	clinicStatus := "active"
+	specialization := "Cardiology"
+	licenseNumber := "LIC-12345"
+	doctorStatus := DoctorStatusActive
+
+	doctor := &User{
+		ID:             uuid.New(),
+		FirstName:      "Jane",
+		LastName:       "Doe",
+		Role:           RoleDoctor,
+		Email:          "dr.jane@example.com",
+		Phone:          "+254712345678",
+		ClinicID:       &clinicID,
+		ClinicName:     &clinicName,
+		ClinicStatus:   &clinicStatus,
+		Specialization: &specialization,
+		LicenseNumber:  &licenseNumber,
+		DoctorStatus:   &doctorStatus,
+	}
+
+	resp := ToUserResponse(doctor)
+	if resp == nil {
+		t.Fatal("expected non-nil UserResponse")
+	}
+
+	if resp.ClinicID == nil || *resp.ClinicID != clinicID {
+		t.Errorf("expected clinic_id %v, got %v", clinicID, resp.ClinicID)
+	}
+	if resp.ClinicName == nil || *resp.ClinicName != clinicName {
+		t.Errorf("expected clinic_name %q, got %v", clinicName, resp.ClinicName)
+	}
+	if resp.ClinicStatus == nil || *resp.ClinicStatus != clinicStatus {
+		t.Errorf("expected clinic_status %q, got %v", clinicStatus, resp.ClinicStatus)
+	}
+	if resp.Specialization == nil || *resp.Specialization != specialization {
+		t.Errorf("expected specialization %q, got %v", specialization, resp.Specialization)
+	}
+	if resp.LicenseNumber == nil || *resp.LicenseNumber != licenseNumber {
+		t.Errorf("expected license_number %q, got %v", licenseNumber, resp.LicenseNumber)
+	}
+	if resp.DoctorStatus == nil || *resp.DoctorStatus != doctorStatus {
+		t.Errorf("expected doctor_status %q, got %v", doctorStatus, resp.DoctorStatus)
+	}
+}
+

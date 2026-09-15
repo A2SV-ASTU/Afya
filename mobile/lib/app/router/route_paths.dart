@@ -4,6 +4,8 @@ class RoutePaths {
   static const String splash = '/';
   static const String signIn = '/sign-in';
   static const String signUp = '/sign-up';
+  static const String createPin = '/create-pin';
+  static const String verifyEmail = '/verify-email';
 
   // Shell Tabs
   static const String dashboard = '/dashboard';
@@ -18,7 +20,8 @@ class RoutePaths {
 
   // Access Requests
   static const String activeGrants = '/profile/active-grants';
-  static const String pendingAccessRequests = '/profile/pending-access-requests';
+  static const String pendingAccessRequests =
+      '/profile/pending-access-requests';
 
   // Clinical History & Appointments Routes
   static const String encounterDetail = '/history/encounter/:id';

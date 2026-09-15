@@ -8,17 +8,23 @@ import 'chat_state.dart';
 @injectable
 class ChatCubit extends Cubit<ChatState> {
   final ChatRepository repository;
+  String? _lastMessage;
 
   ChatCubit({required this.repository}) : super(const ChatInitial());
 
   Future<void> loadHistory() async {
-    final messages = await repository.getChatHistory();
-    emit(ChatLoaded(messages: messages));
+    try {
+      final messages = await repository.getChatHistory();
+      emit(ChatLoaded(messages: messages));
+    } catch (_) {
+      emit(const ChatLoaded(messages: []));
+    }
   }
 
   Future<void> sendMessage(String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    _lastMessage = trimmed;
 
     final currentState = state;
     List<ChatMessage> currentMessages = [];
@@ -44,13 +50,46 @@ class ChatCubit extends Cubit<ChatState> {
       emit(ChatLoaded(
         messages: updatedMessages,
         isTyping: false,
-        errorMessage: "Failed to receive AI response.",
+        errorMessage: _errorMessage(e),
       ));
     }
   }
 
+  Future<void> retryLastMessage() async {
+    final message = _lastMessage;
+    if (message == null ||
+        state is ChatLoaded && (state as ChatLoaded).isTyping) {
+      return;
+    }
+    if (state is ChatLoaded) {
+      final current = (state as ChatLoaded).messages;
+      if (current.isNotEmpty &&
+          current.last.isUser &&
+          current.last.content == message) {
+        emit(ChatLoaded(messages: current.sublist(0, current.length - 1)));
+      }
+    }
+    await sendMessage(message);
+  }
+
   Future<void> clearHistory() async {
-    await repository.clearHistory();
-    emit(const ChatLoaded(messages: []));
+    try {
+      await repository.clearHistory();
+      _lastMessage = null;
+      emit(const ChatLoaded(messages: []));
+    } catch (e) {
+      final current = state;
+      emit(ChatLoaded(
+        messages: current is ChatLoaded ? current.messages : const [],
+        errorMessage: _errorMessage(e),
+      ));
+    }
+  }
+
+  String _errorMessage(Object error) {
+    final message = error.toString().replaceFirst('Exception: ', '').trim();
+    return message.isEmpty
+        ? 'Unable to reach Afya AI. Please try again.'
+        : message;
   }
 }

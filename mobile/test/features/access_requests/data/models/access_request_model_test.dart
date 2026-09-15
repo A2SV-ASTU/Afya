@@ -10,6 +10,7 @@ void main() {
     'doctor_name': 'Dr. Smith',
     'reason': 'Checkup',
     'status': 'pending',
+    'is_urgent': false,
     'expires_at': '2026-02-01T00:00:00.000',
     'created_at': '2026-01-01T00:00:00.000',
   };
@@ -50,6 +51,7 @@ void main() {
         'doctor_name': 'Dr. Jones',
         'reason': 'Emergency',
         'status': 'approved',
+        'is_urgent': true,
         'expires_at': '2026-06-01T12:30:00.000',
         'created_at': '2026-05-01T08:00:00.000',
       };
@@ -62,6 +64,7 @@ void main() {
       expect(result.doctorName, 'Dr. Jones');
       expect(result.reason, 'Emergency');
       expect(result.status, 'approved');
+      expect(result.isUrgent, true);
       expect(result.expiresAt, DateTime(2026, 6, 1, 12, 30));
       expect(result.createdAt, DateTime(2026, 5, 1, 8, 0));
     });

@@ -73,9 +73,11 @@ class MedicationCourseProgress {
       end = prescription.startedAt.add(Duration(days: days > 0 ? days - 1 : 0));
     }
 
-    final remaining = pending;
-    final isComplete = total > 0 && remaining == 0 && hasRecords;
-    final isTrackingActive = prescription.isTrackingActive || hasRecords;
+    // Remaining doses needed to satisfy the prescribed course
+    final remaining = (total - taken).clamp(0, total);
+    // Course is only complete when all required doses have actually been taken
+    final isComplete = total > 0 && taken >= total && hasRecords;
+    final isTrackingActive = prescription.isTrackingActive && !isComplete;
     final ratio = total > 0 ? (taken / total).clamp(0.0, 1.0) : 0.0;
 
     // Determine unit name: capsule, tablet, or dose

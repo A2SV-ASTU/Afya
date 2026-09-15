@@ -40,6 +40,7 @@ type User struct {
 
 	// Doctor / Clinic Admin specific fields (nullable)
 	ClinicID       *uuid.UUID    `json:"clinic_id,omitempty"`
+	ClinicName     *string       `json:"clinic_name,omitempty"`
 	ClinicStatus   *string       `json:"clinic_status,omitempty"`
 	Specialization *string       `json:"specialization,omitempty"`
 	LicenseNumber  *string       `json:"license_number,omitempty"`

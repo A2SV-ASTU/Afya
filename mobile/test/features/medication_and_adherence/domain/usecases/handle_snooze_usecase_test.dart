@@ -113,7 +113,7 @@ void main() {
     });
 
     test(
-        'second snooze (count 1) increments count to 2, sets snoozedUntil to T+20, schedules reminder with includeSnooze=false',
+        'second snooze (count 1) increments count to 2, sets snoozedUntil to current + 20m (T+30), schedules reminder with includeSnooze=false',
         () async {
       final initialModel = createDoseModel(
         snoozeCount: 1,
@@ -140,7 +140,7 @@ void main() {
         expect(updated.snoozeCount, 2);
         expect(
           updated.snoozedUntil,
-          testScheduledTime.add(const Duration(minutes: 20)),
+          testScheduledTime.add(const Duration(minutes: 30)),
         );
         expect(updated.status, DoseStatus.pending);
       });
@@ -148,7 +148,7 @@ void main() {
       verify(() => mockAlarmScheduler.scheduleSnoozeReminder(
             reminderId: any(named: 'reminderId'),
             medicationName: 'Amoxicillin',
-            snoozeTime: testScheduledTime.add(const Duration(minutes: 20)),
+            snoozeTime: testScheduledTime.add(const Duration(minutes: 30)),
             doseId: testDoseId,
             prescriptionItemId: 'rx_item_1',
             includeSnooze: false,
@@ -158,7 +158,7 @@ void main() {
     test('third snooze rejected when snoozeCount is already >= 2', () async {
       final initialModel = createDoseModel(
         snoozeCount: 2,
-        snoozedUntil: testScheduledTime.add(const Duration(minutes: 20)),
+        snoozedUntil: testScheduledTime.add(const Duration(minutes: 30)),
       );
 
       when(() => mockLocalDataSource.getDoseRecordById(testDoseId))

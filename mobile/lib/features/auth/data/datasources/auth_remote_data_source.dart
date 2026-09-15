@@ -26,6 +26,11 @@ abstract class AuthRemoteDataSource {
     required String password,
   });
 
+  Future<PatientUserModel> verifyEmail({
+    required String email,
+    required String otp,
+  });
+
   Future<void> logout();
 
   Future<PatientUserModel?> refreshSession();
@@ -63,9 +68,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'last_name': lastName,
           'role': role,
           'phone': phone,
-          if (dateOfBirth != null && dateOfBirth.isNotEmpty) 'date_of_birth': dateOfBirth,
+          if (dateOfBirth != null && dateOfBirth.isNotEmpty)
+            'date_of_birth': dateOfBirth,
           if (sex != null && sex.isNotEmpty) 'sex': sex,
-          if (bloodType != null && bloodType.isNotEmpty) 'blood_type': bloodType,
+          if (bloodType != null && bloodType.isNotEmpty)
+            'blood_type': bloodType,
           if (emergencyContactName != null && emergencyContactName.isNotEmpty)
             'emergency_contact_name': emergencyContactName,
           if (emergencyContactPhone != null && emergencyContactPhone.isNotEmpty)
@@ -85,6 +92,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         );
       }
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionError ||
+          e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.sendTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw const ServerException(
+          'Unable to connect to the server. Check that the backend is running and your phone is on the same network.',
+        );
+      }
       final errorMessage = e.response?.data?['error']?['message'] ??
           e.response?.data?['message'] ??
           e.message ??
@@ -130,6 +145,33 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         errorMessage,
         code: e.response?.statusCode?.toString(),
       );
+    }
+  }
+
+  @override
+  Future<PatientUserModel> verifyEmail({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final response = await _dio.post(
+        ApiEndpoints.verifyEmail,
+        data: {'email': email, 'otp': otp},
+      );
+
+      if (response.statusCode == 200) {
+        return PatientUserModel.fromJson(response.data as Map<String, dynamic>);
+      }
+
+      throw ServerException('Email verification failed',
+          code: response.statusCode?.toString());
+    } on DioException catch (e) {
+      final errorMessage = e.response?.data?['error']?['message'] ??
+          e.response?.data?['message'] ??
+          e.message ??
+          'Email verification failed';
+      throw ServerException(errorMessage,
+          code: e.response?.statusCode?.toString());
     }
   }
 

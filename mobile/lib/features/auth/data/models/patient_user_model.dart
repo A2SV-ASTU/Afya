@@ -41,6 +41,35 @@ class PatientUserModel extends PatientUserEntity {
     );
   }
 
+  @override
+  PatientUserModel copyWith({
+    String? id,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? email,
+    String? dateOfBirth,
+    String? sex,
+    String? bloodType,
+    String? emergencyContactName,
+    String? emergencyContactPhone,
+    bool? hasPin,
+  }) {
+    return PatientUserModel(
+      id: id ?? this.id,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      dateOfBirth: dateOfBirth ?? this.dateOfBirth,
+      sex: sex ?? this.sex,
+      bloodType: bloodType ?? this.bloodType,
+      emergencyContactName: emergencyContactName ?? this.emergencyContactName,
+      emergencyContactPhone: emergencyContactPhone ?? this.emergencyContactPhone,
+      hasPin: hasPin ?? this.hasPin,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

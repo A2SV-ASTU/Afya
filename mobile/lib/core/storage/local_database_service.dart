@@ -9,6 +9,7 @@ class LocalDatabaseService {
     await Hive.initFlutter();
 
     await Future.wait([
+      Hive.openBox(AppKeys.authBox),
       Hive.openBox(AppKeys.vitalsOutboxBox),
       Hive.openBox(AppKeys.doctorVitalsCacheBox),
       Hive.openBox(AppKeys.medicationScheduleBox),

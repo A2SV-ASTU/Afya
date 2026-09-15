@@ -223,7 +223,7 @@ All error responses adhere to a consistent error schema:
   }
 }
 ```
-- **200 OK** (Clinic Admin / Doctor Example):
+- **200 OK** (Clinic Admin Example):
 ```json
 {
   "data": {
@@ -235,6 +235,7 @@ All error responses adhere to a consistent error schema:
       "phone": "+254700112233",
       "email": "admin@afyaclinic.com",
       "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "clinic_name": "Afya Central Clinic",
       "clinic_status": "active",
       "created_at": "2026-08-27T12:00:00Z",
       "updated_at": "2026-08-27T12:00:00Z"
@@ -242,19 +243,23 @@ All error responses adhere to a consistent error schema:
   }
 }
 ```
-- **200 OK** (Clinic Admin / Doctor Example):
+- **200 OK** (Doctor Example):
 ```json
 {
   "data": {
     "user": {
-      "id": "b1eebc99-9c0b-4ef8-bb6d-6bb9bd380a22",
-      "first_name": "Dr. Sarah",
-      "last_name": "Smith",
-      "role": "clinic_admin",
-      "phone": "+254700112233",
-      "email": "admin@afyaclinic.com",
+      "id": "d2eebc99-9c0b-4ef8-bb6d-6bb9bd380a33",
+      "first_name": "Dr. Jane",
+      "last_name": "Doe",
+      "role": "doctor",
+      "phone": "+254712345678",
+      "email": "dr.jane@example.com",
       "clinic_id": "c011e549-3e0f-4a2b-b876-ddc10cebc10f",
+      "clinic_name": "Afya Central Clinic",
       "clinic_status": "active",
+      "specialization": "Cardiology",
+      "license_number": "LIC-12345",
+      "doctor_status": "active",
       "created_at": "2026-08-27T12:00:00Z",
       "updated_at": "2026-08-27T12:00:00Z"
     }
@@ -678,7 +683,7 @@ All error responses adhere to a consistent error schema:
 ### 19. Create Access Request
 - **Endpoint**: `POST /api/v1/clinics/{clinicId}/access-requests`
 - **Auth Required**: Yes (`clinic_admin` or `doctor`)
-- **Description**: Creates a pending access request to a patient's medical records and sends an email to the patient containing Magic Links to Approve or Deny. (Expires in 15 minutes).
+- **Description**: Creates a pending access request to a patient's medical records and sends an email to the patient containing Magic Links to Approve or Deny. (Expires in 15 minutes). **If the clinic already has an active (approved, non-revoked) grant for this patient, the request is rejected with a 409 Conflict.**
 
 #### Request Body
 ```json
@@ -745,13 +750,15 @@ All error responses adhere to a consistent error schema:
   ]
 }
 ```
+- **404 Not Found** (`not_found`): Patient not found.
+- **409 Conflict** (`conflict`): Clinic already has active access to this patient. Revoke existing grant first.
 
 ---
 
 ### 21. Revoke Access Request Grant
 - **Endpoint**: `POST /api/v1/clinics/{clinicId}/access-requests/{id}/revoke`
-- **Auth Required**: Yes (`clinic_admin` role)
-- **Description**: Revokes an active approved access grant for the clinic.
+- **Auth Required**: Yes (`clinic_admin` or `doctor`)
+- **Description**: Revokes an active approved access grant for the clinic. The caller (clinic admin or doctor) must belong to the same clinic that owns the access request.
 
 #### Responses
 - **200 OK**:
@@ -1447,4 +1454,3 @@ Magic links are browser-rendered HTML pages used for email-driven workflows with
 - **401 Unauthorized**: Missing or invalid token.
 - **403 Forbidden**: Caller is not a clinic admin for this clinic.
 - **404 Not Found**: Doctor not found in this clinic.
-

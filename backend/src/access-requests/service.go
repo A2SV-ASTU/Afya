@@ -97,6 +97,13 @@ func (s *service) CreateRequest(ctx context.Context, clinicID, doctorID uuid.UUI
 		return nil, errors.New("patient_not_found")
 	}
 
+	// Check if clinic already has an active grant for this patient
+	_, grantErr := s.repo.FindActiveGrant(ctx, clinicID, req.PatientID)
+	if grantErr == nil {
+		// An active grant exists — block the duplicate request
+		return nil, errors.New("active_grant_exists")
+	}
+
 	// 3. Generate magic link token
 	rawToken, hashToken, err := generateAccessToken()
 	if err != nil {

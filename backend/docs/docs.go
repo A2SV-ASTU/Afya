@@ -3747,6 +3747,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440001"
                 },
+                "clinic_name": {
+                    "type": "string",
+                    "example": "Afya Central Clinic"
+                },
                 "clinic_status": {
                     "type": "string",
                     "example": "active"
@@ -5335,6 +5339,10 @@ const docTemplate = `{
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440001"
                 },
+                "clinic_name": {
+                    "type": "string",
+                    "example": "Afya Central Clinic"
+                },
                 "clinic_status": {
                     "type": "string",
                     "example": "active"
@@ -5568,8 +5576,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "bloodSugar": {
-                    "type": "number",
-                    "format": "float64"
+                    "type": "number"
                 },
                 "clientID": {
                     "description": "nullable client-generated dedup token",
@@ -5601,19 +5608,16 @@ const docTemplate = `{
                     "$ref": "#/definitions/src_vitals.VitalSource"
                 },
                 "spO2": {
-                    "type": "number",
-                    "format": "float64"
+                    "type": "number"
                 },
                 "systolicBP": {
                     "type": "integer"
                 },
                 "temperature": {
-                    "type": "number",
-                    "format": "float64"
+                    "type": "number"
                 },
                 "weight": {
-                    "type": "number",
-                    "format": "float64"
+                    "type": "number"
                 }
             }
         },

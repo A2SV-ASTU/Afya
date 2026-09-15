@@ -1,59 +1,126 @@
 import 'package:flutter/material.dart';
 
 class ChatEmptyState extends StatelessWidget {
-  const ChatEmptyState({super.key});
+  final ValueChanged<String>? onSuggestionSelected;
+
+  const ChatEmptyState({
+    super.key,
+    this.onSuggestionSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Center circular icon badge with green sprout
-            Container(
-              width: 100,
-              height: 100,
-              decoration: const BoxDecoration(
-                color: Color(0xFFA2C7BB), // Soft sage green circle matching design
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: CustomPaint(
-                  size: const Size(44, 44),
-                  painter: _SproutIconPainter(),
+    return SingleChildScrollView(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Center circular icon badge with green sprout
+              Container(
+                width: 88,
+                height: 88,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFA2C7BB), // Soft sage green circle matching design
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: CustomPaint(
+                    size: const Size(40, 40),
+                    painter: _SproutIconPainter(),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 32),
-            // Title
-            const Text(
-              'How can I help you?',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E2825),
-                letterSpacing: -0.3,
+              const SizedBox(height: 24),
+              // Title
+              const Text(
+                'How can I help you?',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF1E2825),
+                  letterSpacing: -0.3,
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            // Description
-            const Text(
-              'Ask Afya AI a health-related\nquestion or ask about your\ninformation in the app.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                height: 1.45,
-                color: Color(0xFF6B7A75),
+              const SizedBox(height: 10),
+              // Description
+              const Text(
+                'Ask Afya Agent about your medications, medical information, or coping with stress & anxiety.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                  color: Color(0xFF6B7A75),
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+              // Suggested Quick Prompt Chips
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _buildPromptChip(
+                    context,
+                    label: '💊 What medications am I taking?',
+                    prompt: 'What medications am I taking in my Afya app?',
+                  ),
+                  _buildPromptChip(
+                    context,
+                    label: '⏰ What if I miss a dose?',
+                    prompt: 'What should I do if I missed a dose of my medication?',
+                  ),
+                  _buildPromptChip(
+                    context,
+                    label: '🧠 Calm anxiety & stress',
+                    prompt: 'Can you guide me through a calming exercise for stress and anxiety?',
+                  ),
+                  _buildPromptChip(
+                    context,
+                    label: '🌙 How can I sleep better?',
+                    prompt: 'What are evidence-based tips to improve my sleep and insomnia?',
+                  ),
+                  _buildPromptChip(
+                    context,
+                    label: '🩺 Understanding blood pressure',
+                    prompt: 'Can you explain what blood pressure numbers mean and how to keep them healthy?',
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPromptChip(
+    BuildContext context, {
+    required String label,
+    required String prompt,
+  }) {
+    return ActionChip(
+      elevation: 0,
+      pressElevation: 1,
+      backgroundColor: Colors.white,
+      side: const BorderSide(color: Color(0xFFCCE3DC), width: 1),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      label: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 12.5,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF0C554B),
+        ),
+      ),
+      onPressed: onSuggestionSelected != null
+          ? () => onSuggestionSelected!(prompt)
+          : null,
     );
   }
 }

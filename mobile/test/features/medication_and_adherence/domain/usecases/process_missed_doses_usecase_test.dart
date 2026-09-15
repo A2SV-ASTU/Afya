@@ -185,15 +185,15 @@ void main() {
     });
 
     test(
-        'fully expired snoozed dose at T+35 transitions to missed and cancels reminder',
+        'fully expired snoozed dose at T+45 transitions to missed and cancels reminder',
         () async {
       final dose = createDoseModel(
         id: 'dose_snoozed_2',
         snoozeCount: 2,
-        snoozedUntil: scheduledTime.add(const Duration(minutes: 20)),
+        snoozedUntil: scheduledTime.add(const Duration(minutes: 30)),
         status: DoseStatus.pending,
       );
-      final now = scheduledTime.add(const Duration(minutes: 35));
+      final now = scheduledTime.add(const Duration(minutes: 45));
 
       when(() => mockLocalDataSource.getDoseRecords(
             prescriptionItemId: any(named: 'prescriptionItemId'),

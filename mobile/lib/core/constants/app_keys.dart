@@ -9,6 +9,8 @@ class AppKeys {
   static const String userIdKey = 'afya_user_id';
 
   // Hive Box Keys
+  static const String authBox = 'auth_box';
+
   static const String vitalsOutboxBox = 'vitals_outbox_box';
 
   static const String doctorVitalsCacheBox = 'doctor_vitals_cache_box';

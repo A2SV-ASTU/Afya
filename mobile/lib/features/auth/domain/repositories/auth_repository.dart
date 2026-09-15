@@ -23,6 +23,11 @@ abstract class AuthRepository {
     required String password,
   });
 
+  Future<Either<Failure, PatientUserEntity>> verifyEmail({
+    required String email,
+    required String otp,
+  });
+
   Future<Either<Failure, void>> logout();
 
   Future<Either<Failure, AuthSessionEntity>> getAuthSession();

@@ -7,6 +7,7 @@ import '../../features/medication_and_adherence/data/datasources/medication_loca
 import '../../features/medication_and_adherence/domain/entities/local_dose_record_entity.dart';
 import '../../features/medication_and_adherence/domain/usecases/handle_snooze_usecase.dart';
 import '../../features/medication_and_adherence/presentation/widgets/dose_reminder_dialog.dart';
+import '../../features/medication_and_adherence/presentation/widgets/skip_reason_dialog.dart';
 import 'local_alarm_scheduler.dart';
 import 'notification_payload.dart';
 
@@ -49,16 +50,44 @@ class MedicationNotificationHandler {
       } else if (actionId == 'snooze') {
         await _handleSnoozeAction(doseId);
       } else if (actionId == 'skip') {
-        await _handleSkipActionWithReason(
-          doseId,
-          'skipped_via_notification',
-          currentTime,
-        );
+        final directReason = response.input?.trim();
+        if (directReason != null && directReason.isNotEmpty) {
+          await _handleSkipActionWithReason(
+            doseId,
+            directReason,
+            currentTime,
+          );
+        } else {
+          await _showSkipReasonUI(doseId);
+        }
       } else {
         await _showDoseReminderUI(doseId);
       }
     } catch (_) {
       // Safely ignore or handle malformed/corrupted payload without crashing
+    }
+  }
+
+  Future<void> _showSkipReasonUI(String doseId) async {
+    for (var i = 0; i < 10; i++) {
+      final context = AppRouter.rootNavigatorKey.currentContext;
+      if (context != null) {
+        final model = await _localDataSource.getDoseRecordById(doseId);
+        if (model != null && model.status == DoseStatus.pending) {
+          if (context.mounted) {
+            final reason = await SkipReasonDialog.show(context);
+            if (reason != null && reason.trim().isNotEmpty) {
+              await _handleSkipActionWithReason(
+                doseId,
+                reason.trim(),
+                DateTime.now(),
+              );
+            }
+          }
+        }
+        break;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 300));
     }
   }
 
@@ -110,6 +139,11 @@ class MedicationNotificationHandler {
     String reason,
     DateTime now,
   ) async {
+    final trimmedReason = reason.trim();
+    if (trimmedReason.isEmpty) {
+      return;
+    }
+
     final model = await _localDataSource.getDoseRecordById(doseId);
     if (model == null || model.status != DoseStatus.pending) {
       return;
@@ -118,7 +152,7 @@ class MedicationNotificationHandler {
     final updatedModel = model.copyWith(
       status: DoseStatus.skipped,
       recordedAt: now,
-      skipReason: reason,
+      skipReason: trimmedReason,
     );
     await _localDataSource.saveDoseRecord(updatedModel);
 

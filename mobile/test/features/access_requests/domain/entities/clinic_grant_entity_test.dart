@@ -20,7 +20,7 @@ void main() {
     test('should return correct props', () {
       expect(
         tClinicGrantEntity.props,
-        ['g1', 'c1', 'Clinic A', tDateTime],
+        ['g1', 'c1', 'Clinic A', tDateTime, 'active'],
       );
     });
 

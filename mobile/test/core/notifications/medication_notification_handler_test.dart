@@ -132,7 +132,7 @@ void main() {
     });
 
     test(
-        'skip action updates dose to skipped, sets skipReason, and cancels reminder',
+        'skip action with valid input reason updates dose to skipped, sets skipReason, and cancels reminder',
         () async {
       final model = createModel(status: DoseStatus.pending);
 
@@ -147,6 +147,7 @@ void main() {
         notificationResponseType:
             NotificationResponseType.selectedNotificationAction,
         actionId: 'skip',
+        input: 'Doctor advised pause',
         payload: createPayloadJson(),
       );
 
@@ -158,10 +159,25 @@ void main() {
 
       expect(captured.status, DoseStatus.skipped);
       expect(captured.recordedAt, fixedNow);
-      expect(captured.skipReason, 'skipped_via_notification');
+      expect(captured.skipReason, 'Doctor advised pause');
 
       final reminderId = testDoseId.hashCode & 0x7FFFFFFF;
       verify(() => mockAlarmScheduler.cancelReminder(reminderId)).called(1);
+    });
+
+    test('skip action with empty/whitespace input does not save skipped record directly',
+        () async {
+      final response = NotificationResponse(
+        notificationResponseType:
+            NotificationResponseType.selectedNotificationAction,
+        actionId: 'skip',
+        input: '   ',
+        payload: createPayloadJson(),
+      );
+
+      await handler.handleNotificationResponse(response, now: fixedNow);
+
+      verifyNever(() => mockLocalDataSource.saveDoseRecord(any()));
     });
 
     test('action on non-pending dose does not modify or overwrite record',

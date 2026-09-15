@@ -1,23 +1,21 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 import {
   ArrowLeft,
-  Activity,
   CheckCircle2,
   Lock,
-  Stethoscope,
-  Clock,
-  UserCheck,
-  AlertTriangle,
-  Building2,
+  AlertCircle,
 } from 'lucide-react';
-import { useStore } from '@/lib/store';
 import { encountersApi } from '@/lib/api/encounters';
-import { Encounter, EncounterType } from '@/types/database';
+import { accessRequestsApi } from '@/lib/api/access-requests';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { closeEncounterAction } from '@/modules/clinical-workspace/actions/startEncounter';
+import { mapAggregatedEncounter } from '@/modules/clinical-workspace/lib/encounterMappers';
+import { Encounter, EncounterStatus } from '@/types/database';
 import { Button } from '@/modules/core/ui/Button';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
 import { EncounterTabs } from '@/modules/clinical-workspace/components/EncounterTabs';
@@ -28,6 +26,7 @@ import { DiagnosisPicker } from '@/modules/clinical-workspace/components/Diagnos
 import { PrescriptionBuilder } from '@/modules/clinical-workspace/components/PrescriptionBuilder';
 import { AppointmentScheduler } from '@/modules/clinical-workspace/components/AppointmentScheduler';
 import { CloseEncounterModal } from '@/modules/clinical-workspace/components/CloseEncounterModal';
+import { ClinicalEvaluationForm } from '@/modules/clinical-workspace/components/ClinicalEvaluationForm';
 import { formatDateTime } from '@/modules/core/lib/utils';
 
 export default function EncounterWorkspacePage() {
@@ -35,52 +34,30 @@ export default function EncounterWorkspacePage() {
   const params = useParams();
   const encounterId = (params?.encounterId as string) || '';
 
-  const { encounters, closeEncounter } = useStore();
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>('vitals');
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('evaluation');
   const [showCloseModal, setShowCloseModal] = useState(false);
-  const [liveEncounter, setLiveEncounter] = useState<Encounter | null>(null);
+  const [encounter, setEncounter] = useState<Encounter | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [closeError, setCloseError] = useState<string | null>(null);
+  const [isClosing, setIsClosing] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (encounterId) {
-      encountersApi
-        .getById(encounterId)
-        .then((res) => {
-          if (!cancelled && res) {
-            const enc = res.encounter || (res as unknown as Encounter);
-            setLiveEncounter({
-              id: enc.id,
-              patient_id: enc.patient_id,
-              patient_name: res.patient_name || enc.patient_name || 'Patient',
-              clinic_id: enc.clinic_id || '',
-              clinic_name: res.clinic_name || enc.clinic_name || 'Clinic',
-              opened_by_doctor_id: enc.opened_by_doctor_id || enc.doctor_id || '',
-              opened_by_doctor_name: res.doctor_name || enc.opened_by_doctor_name || 'Attending Physician',
-              type: (enc.type as EncounterType) || 'outpatient',
-              status: (enc.status as 'open' | 'closed') || 'open',
-              notes: enc.notes || '',
-              started_at: enc.started_at || enc.created_at || new Date().toISOString(),
-              closed_at: enc.closed_at,
-              vitals: res.vitals || enc.vitals || [],
-              labs: res.labs || enc.labs || [],
-              diagnoses: res.diagnoses || enc.diagnoses || [],
-              prescriptions: res.prescriptions || enc.prescriptions || [],
-            });
-            setIsLoading(false);
-
-          }
-        })
-        .catch(() => {
-          if (!cancelled) setIsLoading(false);
-        });
+  const fetchEncounter = useCallback(async () => {
+    if (!encounterId) return;
+    try {
+      const res = await encountersApi.getById(encounterId);
+      setEncounter((prev) => mapAggregatedEncounter(res, prev ? { type: prev.type } : {}));
+      setLoadError(null);
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err, 'Failed to load the clinical encounter.'));
+    } finally {
+      setIsLoading(false);
     }
-    return () => {
-      cancelled = true;
-    };
   }, [encounterId]);
 
-  const encounter = liveEncounter || encounters.find((e) => e.id === encounterId);
+  useEffect(() => {
+    fetchEncounter();
+  }, [fetchEncounter]);
 
   if (!encounter && isLoading) {
     return (
@@ -94,11 +71,16 @@ export default function EncounterWorkspacePage() {
   if (!encounter) {
     return (
       <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
-        <h3 className="text-base font-bold text-slate-900">Encounter Session Not Found</h3>
-        <p className="text-xs text-slate-500 mt-1">The requested clinical encounter ID does not exist.</p>
-        <Button className="mt-4" onClick={() => router.push('/doctor')}>
-          Return to Doctor Workspace
-        </Button>
+        <h3 className="text-base font-bold text-slate-900">Encounter Session Unavailable</h3>
+        <p className="text-xs text-slate-500 mt-1">
+          {loadError || 'The requested clinical encounter could not be loaded.'}
+        </p>
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <Button variant="outline" onClick={fetchEncounter}>
+            Retry
+          </Button>
+          <Button onClick={() => router.push('/doctor')}>Return to Doctor Workspace</Button>
+        </div>
       </div>
     );
   }
@@ -106,11 +88,48 @@ export default function EncounterWorkspacePage() {
   const isClosed = encounter.status === 'closed';
 
   const handleConfirmClose = async () => {
-    await closeEncounter(encounter.id);
-    setLiveEncounter((prev) => (prev ? { ...prev, status: 'closed', closed_at: new Date().toISOString() } : prev));
-    setShowCloseModal(false);
-  };
+    if (isClosing) return;
+    setCloseError(null);
+    setIsClosing(true);
 
+    let closed: { status: EncounterStatus; ended_at: string | null };
+    try {
+      closed = await closeEncounterAction(encounter.id);
+    } catch (err) {
+      setCloseError(getApiErrorMessage(err, 'Failed to close the encounter. Please try again.'));
+      setIsClosing(false);
+      return;
+    }
+
+    // Apply the backend's own close response rather than re-reading the
+    // encounter: the grant is revoked next, after which AccessGuard refuses
+    // GET /encounters/:id for this doctor.
+    setEncounter((prev) =>
+      prev ? { ...prev, status: closed.status, ended_at: closed.ended_at, closed_at: closed.ended_at } : prev
+    );
+    setShowCloseModal(false);
+
+    // Clinic policy: closing the encounter terminates the clinic's access to
+    // this patient's records. A failure here must not undo the close.
+    if (encounter.clinic_id) {
+      try {
+        const res = await accessRequestsApi.listRequests(encounter.clinic_id, 'approved');
+        const activeGrant = res.access_requests?.find((r) => r.patient_id === encounter.patient_id);
+        if (activeGrant) {
+          await accessRequestsApi.revokeRequest(encounter.clinic_id, activeGrant.id);
+        }
+      } catch (err) {
+        setCloseError(
+          getApiErrorMessage(
+            err,
+            'The encounter was closed, but revoking the patient access grant failed. Ask a clinic admin to revoke it.'
+          )
+        );
+      }
+    }
+
+    setIsClosing(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -159,6 +178,23 @@ export default function EncounterWorkspacePage() {
         </div>
       </div>
 
+      {(closeError || loadError) && (
+        <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2.5">
+          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <span>{closeError || loadError}</span>
+        </div>
+      )}
+
+      {isClosed && (
+        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-start gap-2.5">
+          <Lock className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+          <span>
+            This encounter is sealed. Your clinic&apos;s access grant for this patient has been revoked, so
+            these records are no longer editable or retrievable from here.
+          </span>
+        </div>
+      )}
+
       {/* Navigation Tabs */}
       <EncounterTabs
         activeTab={activeTab}
@@ -167,9 +203,19 @@ export default function EncounterWorkspacePage() {
       />
 
       {/* Tab Contents */}
+      {activeTab === 'evaluation' && (
+        <div className="space-y-6">
+          <ClinicalEvaluationForm
+            encounterId={encounter.id}
+            isClosed={isClosed}
+            onSaved={fetchEncounter}
+          />
+        </div>
+      )}
+
       {activeTab === 'vitals' && (
         <div className="space-y-6">
-          {!isClosed && <VitalsRecorder encounter={encounter} />}
+          {!isClosed && <VitalsRecorder encounter={encounter} onSaved={fetchEncounter} />}
 
           {/* Current recorded vitals list */}
           {encounter.vitals && encounter.vitals.length > 0 && (
@@ -195,7 +241,7 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'labs' && (
         <div className="space-y-6">
-          {!isClosed && <LabResultsForm encounter={encounter} />}
+          {!isClosed && <LabResultsForm encounter={encounter} onSaved={fetchEncounter} />}
 
           {encounter.labs && encounter.labs.length > 0 && (
             <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
@@ -221,7 +267,7 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'diagnoses' && (
         <div className="space-y-6">
-          {!isClosed && <DiagnosisPicker encounter={encounter} />}
+          {!isClosed && <DiagnosisPicker encounter={encounter} onSaved={fetchEncounter} />}
 
           {encounter.diagnoses && encounter.diagnoses.length > 0 && (
             <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
@@ -249,7 +295,7 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'prescriptions' && (
         <div className="space-y-6">
-          {!isClosed && <PrescriptionBuilder encounter={encounter} />}
+          {!isClosed && <PrescriptionBuilder encounter={encounter} onSaved={fetchEncounter} />}
 
           {encounter.prescriptions && encounter.prescriptions.length > 0 && (
             <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
@@ -279,7 +325,7 @@ export default function EncounterWorkspacePage() {
 
       {activeTab === 'appointment' && (
         <div className="space-y-6">
-          {!isClosed && <AppointmentScheduler encounter={encounter} />}
+          {!isClosed && <AppointmentScheduler encounter={encounter} onSaved={fetchEncounter} />}
         </div>
       )}
 
@@ -301,7 +347,7 @@ export default function EncounterWorkspacePage() {
               {encounter.diagnoses?.length ? (
                 <ul className="space-y-1.5 text-slate-700">
                   {encounter.diagnoses.map((d) => (
-                    <li key={d.id} className="flex items-center gap-2">
+                     <li key={d.id} className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#388E3C]" />
                       <strong>{d.icd_code || 'DX'}</strong> — {d.diagnosis_text} ({d.diagnosis_type})
                     </li>
@@ -354,6 +400,7 @@ export default function EncounterWorkspacePage() {
           onClose={() => setShowCloseModal(false)}
           onConfirm={handleConfirmClose}
           encounter={encounter}
+          isConfirming={isClosing}
         />
       )}
     </div>

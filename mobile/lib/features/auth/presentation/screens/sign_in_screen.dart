@@ -38,7 +38,8 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   void initState() {
     super.initState();
-    _isPinMode = widget.initialPinMode;
+    final authState = context.read<AuthBloc>().state;
+    _isPinMode = widget.initialPinMode || authState is PinRequired;
   }
 
   @override
@@ -73,7 +74,9 @@ class _SignInScreenState extends State<SignInScreen> {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is Authenticated) {
+        if (state is CreatePinRequired) {
+          context.go(RoutePaths.createPin);
+        } else if (state is Authenticated) {
           context.go(RoutePaths.dashboard);
         } else if (state is PinRequired) {
           setState(() {
@@ -156,6 +159,29 @@ class _SignInScreenState extends State<SignInScreen> {
                     }
                     return null;
                   },
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      showDialog<void>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Forgot password?'),
+                          content: const Text(
+                            'Use the password reset link sent to your email. Check your inbox or contact support if you need a new link.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: const Text('Forgot password?'),
+                  ),
                 ),
                 const SizedBox(height: AppDimensions.space24),
                 AfyaButton(

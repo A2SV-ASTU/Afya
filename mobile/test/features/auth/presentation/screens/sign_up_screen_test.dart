@@ -19,6 +19,7 @@ void main() {
 
   Widget buildTestableWidget(Widget child) {
     return MaterialApp(
+      theme: ThemeData(useMaterial3: false),
       home: BlocProvider<AuthBloc>.value(
         value: mockAuthBloc,
         child: child,

@@ -178,20 +178,20 @@ void main() {
     // 8. Snooze #2
     final snooze2Result = await handleSnoozeUseCase(doseId: firstDose.id);
 
-    // 9. Verify Snooze #2: snoozeCount = 2, snoozedUntil = T+20 (08:20), status remains pending, final reminder (includeSnooze = false)
+    // 9. Verify Snooze #2: snoozeCount = 2, snoozedUntil = T+30 (08:30) (+20 min from current reminder time 08:10), status remains pending, final reminder (includeSnooze = false)
     expect(snooze2Result.isRight(), isTrue);
     final snoozed2Dose = snooze2Result.getOrElse((_) => throw Exception());
     expect(snoozed2Dose.snoozeCount, 2);
-    expect(snoozed2Dose.snoozedUntil, DateTime(2026, 8, 28, 8, 20));
+    expect(snoozed2Dose.snoozedUntil, DateTime(2026, 8, 28, 8, 30));
     expect(snoozed2Dose.status, DoseStatus.pending);
     expect(inMemoryDoseDb[firstDose.id]?.snoozeCount, 2);
     expect(inMemoryDoseDb[firstDose.id]?.snoozedUntil,
-        DateTime(2026, 8, 28, 8, 20));
+        DateTime(2026, 8, 28, 8, 30));
 
     verify(() => mockAlarmScheduler.scheduleSnoozeReminder(
           reminderId: any(named: 'reminderId'),
           medicationName: 'Amoxicillin',
-          snoozeTime: DateTime(2026, 8, 28, 8, 20),
+          snoozeTime: DateTime(2026, 8, 28, 8, 30),
           doseId: firstDose.id,
           prescriptionItemId: 'rx_amox_001',
           includeSnooze: false,
@@ -200,14 +200,14 @@ void main() {
     // 10. Attempt Snooze #3
     final snooze3Result = await handleSnoozeUseCase(doseId: firstDose.id);
 
-    // 11. Verify Snooze #3 is rejected (snoozeCount remains 2, snoozedUntil remains 08:20)
+    // 11. Verify Snooze #3 is rejected (snoozeCount remains 2, snoozedUntil remains 08:30)
     expect(snooze3Result.isLeft(), isTrue);
     expect(inMemoryDoseDb[firstDose.id]?.snoozeCount, 2);
     expect(inMemoryDoseDb[firstDose.id]?.snoozedUntil,
-        DateTime(2026, 8, 28, 8, 20));
+        DateTime(2026, 8, 28, 8, 30));
 
-    // 12. Process missed doses after T+30 (08:35) for unresolved dose
-    final missedProcessingTime = DateTime(2026, 8, 28, 8, 35);
+    // 12. Process missed doses after T+30 + grace threshold (08:45) for unresolved dose
+    final missedProcessingTime = DateTime(2026, 8, 28, 8, 45);
     final missedResult = await processMissedDosesUseCase(
       now: missedProcessingTime,
       prescriptionItemId: 'rx_amox_001',

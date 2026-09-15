@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../../app/router/route_paths.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../auth/domain/entities/patient_user_entity.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
 
 class DashboardHeader extends StatelessWidget {
   final PatientUserEntity? user;
-  final VoidCallback? onNotificationTap;
 
   const DashboardHeader({
     super.key,
     this.user,
-    this.onNotificationTap,
   });
 
   String get _greeting {
@@ -28,10 +31,8 @@ class DashboardHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Top bar: "Afya" brand title + Notification bell
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Text(
               'Afya',
@@ -42,14 +43,13 @@ class DashboardHeader extends StatelessWidget {
               ),
             ),
             IconButton(
-              icon: const Icon(
-                Icons.notifications_none_rounded,
-                color: AppColors.textPrimary,
-                size: 24,
-              ),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              onPressed: onNotificationTap,
+              tooltip: 'Sign out',
+              icon: const Icon(Icons.lock_outline_rounded),
+              color: AppColors.textSecondary,
+              onPressed: () {
+                context.read<AuthBloc>().add(const AppLockRequested());
+                context.go(RoutePaths.signIn);
+              },
             ),
           ],
         ),
