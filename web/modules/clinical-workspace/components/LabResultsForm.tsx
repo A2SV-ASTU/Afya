@@ -1,11 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FlaskConical, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { useStore } from '@/lib/store';
+import { FlaskConical, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/modules/core/ui/Button';
 import { Input } from '@/modules/core/ui/Input';
-import { Encounter, LabCategory, LabFlag } from '@/types/database';
+import { Encounter, LabFlag } from '@/types/database';
+import { getApiErrorMessage } from '@/lib/api/client';
+import { saveLabResultAction } from '../actions/startEncounter';
+import { LAB_CATEGORY_OPTIONS } from '../lib/encounterMappers';
 
 interface LabResultsFormProps {
   encounter: Encounter;
@@ -13,29 +15,35 @@ interface LabResultsFormProps {
 }
 
 export function LabResultsForm({ encounter, onSaved }: LabResultsFormProps) {
-  const { addLabResult } = useStore();
-
   const [testName, setTestName] = useState('Full Blood Count (FBC)');
-  const [category, setCategory] = useState<LabCategory>('Hematology');
+  const [category, setCategory] = useState<string>('laboratory');
   const [flag, setFlag] = useState<LabFlag>('normal');
   const [summary, setSummary] = useState('Hb: 13.8 g/dL, WBC: 6.8 x10^9/L, Platelets: 240 x10^9/L');
-  const [measurements, setMeasurements] = useState('Hemoglobin: 13.8 (Ref 12.0-16.0), Platelets: 240 (Ref 150-450)');
+  const [measurements, setMeasurements] = useState('Hemoglobin: 13.8, Platelets: 240');
   const [isSaved, setIsSaved] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    await addLabResult(encounter.id, {
-      test_name: testName,
-      category,
-      flag,
-      summary_notes: summary,
-      measurements,
-    });
-
-    setIsSaved(true);
-    if (onSaved) onSaved();
-    setTimeout(() => setIsSaved(false), 3000);
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      await saveLabResultAction(encounter.id, {
+        test_name: testName,
+        category,
+        flag,
+        summary_notes: summary,
+        measurements,
+      });
+      setIsSaved(true);
+      if (onSaved) onSaved();
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err) {
+      setError(getApiErrorMessage(err, 'Failed to attach lab result. Please try again.'));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
 
@@ -58,6 +66,13 @@ export function LabResultsForm({ encounter, onSaved }: LabResultsFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Input
             label="Diagnostic Investigation Name"
@@ -71,15 +86,14 @@ export function LabResultsForm({ encounter, onSaved }: LabResultsFormProps) {
             <label className="block text-xs font-semibold text-slate-700">Lab Discipline</label>
             <select
               value={category}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCategory(e.target.value as LabCategory)}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setCategory(e.target.value)}
               className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] text-slate-800"
             >
-              <option value="Hematology">Hematology</option>
-              <option value="Biochemistry">Clinical Biochemistry</option>
-              <option value="Microbiology">Microbiology & Cultures</option>
-              <option value="Imaging/Radiology">Imaging & Radiology</option>
-              <option value="Pathology">Pathology & Histology</option>
-              <option value="Other">Other Diagnostic</option>
+              {LAB_CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -110,18 +124,21 @@ export function LabResultsForm({ encounter, onSaved }: LabResultsFormProps) {
         </div>
 
         <div className="space-y-1.5">
-          <label className="block text-xs font-semibold text-slate-700">Raw Analyte Measurements & Ranges</label>
+          <label className="block text-xs font-semibold text-slate-700">Analyte Measurements</label>
           <textarea
             rows={2}
-            placeholder="e.g. Total Cholesterol: 4.8 mmol/L (Ref < 5.2), HDL: 1.4 mmol/L..."
+            placeholder="analyte: value pairs, e.g. hemoglobin: 13.8, platelets: 240, wbc: 6.8"
             value={measurements}
             onChange={(e) => setMeasurements(e.target.value)}
             className="w-full px-3.5 py-2 text-xs bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#388E3C]/20 focus:border-[#388E3C] text-slate-800"
           />
+          <p className="text-[10px] text-slate-400">
+            Enter one or more <span className="font-mono">name: value</span> pairs separated by commas.
+          </p>
         </div>
 
         <div className="flex items-center justify-end">
-          <Button type="submit" leftIcon={<CheckCircle2 className="w-4 h-4" />}>
+          <Button type="submit" isLoading={isSubmitting} leftIcon={<CheckCircle2 className="w-4 h-4" />}>
             Attach Lab Result
           </Button>
         </div>

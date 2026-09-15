@@ -49,39 +49,41 @@ void main() {
       final result = await dataSource.getActiveGrants();
 
       expect(result, isA<List<ClinicGrantModel>>());
-      expect(result.length, 2);
+      expect(result.length, 5);
       expect(result[0].grantId, 'grant_001');
-      expect(result[0].clinicId, 'clinic_afya');
-      expect(result[0].clinicName, 'Afya Hospital');
+      expect(result[0].clinicId, 'clinic_tikur');
+      expect(result[0].clinicName, 'Tikur Anbessa Specialized Hospital');
       expect(result[1].grantId, 'grant_002');
-      expect(result[1].clinicId, 'clinic_aamc');
-      expect(result[1].clinicName, 'Addis Ababa Medical Center');
+      expect(result[1].clinicId, 'clinic_afya');
+      expect(result[1].clinicName, 'Afya Specialized Hospital');
     });
 
     test('should return updated list after a grant is revoked', () async {
-      await dataSource.revokeClinicGrant('clinic_afya');
+      await dataSource.revokeClinicGrant('clinic_tikur');
       final result = await dataSource.getActiveGrants();
 
-      expect(result.length, 1);
-      expect(result[0].clinicId, 'clinic_aamc');
+      expect(result.length, 4);
+      expect(result.any((g) => g.clinicId == 'clinic_tikur'), isFalse);
     });
   });
 
   group('revokeClinicGrant', () {
     test('should remove the grant with matching clinicId', () async {
       final before = await dataSource.getActiveGrants();
-      expect(before.length, 2);
+      expect(before.length, 5);
 
-      await dataSource.revokeClinicGrant('clinic_afya');
+      await dataSource.revokeClinicGrant('clinic_tikur');
 
       final after = await dataSource.getActiveGrants();
-      expect(after.length, 1);
-      expect(after.any((g) => g.clinicId == 'clinic_afya'), isFalse);
+      expect(after.length, 4);
+      expect(after.any((g) => g.clinicId == 'clinic_tikur'), isFalse);
     });
 
-    test('should remove all grants when both are revoked', () async {
-      await dataSource.revokeClinicGrant('clinic_afya');
-      await dataSource.revokeClinicGrant('clinic_aamc');
+    test('should remove all grants when all are revoked', () async {
+      final grants = await dataSource.getActiveGrants();
+      for (final grant in grants) {
+        await dataSource.revokeClinicGrant(grant.clinicId);
+      }
 
       final result = await dataSource.getActiveGrants();
       expect(result, isEmpty);

@@ -39,6 +39,7 @@ import {
 import { Doctor } from '@/types/clinics';
 import { getClinics, getDoctors, createClinic as apiCreateClinic, activateClinic as apiActivateClinic, deactivateClinic as apiDeactivateClinic, activateDoctor as apiActivateDoctor, deactivateDoctor as apiDeactivateDoctor } from '@/lib/api/clinics';
 import { inviteDoctor as apiInviteDoctor, acceptInvitation as apiAcceptInvitation } from '@/lib/api/invitations';
+import { parseMeasurements, parseDuration } from '@/modules/clinical-workspace/lib/encounterMappers';
 
 
 interface StoreContextType {
@@ -1200,7 +1201,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         test_name: lab.test_name,
         category: lab.category,
         summary_notes: lab.summary_notes,
-        measurements: lab.measurements,
+        measurements: parseMeasurements(lab.measurements),
         flag: lab.flag,
       });
       newLab = res.lab_result;
@@ -1270,9 +1271,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   ): Promise<Prescription> => {
     let newPrescription: Prescription;
+    const parsedDuration = parseDuration(item.duration);
     try {
       const res = await prescriptionsApi.create(encounterId, {
-        items: [item],
+        items: [
+          {
+            medication_name: item.medication_name,
+            dose: item.dose,
+            route: item.route,
+            frequency: item.frequency,
+            duration_value: parsedDuration.value,
+            duration_unit: parsedDuration.unit,
+            instructions: item.instructions,
+          },
+        ],
       });
       newPrescription = res.prescription;
     } catch {

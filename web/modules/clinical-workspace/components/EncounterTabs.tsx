@@ -15,6 +15,11 @@ interface EncounterTabsProps {
 export function EncounterTabs({ activeTab, onTabChange, encounter }: EncounterTabsProps) {
   const tabs = [
     {
+      id: 'evaluation' as WorkspaceTab,
+      label: 'Clinical Notes',
+      icon: <FileText className="w-4 h-4" />,
+    },
+    {
       id: 'vitals' as WorkspaceTab,
       label: 'Vitals Signs',
       icon: <Activity className="w-4 h-4" />,

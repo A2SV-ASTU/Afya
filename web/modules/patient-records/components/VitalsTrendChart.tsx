@@ -10,7 +10,23 @@ interface VitalsTrendChartProps {
 }
 
 export function VitalsTrendChart({ patientId }: VitalsTrendChartProps) {
-  const trends = useVitalsTrends(patientId);
+  const { trends, isLoading, error } = useVitalsTrends(patientId);
+
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-slate-200 text-xs text-slate-500">
+        Loading vitals trends…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-8 text-center bg-white rounded-3xl border border-rose-200 text-xs text-rose-600">
+        {error}
+      </div>
+    );
+  }
 
   if (trends.length === 0) {
     return (
@@ -26,9 +42,11 @@ export function VitalsTrendChart({ patientId }: VitalsTrendChartProps) {
         <div>
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
             <Activity className="w-5 h-5 text-[#2E7D32]" />
-            Longitudinal Blood Pressure & Pulse Trajectory
+            Longitudinal Vitals Trajectory
           </h3>
-          <p className="text-xs text-slate-500">Systolic & Diastolic historical trends (mmHg)</p>
+          <p className="text-xs text-slate-500">
+            Blood pressure & pulse (left axis, mmHg / bpm) • Blood glucose (right axis, mmol/L)
+          </p>
         </div>
       </div>
 
@@ -37,7 +55,14 @@ export function VitalsTrendChart({ patientId }: VitalsTrendChartProps) {
           <LineChart data={trends} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} />
-            <YAxis domain={[40, 180]} stroke="#94a3b8" fontSize={11} />
+            <YAxis yAxisId="bp" domain={[40, 180]} stroke="#94a3b8" fontSize={11} />
+            <YAxis
+              yAxisId="glucose"
+              orientation="right"
+              domain={['auto', 'auto']}
+              stroke="#94a3b8"
+              fontSize={11}
+            />
             <Tooltip
               contentStyle={{
                 backgroundColor: '#ffffff',
@@ -48,30 +73,46 @@ export function VitalsTrendChart({ patientId }: VitalsTrendChartProps) {
             />
             <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
             <Line
+              yAxisId="bp"
               type="monotone"
               dataKey="systolic"
               name="Systolic BP (mmHg)"
               stroke="#e11d48"
               strokeWidth={2.5}
+              connectNulls
               dot={{ r: 4, fill: '#e11d48' }}
               activeDot={{ r: 6 }}
             />
             <Line
+              yAxisId="bp"
               type="monotone"
               dataKey="diastolic"
               name="Diastolic BP (mmHg)"
               stroke="#2563eb"
               strokeWidth={2.5}
+              connectNulls
               dot={{ r: 4, fill: '#2563eb' }}
             />
             <Line
+              yAxisId="bp"
               type="monotone"
               dataKey="pulse"
               name="Heart Rate (bpm)"
               stroke="#388E3C"
               strokeWidth={2}
               strokeDasharray="4 4"
+              connectNulls
               dot={{ r: 3, fill: '#388E3C' }}
+            />
+            <Line
+              yAxisId="glucose"
+              type="monotone"
+              dataKey="bloodSugar"
+              name="Blood Glucose (mmol/L)"
+              stroke="#7c3aed"
+              strokeWidth={2}
+              connectNulls
+              dot={{ r: 3, fill: '#7c3aed' }}
             />
           </LineChart>
         </ResponsiveContainer>

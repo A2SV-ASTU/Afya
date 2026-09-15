@@ -1,22 +1,34 @@
 'use client';
 
 import React from 'react';
-import { User, Phone, Mail, Droplets, Calendar, ShieldCheck, AlertTriangle } from 'lucide-react';
-import { Patient } from '@/types/database';
-import { calculateAge } from '@/modules/core/lib/utils';
+import { ShieldCheck } from 'lucide-react';
 
-interface PatientProfileCardProps {
-  patient: Patient;
+export interface PatientIdentity {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
 }
 
+interface PatientProfileCardProps {
+  patient: PatientIdentity;
+}
+
+/**
+ * Header card for the patient chart. Only the identity fields carried on the
+ * clinic's access grant (name, email, patient id) are available to a doctor
+ * today — demographics live in the patient's own profile, which is not exposed
+ * to clinics yet, so those rows read "Not on file".
+ */
 export function PatientProfileCard({ patient }: PatientProfileCardProps) {
+  const initials = `${patient.first_name?.[0] ?? ''}${patient.last_name?.[0] ?? ''}`.toUpperCase() || '–';
+
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-xs p-6 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-[#E8F5E9] text-[#2E7D32] border border-[#C8E6C9] flex items-center justify-center font-bold text-lg">
-            {patient.first_name[0]}
-            {patient.last_name[0]}
+            {initials}
           </div>
 
           <div>
@@ -30,15 +42,12 @@ export function PatientProfileCard({ patient }: PatientProfileCardProps) {
             </div>
 
             <p className="text-xs text-slate-500 mt-0.5">
-              DOB: {patient.date_of_birth} ({calculateAge(patient.date_of_birth)}) • {patient.sex} • National ID: {patient.national_id || 'KEN-8839210'}
+              Demographics are held in the patient&apos;s personal profile and are not shared with clinics.
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1 px-3 py-1 bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold rounded-full">
-            <Droplets className="w-3.5 h-3.5" /> Blood Group: {patient.blood_group}
-          </span>
           <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#E8F5E9] border border-[#C8E6C9] text-[#1B5E20] text-xs font-semibold rounded-full">
             <ShieldCheck className="w-3.5 h-3.5" /> Consent Active
           </span>
@@ -47,22 +56,18 @@ export function PatientProfileCard({ patient }: PatientProfileCardProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-slate-100 text-xs">
         <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5">
-          <p className="text-[10px] text-slate-400 font-semibold uppercase">Contact Phone</p>
-          <p className="font-semibold text-slate-800">{patient.phone}</p>
+          <p className="text-[10px] text-slate-400 font-semibold uppercase">Email Address</p>
+          <p className="font-semibold text-slate-800">{patient.email || 'Not on file'}</p>
         </div>
 
         <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5">
-          <p className="text-[10px] text-slate-400 font-semibold uppercase">Email Address</p>
-          <p className="font-semibold text-slate-800">{patient.email}</p>
+          <p className="text-[10px] text-slate-400 font-semibold uppercase">Contact Phone</p>
+          <p className="font-semibold text-slate-400">Not on file</p>
         </div>
 
-        <div className="p-3 bg-rose-50/50 rounded-2xl border border-rose-100 space-y-0.5">
-          <p className="text-[10px] text-rose-500 font-semibold uppercase flex items-center gap-1">
-            <AlertTriangle className="w-3 h-3" /> Critical Allergies
-          </p>
-          <p className="font-bold text-rose-700">
-            {patient.allergies?.length ? patient.allergies.join(', ') : 'None Reported'}
-          </p>
+        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-0.5">
+          <p className="text-[10px] text-slate-400 font-semibold uppercase">Date of Birth</p>
+          <p className="font-semibold text-slate-400">Not on file</p>
         </div>
       </div>
     </div>

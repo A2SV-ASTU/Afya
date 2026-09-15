@@ -4,9 +4,13 @@ import { Prescription, PrescriptionItem } from '@/types/database';
 export interface CreatePrescriptionItemPayload {
   medication_name: string;
   dose: string;
+  /** Backend enum: oral | iv | im | subcutaneous | topical | other */
   route: string;
+  /** Backend enum: OD | BD | TDS | QID | QHS | PRN | STAT | Q4H | Q6H | Q8H | Q12H */
   frequency: string;
-  duration: string;
+  duration_value: number;
+  /** Backend enum: day | week | month | year */
+  duration_unit: string;
   instructions?: string;
 }
 
