@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Activity, FlaskConical, Stethoscope, Pill, Calendar, FileText } from 'lucide-react';
+import { Activity, FlaskConical, Stethoscope, Pill, Calendar, FileText, History } from 'lucide-react';
 import { WorkspaceTab } from '../types';
 import { cn } from '@/modules/core/lib/utils';
 import { Encounter } from '@/types/database';
@@ -47,6 +47,11 @@ export function EncounterTabs({ activeTab, onTabChange, encounter }: EncounterTa
       id: 'appointment' as WorkspaceTab,
       label: 'Schedule Follow-up',
       icon: <Calendar className="w-4 h-4" />,
+    },
+    {
+      id: 'history' as WorkspaceTab,
+      label: 'Medical History',
+      icon: <History className="w-4 h-4" />,
     },
     {
       id: 'summary' as WorkspaceTab,

@@ -10,7 +10,6 @@ export interface RecordVitalsPayload {
   blood_sugar?: number;
   respiratory_rate?: number;
   weight?: number;
-  notes?: string;
 }
 
 export interface VitalSignResponse {

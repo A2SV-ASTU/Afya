@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Activity,
   FlaskConical,
@@ -21,6 +22,7 @@ import {
 import { usePatientTimeline } from '../hooks/usePatientTimeline';
 import { formatDateTime } from '@/modules/core/lib/utils';
 import { StatusBadge } from '@/modules/core/ui/StatusBadge';
+import { Button } from '@/modules/core/ui/Button';
 
 interface TimelineProps {
   patientId: string;
@@ -247,6 +249,17 @@ export function Timeline({ patientId }: TimelineProps) {
                         Labs {hasLabs ? `(${enc.labs.length})` : '—'}
                       </span>
                     </div>
+
+                    {isOpen && (
+                      <Link
+                        href={`/doctor/encounters/${enc.encounter_id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-colors cursor-pointer shrink-0"
+                      >
+                        <Activity className="w-3.5 h-3.5 animate-pulse" />
+                        <span>Resume Workspace ➔</span>
+                      </Link>
+                    )}
 
                     <div className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
                       {isExpanded ? (
@@ -521,6 +534,28 @@ export function Timeline({ patientId }: TimelineProps) {
                         </div>
                       </div>
                     </div>
+
+                    {/* Active Open Encounter Workspace Banner */}
+                    {isOpen && (
+                      <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center justify-center shrink-0">
+                            <Activity className="w-5 h-5 text-emerald-700 animate-pulse" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-emerald-950 text-sm">Clinical Encounter Session Active</p>
+                            <p className="text-emerald-800 text-[11px] mt-0.5">
+                              This consultation is in progress. Continue to record vitals, clinical evaluations, diagnoses, and prescriptions, or seal and finalize the encounter.
+                            </p>
+                          </div>
+                        </div>
+                        <Link href={`/doctor/encounters/${enc.encounter_id}`}>
+                          <Button size="sm" variant="brand">
+                            Open Clinical Workspace ➔
+                          </Button>
+                        </Link>
+                      </div>
+                    )}
 
                     {/* Bottom Metadata & Audit Trail */}
                     <div className="pt-3 border-t border-slate-200/80 flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-slate-400 bg-white p-3 rounded-xl border border-slate-200/60 shadow-2xs">

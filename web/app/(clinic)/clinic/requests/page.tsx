@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { KeyRound, PlusCircle, RefreshCw, AlertCircle, Ban, ArrowRight, Clock, ShieldCheck } from 'lucide-react';
-import { useStore } from '@/lib/store';
 import { accessRequestsApi } from '@/lib/api/access-requests';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { Button } from '@/modules/core/ui/Button';
@@ -112,11 +111,11 @@ export default function ClinicRequestsPage() {
             Refresh
           </Button>
 
-          {/* <Link href="/clinic/requests/new">
+          <Link href="/clinic/lookup">
             <Button size="sm" leftIcon={<PlusCircle className="w-4 h-4" />}>
               + Request Patient Access
             </Button>
-          </Link> */}
+          </Link>
         </div>
       </div>
 

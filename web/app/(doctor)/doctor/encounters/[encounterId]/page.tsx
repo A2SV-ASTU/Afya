@@ -9,9 +9,11 @@ import {
   CheckCircle2,
   Lock,
   AlertCircle,
+  FileText,
 } from 'lucide-react';
 import { encountersApi } from '@/lib/api/encounters';
 import { accessRequestsApi } from '@/lib/api/access-requests';
+import { prescriptionsApi } from '@/lib/api/prescriptions';
 import { getApiErrorMessage } from '@/lib/api/client';
 import { closeEncounterAction } from '@/modules/clinical-workspace/actions/startEncounter';
 import { mapAggregatedEncounter } from '@/modules/clinical-workspace/lib/encounterMappers';
@@ -25,6 +27,7 @@ import { LabResultsForm } from '@/modules/clinical-workspace/components/LabResul
 import { DiagnosisPicker } from '@/modules/clinical-workspace/components/DiagnosisPicker';
 import { PrescriptionBuilder } from '@/modules/clinical-workspace/components/PrescriptionBuilder';
 import { AppointmentScheduler } from '@/modules/clinical-workspace/components/AppointmentScheduler';
+import { MedicalHistoryViewer } from '@/modules/clinical-workspace/components/MedicalHistoryViewer';
 import { CloseEncounterModal } from '@/modules/clinical-workspace/components/CloseEncounterModal';
 import { ClinicalEvaluationForm } from '@/modules/clinical-workspace/components/ClinicalEvaluationForm';
 import { formatDateTime } from '@/modules/core/lib/utils';
@@ -41,6 +44,19 @@ export default function EncounterWorkspacePage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [closeError, setCloseError] = useState<string | null>(null);
   const [isClosing, setIsClosing] = useState(false);
+  const [deactivatingRxId, setDeactivatingRxId] = useState<string | null>(null);
+
+  const handleDeactivatePrescription = async (prescriptionId: string) => {
+    setDeactivatingRxId(prescriptionId);
+    try {
+      await prescriptionsApi.deactivate(prescriptionId);
+      await fetchEncounter();
+    } catch (err) {
+      setLoadError(getApiErrorMessage(err, 'Failed to deactivate prescription.'));
+    } finally {
+      setDeactivatingRxId(null);
+    }
+  };
 
   const fetchEncounter = useCallback(async () => {
     if (!encounterId) return;
@@ -148,9 +164,11 @@ export default function EncounterWorkspacePage() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-bold text-slate-900">{encounter.patient_name}</h1>
               <StatusBadge status={encounter.status} />
-              <span className="text-[11px] font-mono uppercase px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-semibold">
-                {encounter.type}
-              </span>
+              {encounter.type && (
+                <span className="text-[11px] font-mono uppercase px-2 py-0.5 bg-slate-100 text-slate-700 rounded-md font-semibold">
+                  {encounter.type}
+                </span>
+              )}
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Encounter ID: {encounter.id} • Opened: {formatDateTime(encounter.started_at)} • Facility: {encounter.clinic_name}
@@ -159,9 +177,9 @@ export default function EncounterWorkspacePage() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <Link href={`/doctor/patients/${encounter.patient_id}`}>
-            <Button size="sm" variant="outline">
-              View Longitudinal Chart
+          <Link href={`/doctor/patients/${encounter.patient_id}?fromEncounter=${encounter.id}`}>
+            <Button size="sm" variant="outline" leftIcon={<FileText className="w-3.5 h-3.5 text-[#2E7D32]" />}>
+              Open Full Patient Chart
             </Button>
           </Link>
 
@@ -301,22 +319,61 @@ export default function EncounterWorkspacePage() {
             <div className="bg-white rounded-3xl border border-slate-200 p-6 space-y-4 shadow-xs">
               <h3 className="text-sm font-bold text-slate-900">Authorized E-Prescriptions</h3>
               <div className="space-y-3">
-                {encounter.prescriptions.flatMap((rx) => rx.items || []).map((item) => (
-                  <div key={item.id} className="p-4 rounded-2xl bg-[#E8F5E9]/50 border border-[#C8E6C9] flex items-center justify-between text-xs text-[#1B5E20]">
-                    <div>
-                      <p className="font-bold text-slate-900">
-                        {item.medication_name} — {item.dose}
-                      </p>
-                      <p className="text-slate-600 mt-0.5">
-                        {item.frequency} • Route: {item.route} • Duration: {item.duration}
-                      </p>
-                      {item.instructions && (
-                        <p className="text-[11px] text-slate-500 mt-0.5">Instructions: {item.instructions}</p>
-                      )}
+                {encounter.prescriptions.map((rx) => {
+                  return (
+                    <div key={rx.id} className="space-y-2">
+                      {(rx.items || []).map((item) => {
+                        const isItemActive =
+                          item.status === 'active' || (!item.status && !item.deactivated_at);
+                        return (
+                          <div
+                            key={item.id}
+                            className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${isItemActive
+                                ? 'bg-[#E8F5E9]/50 border-[#C8E6C9] text-[#1B5E20]'
+                                : 'bg-slate-50 border-slate-200 text-slate-500'
+                              }`}
+                          >
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p
+                                  className={`font-bold ${isItemActive ? 'text-slate-900' : 'text-slate-500 line-through'
+                                    }`}
+                                >
+                                  {item.medication_name} — {item.dose}
+                                </p>
+                                <StatusBadge status={isItemActive ? 'active' : 'deactivated'} />
+                              </div>
+                              <p className="text-slate-600 mt-0.5">
+                                {item.frequency} • Route: {item.route} • Duration: {item.duration}
+                              </p>
+                              {item.instructions && (
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  Instructions: {item.instructions}
+                                </p>
+                              )}
+                              {item.deactivated_at && (
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                  Deactivated on {formatDateTime(item.deactivated_at)}
+                                </p>
+                              )}
+                            </div>
+                            {!isClosed && isItemActive && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeactivatePrescription(rx.id)}
+                                disabled={deactivatingRxId === rx.id}
+                                className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 border-rose-200 cursor-pointer text-xs"
+                              >
+                                {deactivatingRxId === rx.id ? 'Deactivating…' : 'Cancel / Deactivate'}
+                              </Button>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
-                    <StatusBadge status="active" />
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -326,6 +383,28 @@ export default function EncounterWorkspacePage() {
       {activeTab === 'appointment' && (
         <div className="space-y-6">
           {!isClosed && <AppointmentScheduler encounter={encounter} onSaved={fetchEncounter} />}
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="space-y-6">
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-white text-[#2E7D32] border border-slate-200 flex items-center justify-center font-bold">
+                <FileText className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-bold text-slate-800">Reviewing Single Historical Baseline</p>
+                <p className="text-slate-500">Need the patient&apos;s complete cross-visit timeline, lab trends, or active medications?</p>
+              </div>
+            </div>
+            <Link href={`/doctor/patients/${encounter.patient_id}?fromEncounter=${encounter.id}`}>
+              <Button size="sm" variant="outline" className="text-xs">
+                Open Complete Patient Chart ➔
+              </Button>
+            </Link>
+          </div>
+          <MedicalHistoryViewer encounterId={encounter.id} patientName={encounter.patient_name} />
         </div>
       )}
 
@@ -347,7 +426,7 @@ export default function EncounterWorkspacePage() {
               {encounter.diagnoses?.length ? (
                 <ul className="space-y-1.5 text-slate-700">
                   {encounter.diagnoses.map((d) => (
-                     <li key={d.id} className="flex items-center gap-2">
+                    <li key={d.id} className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#388E3C]" />
                       <strong>{d.icd_code || 'DX'}</strong> — {d.diagnosis_text} ({d.diagnosis_type})
                     </li>
