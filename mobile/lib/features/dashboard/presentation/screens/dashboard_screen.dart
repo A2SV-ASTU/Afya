@@ -144,16 +144,10 @@ class DashboardScreen extends StatelessWidget {
             }
           },
           builder: (context, state) {
-            // ------------------------------------
-            // LOADING
-            // ------------------------------------
             if (state.status == DashboardStatus.loading) {
               return const AfyaLoadingIndicator();
             }
 
-            // ------------------------------------
-            // ERROR
-            // ------------------------------------
             if (state.status == DashboardStatus.error &&
                 state.todayDoses.isEmpty) {
               return AfyaErrorView(
@@ -167,9 +161,6 @@ class DashboardScreen extends StatelessWidget {
               );
             }
 
-            // ------------------------------------
-            // DASHBOARD CONTENT
-            // ------------------------------------
             return RefreshIndicator(
               color: AppColors.primary,
               onRefresh: () => context
@@ -186,9 +177,6 @@ class DashboardScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // ==================================
-                    // 1. DASHBOARD HEADER
-                    // ==================================
                     DashboardHeader(
                       user: state.user,
                     ),
@@ -197,9 +185,6 @@ class DashboardScreen extends StatelessWidget {
                       height: AppDimensions.space24,
                     ),
 
-                    // ==================================
-                    // 2. TODAY'S MEDICATION
-                    // ==================================
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.center,
@@ -243,9 +228,6 @@ class DashboardScreen extends StatelessWidget {
                       height: AppDimensions.space12,
                     ),
 
-                    // ==================================
-                    // TODAY'S MEDICATION CARD
-                    // ==================================
                     TodayScheduleCard(
                       doses: state.todayDoses.take(3).toList(),
                       title: null,
@@ -282,9 +264,6 @@ class DashboardScreen extends StatelessWidget {
                       height: AppDimensions.space24,
                     ),
 
-                    // ==================================
-                    // 3. TODAY'S ADHERENCE
-                    // ==================================
                     TodayAdherenceCard(
                       takenCount: state.takenCount,
                       pendingCount: state.pendingCount,
@@ -299,9 +278,6 @@ class DashboardScreen extends StatelessWidget {
                       height: AppDimensions.space24,
                     ),
 
-                    // ==================================
-                    // 4. NEXT APPOINTMENT
-                    // ==================================
                     NextAppointmentSection(
                       nextAppointment: state.nextAppointment,
                       onAppointmentTap: () =>

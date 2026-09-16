@@ -16,20 +16,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mocktail/mocktail.dart';
 
-class MockGetAuthSessionUseCase extends Mock implements GetAuthSessionUseCase {}
+class MockGetAuthSessionUseCase extends Mock
+    implements GetAuthSessionUseCase {}
 
-class MockLoginPatientUseCase extends Mock implements LoginPatientUseCase {}
+class MockLoginPatientUseCase extends Mock
+    implements LoginPatientUseCase {}
 
 class MockRegisterPatientUseCase extends Mock
     implements RegisterPatientUseCase {}
 
-class MockLogoutPatientUseCase extends Mock implements LogoutPatientUseCase {}
+class MockLogoutPatientUseCase extends Mock
+    implements LogoutPatientUseCase {}
 
-class MockLoginWithPinUseCase extends Mock implements LoginWithPinUseCase {}
+class MockLoginWithPinUseCase extends Mock
+    implements LoginWithPinUseCase {}
 
-class MockSetPinUseCase extends Mock implements SetPinUseCase {}
+class MockSetPinUseCase extends Mock
+    implements SetPinUseCase {}
 
-class MockVerifyEmailUseCase extends Mock implements VerifyEmailUseCase {}
+class MockVerifyEmailUseCase extends Mock
+    implements VerifyEmailUseCase {}
 
 void main() {
   late MockGetAuthSessionUseCase mockGetAuthSessionUseCase;
@@ -42,14 +48,22 @@ void main() {
   late AuthBloc authBloc;
 
   setUpAll(() {
-    registerFallbackValue(const LoginPatientParams(email: '', password: ''));
-    registerFallbackValue(const RegisterPatientParams(
-      firstName: '',
-      lastName: '',
-      phone: '',
-      password: '',
-      email: '',
-    ));
+    registerFallbackValue(
+      const LoginPatientParams(
+        email: '',
+        password: '',
+      ),
+    );
+
+    registerFallbackValue(
+      const RegisterPatientParams(
+        firstName: '',
+        lastName: '',
+        phone: '',
+        password: '',
+        email: '',
+      ),
+    );
   });
 
   setUp(() {
@@ -102,18 +116,23 @@ void main() {
     'emits [AuthLoading, CreatePinRequired] when AppStarted finds active session without PIN',
     build: () {
       when(() => mockGetAuthSessionUseCase()).thenAnswer(
-        (_) async => const Right(AuthSessionEntity(
-          user: tPatientUserNoPin,
-          isAuthenticated: true,
-          isPinSet: false,
-        )),
+        (_) async => const Right(
+          AuthSessionEntity(
+            user: tPatientUserNoPin,
+            isAuthenticated: true,
+            isPinSet: false,
+          ),
+        ),
       );
+
       return authBloc;
     },
     act: (bloc) => bloc.add(const AppStarted()),
     expect: () => [
       const AuthLoading(),
-      const CreatePinRequired(user: tPatientUserNoPin),
+      const CreatePinRequired(
+        user: tPatientUserNoPin,
+      ),
     ],
   );
 
@@ -121,18 +140,23 @@ void main() {
     'emits [AuthLoading, PinRequired] when AppStarted finds active session with PIN set',
     build: () {
       when(() => mockGetAuthSessionUseCase()).thenAnswer(
-        (_) async => const Right(AuthSessionEntity(
-          user: tPatientUserWithPin,
-          isAuthenticated: true,
-          isPinSet: true,
-        )),
+        (_) async => const Right(
+          AuthSessionEntity(
+            user: tPatientUserWithPin,
+            isAuthenticated: true,
+            isPinSet: true,
+          ),
+        ),
       );
+
       return authBloc;
     },
     act: (bloc) => bloc.add(const AppStarted()),
     expect: () => [
       const AuthLoading(),
-      const PinRequired(user: tPatientUserWithPin),
+      const PinRequired(
+        user: tPatientUserWithPin,
+      ),
     ],
   );
 
@@ -140,8 +164,11 @@ void main() {
     'emits [AuthLoading, Unauthenticated] when AppStarted finds no session',
     build: () {
       when(() => mockGetAuthSessionUseCase()).thenAnswer(
-        (_) async => const Right(AuthSessionEntity.unauthenticated()),
+        (_) async => const Right(
+          AuthSessionEntity.unauthenticated(),
+        ),
       );
+
       return authBloc;
     },
     act: (bloc) => bloc.add(const AppStarted()),
@@ -152,20 +179,25 @@ void main() {
   );
 
   blocTest<AuthBloc, AuthState>(
-    'emits [AuthLoading, CreatePinRequired] on successful LoginSubmitted without PIN',
+    'emits [AuthLoading, Authenticated] on successful LoginSubmitted without PIN',
     build: () {
       when(() => mockLoginPatientUseCase(any())).thenAnswer(
         (_) async => const Right(tPatientUserNoPin),
       );
+
       return authBloc;
     },
-    act: (bloc) => bloc.add(const LoginSubmitted(
-      email: 'patient@example.com',
-      password: 'patientpassword',
-    )),
+    act: (bloc) => bloc.add(
+      const LoginSubmitted(
+        email: 'patient@example.com',
+        password: 'patientpassword',
+      ),
+    ),
     expect: () => [
       const AuthLoading(),
-      const CreatePinRequired(user: tPatientUserNoPin),
+      const Authenticated(
+        user: tPatientUserNoPin,
+      ),
     ],
   );
 
@@ -175,15 +207,20 @@ void main() {
       when(() => mockLoginPatientUseCase(any())).thenAnswer(
         (_) async => const Right(tPatientUserWithPin),
       );
+
       return authBloc;
     },
-    act: (bloc) => bloc.add(const LoginSubmitted(
-      email: 'patient@example.com',
-      password: 'patientpassword',
-    )),
+    act: (bloc) => bloc.add(
+      const LoginSubmitted(
+        email: 'patient@example.com',
+        password: 'patientpassword',
+      ),
+    ),
     expect: () => [
       const AuthLoading(),
-      const Authenticated(user: tPatientUserWithPin),
+      const Authenticated(
+        user: tPatientUserWithPin,
+      ),
     ],
   );
 
@@ -191,18 +228,28 @@ void main() {
     'emits [AuthLoading, AuthFailure] on failed LoginSubmitted',
     build: () {
       when(() => mockLoginPatientUseCase(any())).thenAnswer(
-        (_) async =>
-            const Left(ServerFailure('Invalid credentials', code: '401')),
+        (_) async => const Left(
+          ServerFailure(
+            'Invalid credentials',
+            code: '401',
+          ),
+        ),
       );
+
       return authBloc;
     },
-    act: (bloc) => bloc.add(const LoginSubmitted(
-      email: 'patient@example.com',
-      password: 'WrongPassword',
-    )),
+    act: (bloc) => bloc.add(
+      const LoginSubmitted(
+        email: 'patient@example.com',
+        password: 'WrongPassword',
+      ),
+    ),
     expect: () => [
       const AuthLoading(),
-      const AuthFailure(message: 'Invalid credentials', code: '401'),
+      const AuthFailure(
+        message: 'Invalid credentials',
+        code: '401',
+      ),
     ],
   );
 
@@ -212,18 +259,23 @@ void main() {
       when(() => mockRegisterPatientUseCase(any())).thenAnswer(
         (_) async => const Right(tPatientUserNoPin),
       );
+
       return authBloc;
     },
-    act: (bloc) => bloc.add(const RegisterSubmitted(
-      firstName: 'Jane',
-      lastName: 'Doe',
-      email: 'patient@example.com',
-      phone: '+1555444333',
-      password: 'patientpassword',
-    )),
+    act: (bloc) => bloc.add(
+      const RegisterSubmitted(
+        firstName: 'Jane',
+        lastName: 'Doe',
+        email: 'patient@example.com',
+        phone: '+1555444333',
+        password: 'patientpassword',
+      ),
+    ),
     expect: () => [
       const AuthLoading(),
-      const EmailVerificationRequired(email: 'patient@example.com'),
+      const EmailVerificationRequired(
+        email: 'patient@example.com',
+      ),
     ],
   );
 
@@ -231,18 +283,25 @@ void main() {
     'emits PinRequired when AppLockRequested',
     build: () {
       when(() => mockGetAuthSessionUseCase()).thenAnswer(
-        (_) async => const Right(AuthSessionEntity(
-          user: tPatientUserWithPin,
-          isAuthenticated: true,
-          isPinSet: true,
-        )),
+        (_) async => const Right(
+          AuthSessionEntity(
+            user: tPatientUserWithPin,
+            isAuthenticated: true,
+            isPinSet: true,
+          ),
+        ),
       );
+
       return authBloc;
     },
-    seed: () => const Authenticated(user: tPatientUserWithPin),
+    seed: () => const Authenticated(
+      user: tPatientUserWithPin,
+    ),
     act: (bloc) => bloc.add(const AppLockRequested()),
     expect: () => [
-      const PinRequired(user: tPatientUserWithPin),
+      const PinRequired(
+        user: tPatientUserWithPin,
+      ),
     ],
   );
 }

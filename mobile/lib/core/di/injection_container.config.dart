@@ -10,6 +10,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:connectivity_plus/connectivity_plus.dart' as _i895;
+import 'package:dio/dio.dart' as _i361;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart' as _i558;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:hive/hive.dart' as _i979;
@@ -201,6 +202,11 @@ extension GetItInjectableX on _i174.GetIt {
         () => _i94.ChatLocalDataSourceImpl());
     gh.lazySingleton<_i439.ProfileLocalDataSource>(
         () => _i1010.ProfileLocalDataSourceImpl());
+    gh.lazySingleton<_i945.GeminiRemoteDataSource>(
+        () => _i945.GeminiRemoteDataSourceImpl(
+              dio: gh<_i361.Dio>(),
+              enableRemote: gh<bool>(),
+            ));
     gh.lazySingleton<_i196.ClinicalHistoryLocalDataSource>(
         () => _i196.ClinicalHistoryLocalDataSourceImpl());
     gh.lazySingleton<_i852.AuthLocalDataSource>(
@@ -210,8 +216,6 @@ extension GetItInjectableX on _i174.GetIt {
             ));
     gh.lazySingleton<_i894.MedicationLocalDataSource>(
         () => _i894.MedicationLocalDataSourceImpl());
-    gh.lazySingleton<_i945.GeminiRemoteDataSource>(
-        () => _i945.GeminiRemoteDataSourceImpl());
     gh.lazySingleton<_i916.CookieStorageService>(
         () => _i916.CookieStorageService(gh<_i558.FlutterSecureStorage>()));
     gh.lazySingleton<_i932.NetworkInfo>(
@@ -270,11 +274,6 @@ extension GetItInjectableX on _i174.GetIt {
           remote: gh<_i847.ProfileRemoteDataSource>(),
           local: gh<_i439.ProfileLocalDataSource>(),
         ));
-    gh.lazySingleton<_i787.AuthRepository>(() => _i153.AuthRepositoryImpl(
-          remoteDataSource: gh<_i107.AuthRemoteDataSource>(),
-          localDataSource: gh<_i852.AuthLocalDataSource>(),
-            chatLocalDataSource: gh<_i94.ChatLocalDataSource>(),
-        ));
     gh.lazySingleton<_i113.ClinicalHistoryRemoteDataSource>(
         () => _i113.ClinicalHistoryRemoteDataSourceImpl(gh<_i557.ApiClient>()));
     gh.lazySingleton<_i1022.MedicationRemoteDataSource>(
@@ -285,22 +284,11 @@ extension GetItInjectableX on _i174.GetIt {
               gh<_i492.GenerateDoseScheduleUseCase>(),
               gh<_i894.MedicationLocalDataSource>(),
             ));
-    gh.lazySingleton<_i508.GetAuthSessionUseCase>(
-        () => _i508.GetAuthSessionUseCase(gh<_i787.AuthRepository>()));
-    gh.lazySingleton<_i51.LoginPatientUseCase>(
-        () => _i51.LoginPatientUseCase(gh<_i787.AuthRepository>()));
-    gh.lazySingleton<_i519.LoginWithPinUseCase>(
-        () => _i519.LoginWithPinUseCase(gh<_i787.AuthRepository>()));
-    gh.lazySingleton<_i244.LogoutPatientUseCase>(
-        () => _i244.LogoutPatientUseCase(gh<_i787.AuthRepository>()));
-    gh.lazySingleton<_i157.RefreshTokenUseCase>(
-        () => _i157.RefreshTokenUseCase(gh<_i787.AuthRepository>()));
-    gh.lazySingleton<_i617.RegisterPatientUseCase>(
-        () => _i617.RegisterPatientUseCase(gh<_i787.AuthRepository>()));
-    gh.lazySingleton<_i313.SetPinUseCase>(
-        () => _i313.SetPinUseCase(gh<_i787.AuthRepository>()));
-    gh.lazySingleton<_i30.VerifyEmailUseCase>(
-        () => _i30.VerifyEmailUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i787.AuthRepository>(() => _i153.AuthRepositoryImpl(
+          remoteDataSource: gh<_i107.AuthRemoteDataSource>(),
+          localDataSource: gh<_i852.AuthLocalDataSource>(),
+          chatLocalDataSource: gh<_i94.ChatLocalDataSource>(),
+        ));
     gh.lazySingleton<_i275.MedicationNotificationHandler>(
         () => _i275.MedicationNotificationHandler(
               gh<_i894.MedicationLocalDataSource>(),
@@ -327,15 +315,6 @@ extension GetItInjectableX on _i174.GetIt {
             gh<_i438.AccessRequestRepository>()));
     gh.lazySingleton<_i1.RevokeClinicGrantUseCase>(() =>
         _i1.RevokeClinicGrantUseCase(gh<_i438.AccessRequestRepository>()));
-    gh.lazySingleton<_i797.AuthBloc>(() => _i797.AuthBloc(
-          getAuthSessionUseCase: gh<_i508.GetAuthSessionUseCase>(),
-          loginPatientUseCase: gh<_i51.LoginPatientUseCase>(),
-          registerPatientUseCase: gh<_i617.RegisterPatientUseCase>(),
-          logoutPatientUseCase: gh<_i244.LogoutPatientUseCase>(),
-          loginWithPinUseCase: gh<_i519.LoginWithPinUseCase>(),
-          setPinUseCase: gh<_i313.SetPinUseCase>(),
-          verifyEmailUseCase: gh<_i30.VerifyEmailUseCase>(),
-        ));
     gh.lazySingleton<_i1026.StopMedicationTrackingUseCase>(
         () => _i1026.StopMedicationTrackingUseCase(
               gh<_i894.MedicationLocalDataSource>(),
@@ -369,6 +348,22 @@ extension GetItInjectableX on _i174.GetIt {
           getActiveGrantsUseCase: gh<_i211.GetActiveGrantsUseCase>(),
           revokeClinicGrantUseCase: gh<_i1.RevokeClinicGrantUseCase>(),
         ));
+    gh.lazySingleton<_i508.GetAuthSessionUseCase>(
+        () => _i508.GetAuthSessionUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i51.LoginPatientUseCase>(
+        () => _i51.LoginPatientUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i519.LoginWithPinUseCase>(
+        () => _i519.LoginWithPinUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i244.LogoutPatientUseCase>(
+        () => _i244.LogoutPatientUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i157.RefreshTokenUseCase>(
+        () => _i157.RefreshTokenUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i617.RegisterPatientUseCase>(
+        () => _i617.RegisterPatientUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i313.SetPinUseCase>(
+        () => _i313.SetPinUseCase(gh<_i787.AuthRepository>()));
+    gh.lazySingleton<_i30.VerifyEmailUseCase>(
+        () => _i30.VerifyEmailUseCase(gh<_i787.AuthRepository>()));
     gh.factory<_i427.PendingAccessRequestsBloc>(
         () => _i427.PendingAccessRequestsBloc(
               getPendingUseCase: gh<_i508.GetPendingAccessRequestsUseCase>(),
@@ -389,6 +384,15 @@ extension GetItInjectableX on _i174.GetIt {
         _i240.GetLocalDoseRecordsUseCase(gh<_i735.MedicationRepository>()));
     gh.lazySingleton<_i851.RecordDoseAdherenceUseCase>(() =>
         _i851.RecordDoseAdherenceUseCase(gh<_i735.MedicationRepository>()));
+    gh.lazySingleton<_i797.AuthBloc>(() => _i797.AuthBloc(
+          getAuthSessionUseCase: gh<_i508.GetAuthSessionUseCase>(),
+          loginPatientUseCase: gh<_i51.LoginPatientUseCase>(),
+          registerPatientUseCase: gh<_i617.RegisterPatientUseCase>(),
+          logoutPatientUseCase: gh<_i244.LogoutPatientUseCase>(),
+          loginWithPinUseCase: gh<_i519.LoginWithPinUseCase>(),
+          setPinUseCase: gh<_i313.SetPinUseCase>(),
+          verifyEmailUseCase: gh<_i30.VerifyEmailUseCase>(),
+        ));
     gh.lazySingleton<_i724.CompletePrescriptionUseCase>(
         () => _i724.CompletePrescriptionUseCase(
               gh<_i735.MedicationRepository>(),
